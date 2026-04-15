@@ -1,0 +1,36 @@
+stages:
+  - build_and_deploy
+
+deploy_multiplayer:
+  stage: build_and_deploy
+  tags:
+    - nodejs
+  script:
+    - echo "🚀 Memulai proses Build & Deploy..."
+
+    # 1. Build Client (Vite) di Runner
+    - cd client
+    - npm install
+    - npm run build
+    - cd ..
+
+    # 2. Kirim Hasil Build Vite (dist) ke folder utama website
+    - rsync -az --delete ./client/dist/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/
+    
+    # 3. Kirim Folder Server & Shared
+    - rsync -az --delete ./server/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
+    - rsync -az --delete ./shared/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/shared/
+
+    # 4. Perintah Eksekusi di Server aaPanel
+    - ssh -o StrictHostKeyChecking=no root@192.168.1.157 "
+        chown -R www:www /www/wwwroot/MultiplayerGameQuiz && 
+        cd /www/wwwroot/MultiplayerGameQuiz/server && 
+        
+        sudo -u www npm install --production --no-audit --cache /tmp/npm-cache-multi && 
+        
+        sudo -u www pm2 startOrReload ecosystem.config.js --update-env &&
+        sudo -u www pm2 save &&
+        echo '✅ Frontend Vite ter-update & Backend Server Aktif!'
+      "
+  only:
+    - main
