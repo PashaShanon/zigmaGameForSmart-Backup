@@ -28,7 +28,7 @@ deploy_multiplayer:
         ./server/public/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/public/
 
     - rsync -az
-        ./server/package.json ./server/package-lock.json
+        ./server/package.json
         root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
 
     - rsync -az
