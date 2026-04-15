@@ -1,14 +1,15 @@
 module.exports = {
   apps: [
     {
-      name: "multiplayer-backend", // Nama unik agar tidak double
-      script: "index.js",          // File utama server kamu
-      cwd: "/www/wwwroot/MultiplayerGameQuiz/server", // Lokasi eksekusi
-      instances: 1,                // Cukup 1 untuk Socket.io agar koneksi stabil
-      exec_mode: "fork",           // Multiplayer biasanya lebih aman pakai fork
+      name: "Zigma",
+      // Sesuaikan dengan letak file hasil build (biasanya di folder build atau dist)
+      script: "./build/index.js", 
+      cwd: "/www/wwwroot/MultiplayerGameQuiz/server",
+      instances: 1, // Wajib 1 untuk Colyseus agar state room tidak pecah
+      exec_mode: "fork",
       env: {
         NODE_ENV: "production",
-        PORT: 2567                 // Pastikan port ini tidak dipakai proyek lain
+        PORT: 2567
       }
     }
   ]
