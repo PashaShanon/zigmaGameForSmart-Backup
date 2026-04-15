@@ -16,12 +16,6 @@ deploy_multiplayer:
 
     # 3. Kirim hasil build ke aaPanel (EXCLUDE file yang tidak perlu)
     - rsync -az --delete
-        --exclude='node_modules'
-        --exclude='.env'
-        --exclude='logs'
-        --exclude='src'
-        --exclude='*.ts'
-        --exclude='tsconfig.json'
         ./server/build/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/build/
 
     - rsync -az
