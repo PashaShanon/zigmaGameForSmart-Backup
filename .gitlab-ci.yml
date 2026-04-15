@@ -11,20 +11,40 @@ deploy_multiplayer:
     # 1. Build Client (Vite)
     - cd client && npm install && npm run build && cd ..
 
-    # 2. Build Server (Colyseus) - INI YANG KURANG TADI!
+    # 2. Build Server (Colyseus)
     - cd server && npm install && npm run build && cd ..
 
-    # 3. Kirim Hasil ke aaPanel
-    - rsync -az --delete ./server/public/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/
-    - rsync -az --delete ./server/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
-    - rsync -az --delete ./shared/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/shared/
+    # 3. Kirim hasil build ke aaPanel (EXCLUDE file yang tidak perlu)
+    - rsync -az --delete
+        --exclude='node_modules'
+        --exclude='.env'
+        --exclude='logs'
+        --exclude='src'
+        --exclude='*.ts'
+        --exclude='tsconfig.json'
+        ./server/build/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/build/
 
-    # 4. Eksekusi di Server
+    - rsync -az
+        ./server/public/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/public/
+
+    - rsync -az
+        ./server/package.json ./server/package-lock.json
+        root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
+
+    - rsync -az
+        ./server/ecosystem.config.js
+        root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
+
+    - rsync -az --delete
+        ./shared/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/shared/
+
+    # 4. Eksekusi di Server aaPanel
     - ssh -o StrictHostKeyChecking=no root@192.168.1.157 "
-        chown -R www:www /www/wwwroot/MultiplayerGameQuiz && 
-        cd /www/wwwroot/MultiplayerGameQuiz/server && 
-        sudo -u www npm install --production --no-audit --cache /tmp/npm-cache-multi && 
-        sudo -u www pm2 startOrReload ecosystem.config.js --update-env &&
+        cd /www/wwwroot/MultiplayerGameQuiz/server &&
+        mkdir -p logs &&
+        npm install --production --no-audit &&
+        pm2 startOrReload ecosystem.config.js --update-env &&
+        pm2 save &&
         echo '✅ Colyseus Server & Vite Client Berhasil Update!'
       "
   only:
