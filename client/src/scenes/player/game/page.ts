@@ -125,6 +125,10 @@ export class GameScene extends Phaser.Scene {
             this.showRetryQuestionPopup(data.questionId);
         });
 
+        this.room.onMessage('hostLeft', () => {
+            this.showHostLeftModal();
+        });
+
         // --- BACKGROUND LOADING SYNC ---
         // Ensure screen is closed and showing countdown EVEN DURING PRELOAD
         if (this.room.state.countdown > 0) {
@@ -1430,5 +1434,102 @@ export class GameScene extends Phaser.Scene {
         if (this.currentPlayer) {
             this.cameras.main.startFollow(this.currentPlayer, true, 0.2, 0.2);
         }
+    }
+
+    private showHostLeftModal() {
+        // Hide quiz popup if open
+        if (this.quizPopup) this.quizPopup.hide();
+
+        // Remove existing modal if any
+        document.getElementById('host-left-modal')?.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'host-left-modal';
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.75);
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.15s ease;
+        `;
+        modal.innerHTML = `
+            <style>
+                @keyframes popIn {
+                    from { transform: scale(0.85); opacity: 0; }
+                    to   { transform: scale(1);    opacity: 1; }
+                }
+                #host-left-box {
+                    animation: popIn 0.2s cubic-bezier(.34,1.56,.64,1);
+                    background: #1a1a2e;
+                    border: 3px solid #ef4444;
+                    border-radius: 16px;
+                    box-shadow: 0 0 40px rgba(239,68,68,0.3), 0 20px 60px rgba(0,0,0,0.8);
+                    padding: 36px 40px;
+                    text-align: center;
+                    min-width: 320px;
+                    max-width: 90vw;
+                }
+                #host-left-box .host-left-icon {
+                    font-size: 48px !important;
+                    color: #ef4444;
+                    margin-bottom: 16px;
+                    display: block;
+                }
+                #host-left-box h2 {
+                    font-family: 'Retro Gaming', monospace;
+                    font-size: 14px;
+                    color: #ef4444;
+                    margin-bottom: 12px;
+                    line-height: 1.6;
+                }
+                #host-left-box p {
+                    font-family: 'Retro Gaming', monospace;
+                    font-size: 9px;
+                    color: rgba(255,255,255,0.6);
+                    margin-bottom: 28px;
+                    line-height: 1.8;
+                }
+                .btn-ok-host-left {
+                    font-family: 'Retro Gaming', monospace;
+                    font-size: 9px;
+                    padding: 12px 40px;
+                    background: #ef4444;
+                    border: 2px solid #b91c1c;
+                    border-radius: 10px;
+                    color: white;
+                    cursor: pointer;
+                    transition: all 0.15s;
+                    border-bottom-width: 4px;
+                }
+                .btn-ok-host-left:hover { filter: brightness(1.15); }
+                .btn-ok-host-left:active { border-bottom-width: 2px; transform: translateY(2px); }
+            </style>
+            <div id="host-left-box">
+                <span class="material-symbols-outlined host-left-icon">warning</span>
+                <h2>Host keluar dari room!</h2>
+                <p>Room telah ditutup oleh host.</p>
+                <button class="btn-ok-host-left" id="host-left-ok-btn">OK</button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        document.getElementById('host-left-ok-btn')?.addEventListener('click', () => {
+            modal.remove();
+
+            // Cleanup: Destroy Phaser engine and go back to lobby
+            const engine = (window as any).gameInstance;
+            if (engine) {
+                engine.destroy(true);
+                (window as any).gameInstance = null;
+            }
+
+            // Clear session data
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('currentSessionId');
+            localStorage.removeItem('currentReconnectionToken');
+
+            // Navigate to lobby
+            window.location.href = '/';
+        });
     }
 }

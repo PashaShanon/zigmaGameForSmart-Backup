@@ -918,6 +918,8 @@ export class GameRoom extends Room<GameState> {
         if (isHostLeave) {
             if (isManualLeave) {
                 console.log(`[GameRoom] Host clicked EXIT. Disposing room.`);
+                // Notify all remaining players that the host has left
+                this.broadcast("hostLeft");
                 this.reallyReallyDisconnect = true;
                 this.disconnect();
                 return;

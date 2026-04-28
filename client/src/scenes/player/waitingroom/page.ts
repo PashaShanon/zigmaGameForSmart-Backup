@@ -140,6 +140,11 @@ export class PlayerWaitingRoomManager {
             // Langsung keluar tanpa alert
             this.leaveRoom();
         });
+
+        // Host Left the Room
+        this.room.onMessage("hostLeft", () => {
+            this.showHostLeftModal();
+        });
     }
 
     private start() {
@@ -180,11 +185,46 @@ export class PlayerWaitingRoomManager {
         this.playerCountEl = document.getElementById('player-count-value');
         this.nameInput = document.getElementById('header-player-name') as HTMLInputElement;
         this.backBtn = document.getElementById('player-back-btn');
+        this.roomCodeEl = document.getElementById('player-room-code');
+        this.roomQrCode = document.getElementById('player-room-qr') as HTMLImageElement;
+
+        // Initialize Feature Popups
+        this.qrPopup = new QRCodePopup(() => { });
 
         // Setup Event Listeners
         if (this.backBtn) {
             this.backBtn.onclick = () => {
                 this.showExitConfirm();
+            };
+        }
+
+        const copyCodeBtn = document.getElementById('player-copy-code-btn');
+        if (copyCodeBtn) {
+            copyCodeBtn.onclick = () => {
+                const code = this.room.state.roomCode;
+                if (code) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        const icon = copyCodeBtn.querySelector('.material-symbols-outlined');
+                        if (icon) {
+                            const original = icon.textContent;
+                            icon.textContent = 'check';
+                            icon.classList.add('text-primary');
+                            setTimeout(() => {
+                                icon.textContent = original;
+                                icon.classList.remove('text-primary');
+                            }, 2000);
+                        }
+                    });
+                }
+            };
+        }
+
+        const qrTrigger = document.getElementById('player-qr-trigger');
+        if (qrTrigger) {
+            qrTrigger.onclick = () => {
+                if (this.roomQrCode && this.roomQrCode.src) {
+                    this.qrPopup?.show(this.roomQrCode.src);
+                }
             };
         }
 
@@ -639,6 +679,26 @@ export class PlayerWaitingRoomManager {
                 class="z-20 object-contain" style="position:absolute; display:none;" />
 
             <div class="relative z-10 flex flex-col items-center justify-start w-full h-screen p-4 md:pt-20 pt-16 overflow-hidden">
+                <!-- Room Info Bar -->
+                <div class="mb-4 flex items-center gap-4 bg-black/40 backdrop-blur-sm px-6 py-3 rounded-2xl border-2 border-white/10 shadow-xl">
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-white/50 font-['Press_Start_2P'] uppercase tracking-wider mb-1">${i18n.t('player_lobby.room_code')}</span>
+                        <div class="flex items-center gap-3">
+                            <span id="player-room-code" class="text-xl md:text-2xl text-primary font-['Retro_Gaming'] tracking-widest">------</span>
+                            <button id="player-copy-code-btn" class="text-white/30 hover:text-primary transition-colors cursor-pointer">
+                                <span class="material-symbols-outlined text-lg">content_copy</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-10 w-[1px] bg-white/10 mx-2"></div>
+                    <div id="player-qr-trigger" class="flex items-center gap-3 cursor-pointer group">
+                        <div class="w-10 h-10 bg-white p-1 rounded-lg group-hover:scale-105 transition-transform overflow-hidden shadow-lg">
+                            <img id="player-room-qr" src="" class="w-full h-full object-contain mix-blend-multiply" />
+                        </div>
+                        <span class="material-symbols-outlined text-white/30 group-hover:text-white transition-colors">qr_code_2</span>
+                    </div>
+                </div>
+
                 <!-- Main Content Box (Host Style Container) -->
                 <div class="player-content-box">
                     <div class="player-header-section">
@@ -870,6 +930,86 @@ export class PlayerWaitingRoomManager {
         });
     }
 
+    showHostLeftModal() {
+        // Hapus modal lama jika ada
+        document.getElementById('host-left-modal')?.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'host-left-modal';
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.75);
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.15s ease;
+        `;
+        modal.innerHTML = `
+            <style>
+                @keyframes popIn {
+                    from { transform: scale(0.85); opacity: 0; }
+                    to   { transform: scale(1);    opacity: 1; }
+                }
+                #host-left-box {
+                    animation: popIn 0.2s cubic-bezier(.34,1.56,.64,1);
+                    background: #1a1a2e;
+                    border: 3px solid #ef4444;
+                    border-radius: 16px;
+                    box-shadow: 0 0 40px rgba(239,68,68,0.3), 0 20px 60px rgba(0,0,0,0.8);
+                    padding: 36px 40px;
+                    text-align: center;
+                    min-width: 320px;
+                    max-width: 90vw;
+                }
+                #host-left-box .host-left-icon {
+                    font-size: 48px !important;
+                    color: #ef4444;
+                    margin-bottom: 16px;
+                    display: block;
+                }
+                #host-left-box h2 {
+                    font-family: 'Retro Gaming', monospace;
+                    font-size: 14px;
+                    color: #ef4444;
+                    margin-bottom: 12px;
+                    line-height: 1.6;
+                }
+                #host-left-box p {
+                    font-family: 'Retro Gaming', monospace;
+                    font-size: 9px;
+                    color: rgba(255,255,255,0.6);
+                    margin-bottom: 28px;
+                    line-height: 1.8;
+                }
+                .btn-ok-host-left {
+                    font-family: 'Retro Gaming', monospace;
+                    font-size: 9px;
+                    padding: 12px 40px;
+                    background: #ef4444;
+                    border: 2px solid #b91c1c;
+                    border-radius: 10px;
+                    color: white;
+                    cursor: pointer;
+                    transition: all 0.15s;
+                    border-bottom-width: 4px;
+                }
+                .btn-ok-host-left:hover { filter: brightness(1.15); }
+                .btn-ok-host-left:active { border-bottom-width: 2px; transform: translateY(2px); }
+            </style>
+            <div id="host-left-box">
+                <span class="material-symbols-outlined host-left-icon">warning</span>
+                <h2>Host keluar dari room!</h2>
+                <p>Room telah ditutup oleh host.</p>
+                <button class="btn-ok-host-left" id="host-left-ok-btn">OK</button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        document.getElementById('host-left-ok-btn')?.addEventListener('click', () => {
+            modal.remove();
+            this.leaveRoom();
+        });
+    }
+
     leaveRoom() {
         if (this.room) {
             this.room.leave();
@@ -926,8 +1066,9 @@ export class PlayerWaitingRoomManager {
 
     updateQrCode(code: string) {
         if (this.roomQrCode && code) {
-            const url = `${window.location.origin}?room=${code}`;
-            this.roomQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+            const domain = window.location.origin;
+            const url = `${domain}/join/${code}`;
+            this.roomQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
         }
     }
 

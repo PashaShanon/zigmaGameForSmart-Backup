@@ -178,6 +178,7 @@
   "player_lobby": {
     "exit": "KELUAR",
     "choose_character": "PILIH KARAKTER",
+    "room_code": "KODE RUANGAN",
     "you": "KAMU",
     "dialog_exit_title": "⚠ KELUAR?",
     "dialog_exit_desc": "Kamu akan meninggalkan<br>ruangan ini.",

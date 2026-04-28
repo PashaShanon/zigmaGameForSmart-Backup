@@ -160,6 +160,20 @@
       background-color: #121216;
     }
 
+    /* QR Scanner UI Fixes */
+    #qr-reader div[style*="background-color: rgb(255, 255, 255)"],
+    #qr-reader div[style*="background-color: white"],
+    #qr-shaded-region {
+      display: none !important;
+    }
+
+    #qr-reader video {
+      object-fit: cover !important;
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 12px;
+    }
+
     #app {
       position: fixed;
       top: 0;

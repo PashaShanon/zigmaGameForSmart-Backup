@@ -109,9 +109,16 @@ export class LobbyUI {
                                 <h2 class="text-lg md:text-xl text-[#478D47] mb-1 uppercase tracking-wider">${i18n.t('lobby.join_card.title')}</h2>
                                 <p class="text-[#478D47] text-[10px] md:text-xs leading-relaxed mb-3 max-w-[240px]">${i18n.t('lobby.join_card.desc')}</p>
                                 <!-- Code Input Group -->
-                                <div class="w-full space-y-3 mt-auto">
+                                 <div class="w-full space-y-3 mt-auto">
                                     <div dir="${isRTL ? 'rtl' : 'ltr'}">
-                                        <input id="room-code-input" class="w-full h-12 bg-[#F1F8E9] border-2 border-[#6CC452]/30 rounded-xl focus:border-[#6CC452] focus:ring-4 focus:ring-[#6CC452]/20 text-center text-xl tracking-[0.3em] text-[#478D47] uppercase placeholder:text-[#6CC452]/30 font-['Retro_Gaming'] transition-all shadow-inner" placeholder="${i18n.t('lobby.join_card.placeholders.code')}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                                        <div class="flex items-center">
+                                            <button id="scan-qr-btn" class="shrink-0 w-12 h-12 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all duration-300 group shadow-sm cursor-pointer me-2 overflow-hidden">
+                                                <span class="material-symbols-outlined text-[#6CC452] text-2xl group-hover:scale-110 transition-transform">qr_code_scanner</span>
+                                            </button>
+                                            <div class="relative flex-1">
+                                                <input id="room-code-input" class="w-full h-12 bg-[#F1F8E9] border-2 border-[#6CC452]/30 rounded-xl focus:border-[#6CC452] focus:ring-4 focus:ring-[#6CC452]/20 text-center text-xl tracking-[0.3em] text-[#478D47] uppercase placeholder:text-[#6CC452]/30 font-['Retro_Gaming'] transition-all shadow-inner" placeholder="${i18n.t('lobby.join_card.placeholders.code')}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                                            </div>
+                                        </div>
                                         <p id="roomcode-error" class="hidden text-red-500 text-[8px] font-['Retro_Gaming'] mt-2 flex items-center gap-1.5 justify-center"><span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">error</span><span></span></p>
                                     </div>
                                     <button id="join-room-btn" class="pixel-text-outline w-full py-3 bg-[#336B23] text-white font-bold font-['Retro_Gaming'] text-lg rounded-xl border-b-4 border-[#1F4514] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all shadow-lg cursor-pointer game-platform">
@@ -150,6 +157,32 @@ export class LobbyUI {
                         </div>
                     </div>
                 </div>
+
+                <!-- QR Scanner Modal -->
+                <div id="qr-scanner-modal" class="hidden fixed inset-0 z-[10000] flex flex-col items-center justify-center p-4">
+                    <div id="qr-scanner-backdrop" class="absolute inset-0 bg-black/80 backdrop-blur-md"></div>
+                    <div class="relative z-10 w-full max-w-md bg-white border-4 border-[#6CC452] rounded-[32px] overflow-hidden shadow-2xl flex flex-col pointer-events-auto">
+                        <div class="p-6 border-b-2 border-[#6CC452]/20 flex items-center justify-between">
+                            <h3 class="text-[#478D47] font-['Retro_Gaming'] text-lg uppercase tracking-wider">Scan QR Code</h3>
+                            <button id="qr-scanner-close" class="w-10 h-10 flex items-center justify-center text-[#478D47] hover:bg-[#F1F8E9] rounded-full transition-colors cursor-pointer">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div class="p-4 bg-black aspect-square relative">
+                            <div id="qr-reader" class="w-full h-full overflow-hidden rounded-xl"></div>
+                            <!-- Scanner Overlay Decor -->
+                            <div class="absolute inset-0 border-2 border-[#6CC452] opacity-30 pointer-events-none m-12 rounded-2xl"></div>
+                            <div class="absolute top-8 left-8 w-8 h-8 border-t-4 border-l-4 border-[#6CC452] rounded-tl-lg pointer-events-none"></div>
+                            <div class="absolute top-8 right-8 w-8 h-8 border-t-4 border-r-4 border-[#6CC452] rounded-tr-lg pointer-events-none"></div>
+                            <div class="absolute bottom-8 left-8 w-8 h-8 border-b-4 border-l-4 border-[#6CC452] rounded-bl-lg pointer-events-none"></div>
+                            <div class="absolute bottom-8 right-8 w-8 h-8 border-b-4 border-r-4 border-[#6CC452] rounded-br-lg pointer-events-none"></div>
+                        </div>
+                        <div class="p-6 text-center">
+                            <p class="text-[#478D47]/70 font-['Retro_Gaming'] text-[10px] uppercase tracking-widest">${i18n.t('lobby.qr_scanner.desc') || 'Point your camera at the Host QR code'}</p>
+                        </div>
+                    </div>
+                </div>
+
             `;
             document.body.appendChild(lobbyUI);
 

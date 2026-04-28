@@ -480,6 +480,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.backBtn = document.getElementById('waiting-back-btn');
         }
 
+        // --- Character & QR Popup ---
+        if (!this.isHost) {
+            this.setupCharacterCustomization();
+        }
+        this.setupQRPopup();
+
         // Immediately populate roomCode/QR/link from URL (works even before room reconnect)
         this.updateRoomCode();
 
@@ -548,15 +554,6 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.nameInput.addEventListener('input', () => {
                 this.room.send('updateName', { name: this.nameInput!.value });
             });
-        }
-
-        // State listeners dipindah ke setupStateListeners()
-        // Dipanggil di atas jika this.room ada, atau di restoreRoom() setelah reconnect
-
-        // --- Character & QR Popup (Only for Player) ---
-        if (!this.isHost) {
-            this.setupCharacterCustomization();
-            this.setupQRPopup();
         }
 
         // --- Multi-Language Support Event ---
@@ -1632,11 +1629,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     setupQRPopup() {
         if (!this.qrPopup) {
             this.qrPopup = new QRCodePopup(() => { });
-            const qrImg = document.getElementById('room-qr-code');
+            // Try both possible IDs (player view or host view)
+            const qrImg = document.getElementById('room-qr-code') || document.getElementById('host-qr-img');
             const qrContainer = qrImg?.parentElement;
             if (qrContainer) {
                 qrContainer.onclick = () => {
-                    const img = document.getElementById('room-qr-code') as HTMLImageElement;
+                    const img = (document.getElementById('room-qr-code') || document.getElementById('host-qr-img')) as HTMLImageElement;
                     if (img && img.src) this.qrPopup?.show(img.src);
                 };
             }

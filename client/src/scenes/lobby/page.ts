@@ -5,12 +5,14 @@ import { authService } from '../../services/auth/AuthService';
 import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../lib/supabaseB';
 import { LobbyUI } from './ui';
 import { i18n } from '../../utils/i18n';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export class LobbyManager {
     client!: Client;
     lobbyUI: HTMLElement | null = null;
     private pendingJoinCode: string | null = null;
     private didExit: boolean = false;
+    private qrScanner: Html5Qrcode | null = null;
 
     constructor() {}
 
@@ -377,6 +379,46 @@ export class LobbyManager {
         const createRoomBtn = document.getElementById('create-room-btn');
         const joinBtn = document.getElementById('join-room-btn');
         const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
+        const scanQrBtn = document.getElementById('scan-qr-btn');
+        const qrScannerModal = document.getElementById('qr-scanner-modal');
+        const qrScannerClose = document.getElementById('qr-scanner-close');
+        const qrScannerBackdrop = document.getElementById('qr-scanner-backdrop');
+
+        if (scanQrBtn && qrScannerModal) {
+            scanQrBtn.addEventListener('click', async () => {
+                qrScannerModal.classList.remove('hidden');
+                this.startQrScanner();
+            });
+        }
+
+        const closeScanner = () => {
+            if (qrScannerModal) qrScannerModal.classList.add('hidden');
+            this.stopQrScanner();
+        };
+
+        if (qrScannerClose) qrScannerClose.onclick = closeScanner;
+        if (qrScannerBackdrop) qrScannerBackdrop.onclick = closeScanner;
+
+        if (codeInput && scanQrBtn) {
+            const updateScanBtnVisibility = () => {
+                if (codeInput.value.length > 0) {
+                    scanQrBtn.style.width = '0px';
+                    scanQrBtn.style.opacity = '0';
+                    scanQrBtn.style.marginRight = '0px';
+                    scanQrBtn.style.pointerEvents = 'none';
+                } else {
+                    scanQrBtn.style.width = '48px'; // w-12 = 3rem = 48px
+                    scanQrBtn.style.opacity = '1';
+                    scanQrBtn.style.marginRight = '8px'; // mr-2 = 0.5rem = 8px
+                    scanQrBtn.style.pointerEvents = 'auto';
+                }
+            };
+
+            // Initial check if code was populated (e.g. from restore)
+            updateScanBtnVisibility();
+
+            codeInput.addEventListener('input', updateScanBtnVisibility);
+        }
 
         if (createRoomBtn) {
             createRoomBtn.onclick = () => {
@@ -764,5 +806,71 @@ export class LobbyManager {
         });
         const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
         if (codeInput) codeInput.classList.remove('!border-red-500');
+    }
+
+    private async startQrScanner() {
+        if (!this.qrScanner) {
+            this.qrScanner = new Html5Qrcode("qr-reader");
+        }
+
+        const config = { fps: 10 };
+
+        try {
+            await this.qrScanner.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    console.log("QR Code detected:", decodedText);
+                    
+                    // Extract code from URL or use as is
+                    let code = decodedText;
+                    if (decodedText.includes('/join/')) {
+                        code = decodedText.split('/join/')[1].split(/[?#]/)[0];
+                    } else if (decodedText.includes('room=')) {
+                        try {
+                            const url = new URL(decodedText);
+                            code = url.searchParams.get('room') || decodedText;
+                        } catch (e) {
+                            // Not a valid URL, use as is
+                        }
+                    }
+
+                    // Validate code (assuming 6 digits)
+                    const cleanCode = code.replace(/[^0-9]/g, '').substring(0, 6);
+                    if (cleanCode.length === 6) {
+                        const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
+                        if (codeInput) {
+                            codeInput.value = cleanCode;
+                            // Trigger input event to update UI (like hiding scan button)
+                            codeInput.dispatchEvent(new Event('input'));
+                        }
+                        
+                        // Close scanner and join
+                        const qrScannerModal = document.getElementById('qr-scanner-modal');
+                        if (qrScannerModal) qrScannerModal.classList.add('hidden');
+                        this.stopQrScanner();
+                        this.handleJoinRoom(cleanCode);
+                    }
+                },
+                (errorMessage) => {
+                    // Ignore constant scan failures
+                }
+            );
+        } catch (err) {
+            console.error("Unable to start QR scanner:", err);
+            this.showJoinError("Kamera tidak dapat diakses atau diblokir.");
+            const qrScannerModal = document.getElementById('qr-scanner-modal');
+            if (qrScannerModal) qrScannerModal.classList.add('hidden');
+        }
+    }
+
+    private async stopQrScanner() {
+        if (this.qrScanner && this.qrScanner.isScanning) {
+            try {
+                await this.qrScanner.stop();
+            } catch (err) {
+                console.error("Failed to stop QR scanner:", err);
+            }
+        }
     }
 }

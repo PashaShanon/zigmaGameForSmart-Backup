@@ -170,6 +170,7 @@
   "player_lobby": {
     "exit": "خروج",
     "choose_character": "اختر الشخصية",
+    "room_code": "رمز الغرفة",
     "you": "أنت",
     "dialog_exit_title": "⚠ هل تريد الخروج؟",
     "dialog_exit_desc": "أنت على وشك<br>مغادرة هذه الغرفة.",

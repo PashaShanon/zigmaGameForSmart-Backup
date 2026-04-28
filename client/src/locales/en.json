@@ -66,6 +66,9 @@
       "conn_error": "Connection error, try again",
       "joining_msg": "Joining Room {code}...",
       "autojoin_failed": "Auto-join failed: "
+    },
+    "qr_scanner": {
+      "desc": "Point your camera at the Host QR code"
     }
   },
   "select_quiz": {
@@ -178,6 +181,7 @@
   "player_lobby": {
     "exit": "EXIT",
     "choose_character": "CHOOSE CHARACTER",
+    "room_code": "ROOM CODE",
     "you": "YOU",
     "dialog_exit_title": "⚠ EXIT?",
     "dialog_exit_desc": "You are going to leave<br>this room.",
