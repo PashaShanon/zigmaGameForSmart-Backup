@@ -2,7 +2,6 @@ import { Room } from 'colyseus.js';
 import { Router } from '../../../utils/Router';
 import { TransitionManager } from '../../../utils/TransitionManager';
 import { CharacterSelectPopup } from '../../../ui/shared/CharacterSelectPopup';
-import { QRCodePopup } from '../../../ui/shared/QRCodePopup';
 import { HAIR_OPTIONS, getHairById } from '../../../data/characterData';
 import { OrientationManager } from '../../../utils/OrientationManager';
 import { i18n } from '../../../utils/i18n';
@@ -15,7 +14,6 @@ export class PlayerWaitingRoomManager {
 
     // UI Elements
     waitingUI: HTMLElement | null = null;
-    roomCodeEl: HTMLElement | null = null;
     playerGridEl: HTMLElement | null = null;
     playerCountEl: HTMLElement | null = null;
     startBtn: HTMLElement | null = null;
@@ -25,15 +23,11 @@ export class PlayerWaitingRoomManager {
     hostIndicatorEl: HTMLElement | null = null;
 
     // New Elements
-    copyCodeBtn: HTMLElement | null = null;
-    copyFeedback: HTMLElement | null = null;
-    roomQrCode: HTMLImageElement | null = null;
     backBtn: HTMLElement | null = null;
 
     // Feature
     characterPopup: CharacterSelectPopup | null = null;
     characterPreviewEl: HTMLElement | null = null;
-    qrPopup: QRCodePopup | null = null;
 
     constructor() { }
 
@@ -185,11 +179,6 @@ export class PlayerWaitingRoomManager {
         this.playerCountEl = document.getElementById('player-count-value');
         this.nameInput = document.getElementById('header-player-name') as HTMLInputElement;
         this.backBtn = document.getElementById('player-back-btn');
-        this.roomCodeEl = document.getElementById('player-room-code');
-        this.roomQrCode = document.getElementById('player-room-qr') as HTMLImageElement;
-
-        // Initialize Feature Popups
-        this.qrPopup = new QRCodePopup(() => { });
 
         // Setup Event Listeners
         if (this.backBtn) {
@@ -198,35 +187,7 @@ export class PlayerWaitingRoomManager {
             };
         }
 
-        const copyCodeBtn = document.getElementById('player-copy-code-btn');
-        if (copyCodeBtn) {
-            copyCodeBtn.onclick = () => {
-                const code = this.room.state.roomCode;
-                if (code) {
-                    navigator.clipboard.writeText(code).then(() => {
-                        const icon = copyCodeBtn.querySelector('.material-symbols-outlined');
-                        if (icon) {
-                            const original = icon.textContent;
-                            icon.textContent = 'check';
-                            icon.classList.add('text-primary');
-                            setTimeout(() => {
-                                icon.textContent = original;
-                                icon.classList.remove('text-primary');
-                            }, 2000);
-                        }
-                    });
-                }
-            };
-        }
 
-        const qrTrigger = document.getElementById('player-qr-trigger');
-        if (qrTrigger) {
-            qrTrigger.onclick = () => {
-                if (this.roomQrCode && this.roomQrCode.src) {
-                    this.qrPopup?.show(this.roomQrCode.src);
-                }
-            };
-        }
 
         const chooseCharBtn = document.getElementById('player-choose-char-btn');
         if (chooseCharBtn) {
@@ -679,25 +640,7 @@ export class PlayerWaitingRoomManager {
                 class="z-20 object-contain" style="position:absolute; display:none;" />
 
             <div class="relative z-10 flex flex-col items-center justify-start w-full h-screen p-4 md:pt-20 pt-16 overflow-hidden">
-                <!-- Room Info Bar -->
-                <div class="mb-4 flex items-center gap-4 bg-black/40 backdrop-blur-sm px-6 py-3 rounded-2xl border-2 border-white/10 shadow-xl">
-                    <div class="flex flex-col">
-                        <span class="text-[8px] text-white/50 font-['Press_Start_2P'] uppercase tracking-wider mb-1">${i18n.t('player_lobby.room_code')}</span>
-                        <div class="flex items-center gap-3">
-                            <span id="player-room-code" class="text-xl md:text-2xl text-primary font-['Retro_Gaming'] tracking-widest">------</span>
-                            <button id="player-copy-code-btn" class="text-white/30 hover:text-primary transition-colors cursor-pointer">
-                                <span class="material-symbols-outlined text-lg">content_copy</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="h-10 w-[1px] bg-white/10 mx-2"></div>
-                    <div id="player-qr-trigger" class="flex items-center gap-3 cursor-pointer group">
-                        <div class="w-10 h-10 bg-white p-1 rounded-lg group-hover:scale-105 transition-transform overflow-hidden shadow-lg">
-                            <img id="player-room-qr" src="" class="w-full h-full object-contain mix-blend-multiply" />
-                        </div>
-                        <span class="material-symbols-outlined text-white/30 group-hover:text-white transition-colors">qr_code_2</span>
-                    </div>
-                </div>
+
 
                 <!-- Main Content Box (Host Style Container) -->
                 <div class="player-content-box">
@@ -1038,14 +981,7 @@ export class PlayerWaitingRoomManager {
         this.startManager('LobbyManager', { didExit: true });
     }
 
-    showCopyFeedback() {
-        if (this.copyFeedback) {
-            this.copyFeedback.classList.remove('opacity-0');
-            setTimeout(() => {
-                this.copyFeedback?.classList.add('opacity-0');
-            }, 2000);
-        }
-    }
+
 
     updateAll() {
         this.updatePlayerGrid();
@@ -1056,21 +992,7 @@ export class PlayerWaitingRoomManager {
         }
     }
 
-    updateRoomCode() {
-        const code = this.room.state.roomCode;
-        if (this.roomCodeEl) {
-            this.roomCodeEl.innerText = code || '------';
-        }
-        this.updateQrCode(code);
-    }
 
-    updateQrCode(code: string) {
-        if (this.roomQrCode && code) {
-            const domain = window.location.origin;
-            const url = `${domain}/join/${code}`;
-            this.roomQrCode.src = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
-        }
-    }
 
     updateUILayout() {
         let totalPlayers = 0;

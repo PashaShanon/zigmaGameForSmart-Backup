@@ -49,5 +49,41 @@ async function bootstrap() {
     }
 }
 
+// --- GLOBAL FULLSCREEN LOGIC ---
+const setupGlobalFullscreen = () => {
+    const fsBtn = document.getElementById('global-fullscreen-btn');
+    const fsIcon = document.getElementById('global-fullscreen-icon');
+
+    if (fsBtn && fsIcon) {
+        fsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const doc = document as any;
+            const docEl = document.documentElement as any;
+
+            if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+                if (docEl.requestFullscreen) docEl.requestFullscreen().catch((err: any) => console.error("Fullscreen error:", err));
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+                else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
+                else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+            } else {
+                if (doc.exitFullscreen) doc.exitFullscreen();
+                else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+                else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+                else if (doc.msExitFullscreen) doc.msExitFullscreen();
+            }
+        });
+
+        const updateFsIcon = () => {
+            const isFS = !!(document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).mozFullScreenElement || (document as any).msFullscreenElement);
+            fsIcon.textContent = isFS ? 'fullscreen_exit' : 'fullscreen';
+        };
+
+        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event => {
+            document.addEventListener(event, updateFsIcon);
+        });
+    }
+};
+
 bootstrap();
+setupGlobalFullscreen();
 

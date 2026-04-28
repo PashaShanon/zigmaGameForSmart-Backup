@@ -300,6 +300,8 @@ export class GameScene extends Phaser.Scene {
 
         // --- Barrier Collision Setup ---
         this.parseBarriers();
+        // Selalu gambar debug barrier untuk mempermudah verifikasi di semua map
+        // this.drawDebugBarriers();
 
         // Force NEAREST filtering on the tileset textures
         if (this.textures.exists('tiles')) {
@@ -1286,26 +1288,26 @@ export class GameScene extends Phaser.Scene {
     // ═══════════════════════════════════════════════
 
     /**
-     * Membaca semua object rectangle dari layer "barrier" di Tiled map.
-     * Object dengan width/height = 0 (titik/ellipse kosong) diabaikan.
+     * Membaca semua object dari layer yang mengandung kata "barrier" (case-insensitive).
+     * Mendukung nested layers jika ada.
      */
     private parseBarriers() {
         this.barrierAreas = [];
-
-        // Cari di kedua layer yang mungkin berisi barrier
-        const targetLayers = ['Barrier', 'obstacle barrier'];
-
-        // 1. Cek di daftar objects utama Phaser
-        if (this.map.objects) {
-            targetLayers.forEach(layerName => {
-                const layer = this.map.objects.find(l => l.name === layerName);
-                if (layer && layer.objects) {
-                    this.parseLayerObjects(layer.objects);
+        
+        // Phaser mendatarkan semua object layer ke dalam array this.map.objects
+        if (this.map.objects && Array.isArray(this.map.objects)) {
+            this.map.objects.forEach((layer: any) => {
+                const layerName = (layer.name || "").toLowerCase();
+                if (layerName.includes('barrier')) {
+                    console.log(`[Barrier] Parsing layer: ${layer.name} with ${layer.objects?.length || 0} objects`);
+                    if (layer.objects) {
+                        this.parseLayerObjects(layer.objects);
+                    }
                 }
             });
         }
 
-        console.log(`[Barrier] Loaded ${this.barrierAreas.length} precise barrier areas.`);
+        console.log(`[Barrier] Total: Loaded ${this.barrierAreas.length} precise barrier areas.`);
     }
 
 

@@ -7,7 +7,7 @@ export class LobbyUI {
         if (!lobbyUI) {
             lobbyUI = document.createElement('div');
             lobbyUI.id = 'lobby-ui';
-            lobbyUI.className = 'fixed inset-0 z-10 hidden';
+            lobbyUI.className = 'fixed inset-0 z-[100] hidden';
             lobbyUI.innerHTML = `
                 ${GlobalBackground.getHTML('lobby')}
 
@@ -21,7 +21,7 @@ export class LobbyUI {
                     </div>
 
                     <!-- User Profile & Menu -->
-                    <div class="flex items-start gap-3">
+                    <div class="flex items-center gap-3">
                         <div id="lobby-user-profile"
                             class="flex items-center gap-3 bg-white border-2 border-[#6CC452] rounded-full pl-1.5 pr-4 py-1.5 shadow-xl">
                             <div class="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#6CC452] border border-[#6CC452] overflow-hidden flex items-center justify-center shrink-0">
@@ -132,10 +132,6 @@ export class LobbyUI {
                     </div>
                 </div>
 
-                <!-- Fullscreen Button -->
-                <button id="lobby-fullscreen-btn" class="fixed bottom-4 right-4 z-[100] w-12 h-12 md:w-14 md:h-14 bg-white border-2 border-[#6CC452] rounded-full flex items-center justify-center hover:bg-[#F1F8E9] shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer">
-                    <span id="lobby-fullscreen-icon" class="material-symbols-outlined text-[#478D47] text-2xl md:text-3xl">fullscreen</span>
-                </button>
 
                 <!-- Logout Modal -->
                 <div id="logout-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center px-4 pointer-events-auto">
@@ -189,39 +185,6 @@ export class LobbyUI {
             // Start Character Spawner
             GlobalBackground.startCharacterSpawner('lobby');
 
-            // Fullscreen Logic
-            const fsBtn = document.getElementById('lobby-fullscreen-btn');
-            if (fsBtn) {
-                fsBtn.addEventListener('click', () => {
-                    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-                        const docEl = document.documentElement as any;
-                        if (docEl.requestFullscreen) docEl.requestFullscreen();
-                        else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
-                        else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
-                    } else {
-                        const doc = document as any;
-                        if (doc.exitFullscreen) doc.exitFullscreen();
-                        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
-                        else if (doc.msExitFullscreen) doc.msExitFullscreen();
-                    }
-                });
-            }
-
-            if (!LobbyUI.fsListenerAdded) {
-                LobbyUI.fsListenerAdded = true;
-                const updateFsIcon = () => {
-                    const fsIcon = document.getElementById('lobby-fullscreen-icon');
-                    if (fsIcon) {
-                        if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-                            fsIcon.textContent = 'fullscreen_exit';
-                        } else {
-                            fsIcon.textContent = 'fullscreen';
-                        }
-                    }
-                };
-                document.addEventListener('fullscreenchange', updateFsIcon);
-                document.addEventListener('webkitfullscreenchange', updateFsIcon);
-            }
 
             // Handle language change event
             window.addEventListener('languageChanged', () => {
@@ -239,5 +202,4 @@ export class LobbyUI {
         }
     }
 
-    private static fsListenerAdded: boolean = false;
 }
