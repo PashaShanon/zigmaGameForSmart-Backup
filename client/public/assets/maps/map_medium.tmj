@@ -6700,6 +6700,46 @@
                          "width":19.9921875,
                          "x":870,
                          "y":533.96875
+                        }, 
+                        {
+                         "height":0,
+                         "id":30,
+                         "name":"",
+                         "polygon":[
+                                {
+                                 "x":0,
+                                 "y":0
+                                }, 
+                                {
+                                 "x":0,
+                                 "y":32
+                                }, 
+                                {
+                                 "x":16,
+                                 "y":48
+                                }, 
+                                {
+                                 "x":32,
+                                 "y":48
+                                }, 
+                                {
+                                 "x":48,
+                                 "y":64
+                                }, 
+                                {
+                                 "x":-16,
+                                 "y":64
+                                }, 
+                                {
+                                 "x":-16,
+                                 "y":0
+                                }],
+                         "rotation":0,
+                         "type":"",
+                         "visible":true,
+                         "width":0,
+                         "x":176,
+                         "y":80
                         }],
                  "opacity":1,
                  "type":"objectgroup",
@@ -7287,7 +7327,7 @@
          "y":0
         }],
  "nextlayerid":99,
- "nextobjectid":30,
+ "nextobjectid":31,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
@@ -7296,7 +7336,7 @@
         {
          "columns":64,
          "firstgid":1,
-         "image":"..\/..\/..\/..\/..\/..\/Sunnyside_World_ASSET_PACK_V2.1\/Sunnyside_World_Assets\/Tileset\/spr_tileset_sunnysideworld_16px.png",
+         "image":"..\/spr_tileset_sunnysideworld_16px.png",
          "imageheight":1024,
          "imagewidth":1024,
          "margin":0,
@@ -7309,7 +7349,7 @@
         {
          "columns":12,
          "firstgid":4097,
-         "image":"..\/..\/..\/..\/..\/..\/Sunnyside_World_ASSET_PACK_V2.1\/Sunnyside_World_Assets\/Elements\/Other\/spr_deco_coracle_strip4.png",
+         "image":"..\/elements\/spr_deco_coracle_strip4.png",
          "imageheight":37,
          "imagewidth":192,
          "margin":0,
@@ -7322,7 +7362,7 @@
         {
          "columns":63,
          "firstgid":4121,
-         "image":"..\/..\/..\/..\/..\/..\/Sunnyside_World_ASSET_PACK_V2.1\/Sunnyside_World_Assets\/Elements\/Other\/spr_deco_windmill_withshadow_strip9.png",
+         "image":"..\/elements\/spr_deco_windmill_withshadow_strip9.png",
          "imageheight":112,
          "imagewidth":1008,
          "margin":0,

@@ -69,6 +69,9 @@ export class GameRoom extends Room<GameState> {
         // @ts-ignore - HACK PERMANEN untuk mencekik autoDispose dari sistem dalam Colyseus
         this._disposeIfEmpty = () => false;
 
+        // Set patch rate to 50ms (20fps sync) for smoother movement while staying memory efficient
+        this.setPatchRate(50);
+
         // Wrap disconnect with a safety flag
         const originalDisconnect = this.disconnect.bind(this);
         this.disconnect = () => {
@@ -501,9 +504,25 @@ export class GameRoom extends Room<GameState> {
                 targetClient.leave(); // Force leave
             } else {
                 // Handle ghost player (state ada tapi client putus)
-                const targetPlayer = this.state.players.get(targetSessionId);
-                // Jika player offline tapi masih di state, kita bisa force remove atau biarkan timeout
-                // Untuk amannya, biarkan timeout/reconnection logic handle (atau force remove jika perlu)
+                const player = this.state.players.get(targetSessionId);
+                if (player) {
+                    console.log(`[GameRoom] Host kicked ghost player ${targetSessionId}`);
+                    
+                    // Cleanup spawn point
+                    if (player.spawnIndex !== -1) {
+                        this.usedSpawnIndices.delete(player.spawnIndex);
+                        console.log(`[Spawn] Freed spawn point ${player.spawnIndex} from ghost player ${player.name}`);
+                    }
+                    
+                    // Cleanup sub-room
+                    const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
+                    if (subRoom) {
+                        const idx = subRoom.playerIds.indexOf(targetSessionId);
+                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                    }
+                    
+                    this.state.players.delete(targetSessionId);
+                }
             }
         });
 
@@ -809,13 +828,45 @@ export class GameRoom extends Room<GameState> {
         }
 
         // --- NON-HOST PLAYERS ONLY ---
+        
+        // Anti-duplicate: Jika userId sudah ada (ghost dari session sebelumnya), hapus yang lama
+        if (options.userId) {
+            this.state.players.forEach((p, sid) => {
+                if (p.userId === options.userId) {
+                    console.log(`[GameRoom] Removing duplicate ghost player ${sid} for userId ${options.userId}`);
+                    
+                    // Cleanup spawn point
+                    if (p.spawnIndex !== -1) {
+                        this.usedSpawnIndices.delete(p.spawnIndex);
+                    }
+                    
+                    // Cleanup sub-room
+                    const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
+                    if (subRoom) {
+                        const idx = subRoom.playerIds.indexOf(sid);
+                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                    }
+                    
+                    this.state.players.delete(sid);
+
+                    // Beri tahu client lama jika masih terkoneksi (kasus tab ganda)
+                    const oldClient = this.clients.find(c => c.sessionId === sid);
+                    if (oldClient) {
+                        (oldClient as any).kicked = true;
+                        oldClient.send("kicked", { message: "Joined from another device/tab." });
+                        oldClient.leave();
+                    }
+                }
+            });
+        }
+
         const player = new Player();
         player.sessionId = client.sessionId;
         player.userId = options.userId || "";
         player.avatarUrl = options.avatarUrl || "";
         player.name = options.name || "Player " + (this.state.players.size + 1);
         player.hairId = Math.floor(Math.random() * 7); // Randomize hair (0-6) on join
-
+ 
         // Assign spawn position from Map Data
         const mapData = MapParser.loadMapData(this.state.difficulty);
         console.log(`[MapDebug] Loaded map for difficulty: ${this.state.difficulty}`);
@@ -932,8 +983,9 @@ export class GameRoom extends Room<GameState> {
             }
         }
 
-        if (!isKicked) {
-            console.log(`[GameRoom] Player ${client.sessionId} disconnected. Allowing 60s reconnection...`);
+        // Jika TIDAK di-kick DAN TIDAK sengaja keluar (consented = false), berikan waktu reconnect
+        if (!isKicked && !consented) {
+            console.log(`[GameRoom] Player ${client.sessionId} disconnected (unintentional). Allowing 60s reconnection...`);
             try {
                 // Allow reconnection for 60 seconds (Standard professional practice)
                 await this.allowReconnection(client, 60);
@@ -943,9 +995,12 @@ export class GameRoom extends Room<GameState> {
                 console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out.`);
                 // Continue to cleanup
             }
+        } else {
+            // Jika di-kick atau sengaja klik keluar (consented=true), langsung hapus tanpa menunggu
+            console.log(`[GameRoom] Player ${client.sessionId} left intentionally or was kicked. Cleaning up immediately.`);
         }
 
-        // Hapus player dari state (timeout atau di-kick)
+        // Hapus player dari state (timeout, di-kick, atau keluar sengaja)
         // Host tidak ada di state.players, jadi hanya delete untuk non-host
         if (player) {
             if (player.spawnIndex !== -1) {

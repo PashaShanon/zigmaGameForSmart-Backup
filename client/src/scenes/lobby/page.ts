@@ -809,20 +809,32 @@ export class LobbyManager {
     }
 
     private async startQrScanner() {
+        // Compatibility Fix: Check for Secure Context (HTTPS requirement)
+        if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+            this.showJoinError("Scan QR memerlukan koneksi aman (HTTPS). Silakan masukkan kode secara manual.");
+            const qrScannerModal = document.getElementById('qr-scanner-modal');
+            if (qrScannerModal) qrScannerModal.classList.add('hidden');
+            return;
+        }
+
         if (!this.qrScanner) {
             this.qrScanner = new Html5Qrcode("qr-reader");
         }
 
-        const config = { fps: 10 };
+        // Optimized config for better compatibility across mobile devices
+        const config = { 
+            fps: 10,
+            qrbox: { width: 250, height: 250 }, // Focus area for better scanning
+            aspectRatio: 1.0
+        };
 
         try {
             await this.qrScanner.start(
-                { facingMode: "environment" },
+                { facingMode: "environment" }, // Prioritize back camera
                 config,
                 (decodedText) => {
                     console.log("QR Code detected:", decodedText);
                     
-                    // Extract code from URL or use as is
                     let code = decodedText;
                     if (decodedText.includes('/join/')) {
                         code = decodedText.split('/join/')[1].split(/[?#]/)[0];
@@ -830,35 +842,39 @@ export class LobbyManager {
                         try {
                             const url = new URL(decodedText);
                             code = url.searchParams.get('room') || decodedText;
-                        } catch (e) {
-                            // Not a valid URL, use as is
-                        }
+                        } catch (e) {}
                     }
 
-                    // Validate code (assuming 6 digits)
                     const cleanCode = code.replace(/[^0-9]/g, '').substring(0, 6);
                     if (cleanCode.length === 6) {
                         const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
                         if (codeInput) {
                             codeInput.value = cleanCode;
-                            // Trigger input event to update UI (like hiding scan button)
                             codeInput.dispatchEvent(new Event('input'));
                         }
                         
-                        // Close scanner and join
                         const qrScannerModal = document.getElementById('qr-scanner-modal');
                         if (qrScannerModal) qrScannerModal.classList.add('hidden');
                         this.stopQrScanner();
                         this.handleJoinRoom(cleanCode);
                     }
                 },
-                (errorMessage) => {
-                    // Ignore constant scan failures
-                }
+                () => { /* Ignore scan failures */ }
             );
-        } catch (err) {
+        } catch (err: any) {
             console.error("Unable to start QR scanner:", err);
-            this.showJoinError("Kamera tidak dapat diakses atau diblokir.");
+            
+            // Compatibility Fix: Detailed error messages for common browser blocks
+            let errorMsg = "Kamera tidak dapat diakses.";
+            if (err.name === 'NotAllowedError' || err === 'NotAllowedError') {
+                errorMsg = "Izin kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.";
+            } else if (err.name === 'NotFoundError' || err === 'NotFoundError') {
+                errorMsg = "Kamera tidak ditemukan di perangkat ini.";
+            } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                errorMsg = "Browser memblokir kamera pada koneksi non-HTTPS.";
+            }
+
+            this.showJoinError(errorMsg);
             const qrScannerModal = document.getElementById('qr-scanner-modal');
             if (qrScannerModal) qrScannerModal.classList.add('hidden');
         }

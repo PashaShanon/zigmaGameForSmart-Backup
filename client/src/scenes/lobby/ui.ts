@@ -164,7 +164,7 @@ export class LobbyUI {
                                 <span class="material-symbols-outlined">close</span>
                             </button>
                         </div>
-                        <div class="p-4 bg-black aspect-square relative">
+                        <div class="p-4 bg-white aspect-square relative">
                             <div id="qr-reader" class="w-full h-full overflow-hidden rounded-xl"></div>
                             <!-- Scanner Overlay Decor -->
                             <div class="absolute inset-0 border-2 border-[#6CC452] opacity-30 pointer-events-none m-12 rounded-2xl"></div>

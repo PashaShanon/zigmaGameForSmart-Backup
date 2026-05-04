@@ -349,7 +349,7 @@ export class HostProgressScene extends Phaser.Scene {
                 const dy = player.y - container.y;
                 const isMoving = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
 
-                container.setPosition(player.x, player.y);
+                // Removed "container.setPosition(player.x, player.y) to allow smooth interpolation in update()""
 
                 // Attack takes priority
                 if (player.isAttacking) {
@@ -604,8 +604,8 @@ export class HostProgressScene extends Phaser.Scene {
                 const tx = container.getData('targetX');
                 const ty = container.getData('targetY');
                 if (tx !== undefined && ty !== undefined) {
-                    container.x += (tx - container.x) * 0.1;
-                    container.y += (ty - container.y) * 0.1;
+                    container.x += (tx - container.x) * 0.15;
+                    container.y += (ty - container.y) * 0.15;
 
                     const dx = tx - container.x;
                     const base = container.getData('baseSprite') as Phaser.GameObjects.Sprite;

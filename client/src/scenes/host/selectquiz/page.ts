@@ -379,9 +379,9 @@ export class SelectQuizManager {
             };
         }
 
-        const quizBackBtn = document.getElementById('quiz-back-btn');
-        if (quizBackBtn) {
-            quizBackBtn.onclick = () => {
+        const selectQuizBackBtn = document.getElementById('select-quiz-back-btn');
+        if (selectQuizBackBtn) {
+            selectQuizBackBtn.onclick = () => {
                 TransitionManager.transitionTo(() => this.goBackToLobby());
             };
         }
