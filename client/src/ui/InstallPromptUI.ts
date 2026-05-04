@@ -4,7 +4,10 @@ export class InstallPromptUI {
     private static deferredPrompt: any = null;
 
     static init() {
+        console.log("[PWA] Handler Initialized. Waiting for beforeinstallprompt event...");
+        
         window.addEventListener('beforeinstallprompt', (e) => {
+            console.log("[PWA] 📥 beforeinstallprompt event fired!");
             // Prevent Chrome 67 and earlier from automatically showing the prompt
             e.preventDefault();
             // Stash the event so it can be triggered later.
@@ -14,7 +17,7 @@ export class InstallPromptUI {
         });
 
         window.addEventListener('appinstalled', () => {
-            console.log('PWA was installed');
+            console.log('[PWA] 🎉 App was installed successfully');
             this.hide();
         });
     }
