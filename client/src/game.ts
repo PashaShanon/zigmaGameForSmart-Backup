@@ -14,6 +14,7 @@ import { QuizSettingsUI } from './scenes/host/quizsetting/ui';
 import { WaitingRoomUI } from './scenes/host/lobby/ui';
 import { AuthLoadingUI } from './scenes/login/auth-loading-ui';
 import { GameOverlayUI } from './scenes/player/game/ui';
+import { InstallPromptUI } from './ui/InstallPromptUI';
 
 // Pre-render all global UIs to replace the ones removed from index.html
 LoginUI.render();
@@ -24,9 +25,25 @@ QuizSettingsUI.render();
 WaitingRoomUI.render();
 AuthLoadingUI.render();
 GameOverlayUI.render();
+InstallPromptUI.render();
+InstallPromptUI.init();
+
+import { AudioManager } from './systems/AudioManager';
 
 class BootScene extends Phaser.Scene {
     constructor() { super('BootScene'); }
+
+    preload() {
+        AudioManager.getInstance().preload(this);
+    }
+
+    create() {
+        // Initialize AudioManager with this scene context so it can play sounds
+        AudioManager.getInstance().init(this);
+        
+        // Once preloaded, we can initialize and play main BGM if we are in lobby context
+        // But scenes are usually started via initializeGame()
+    }
 }
 
 export function initializeGame(startScene?: string, sceneData?: any) {

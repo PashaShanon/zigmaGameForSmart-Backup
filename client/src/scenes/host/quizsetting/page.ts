@@ -431,7 +431,8 @@ export class QuizSettingManager {
                     description: this.selectedQuiz.description,
                     creator_avatar: (this.selectedQuiz as any).creator_avatar || null,
                     creator_username: (this.selectedQuiz as any).creator_username || 'kizuko'
-                }
+                },
+                isMusicEnabled: this.soundEnabled
             };
 
             // Before calling create room, ensure we load client if not passed previously

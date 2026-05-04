@@ -111,13 +111,11 @@ export class LobbyUI {
                                 <!-- Code Input Group -->
                                  <div class="w-full space-y-3 mt-auto">
                                     <div dir="${isRTL ? 'rtl' : 'ltr'}">
-                                        <div class="flex items-center">
-                                            <button id="scan-qr-btn" class="shrink-0 w-12 h-12 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all duration-300 group shadow-sm cursor-pointer me-2 overflow-hidden">
-                                                <span class="material-symbols-outlined text-[#6CC452] text-2xl group-hover:scale-110 transition-transform">qr_code_scanner</span>
+                                        <div class="relative w-full">
+                                            <input id="room-code-input" class="w-full h-12 bg-[#F1F8E9] border-2 border-[#6CC452]/30 rounded-xl focus:border-[#6CC452] focus:ring-4 focus:ring-[#6CC452]/20 text-center text-xl tracking-[0.3em] text-[#478D47] uppercase placeholder:text-[#6CC452]/30 font-['Retro_Gaming'] transition-all shadow-inner pr-12" placeholder="${i18n.t('lobby.join_card.placeholders.code')}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                                            <button id="scan-qr-btn" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-[#6CC452] hover:scale-110 transition-transform cursor-pointer bg-transparent border-none outline-none">
+                                                <span class="material-symbols-outlined text-2xl">qr_code_scanner</span>
                                             </button>
-                                            <div class="relative flex-1">
-                                                <input id="room-code-input" class="w-full h-12 bg-[#F1F8E9] border-2 border-[#6CC452]/30 rounded-xl focus:border-[#6CC452] focus:ring-4 focus:ring-[#6CC452]/20 text-center text-xl tracking-[0.3em] text-[#478D47] uppercase placeholder:text-[#6CC452]/30 font-['Retro_Gaming'] transition-all shadow-inner" placeholder="${i18n.t('lobby.join_card.placeholders.code')}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
-                                            </div>
                                         </div>
                                         <p id="roomcode-error" class="hidden text-red-500 text-[8px] font-['Retro_Gaming'] mt-2 flex items-center gap-1.5 justify-center"><span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">error</span><span></span></p>
                                     </div>

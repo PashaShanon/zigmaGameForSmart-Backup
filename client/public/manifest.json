@@ -1,0 +1,24 @@
+{
+  "name": "Zigma - Mind Venture",
+  "short_name": "Zigma",
+  "description": "Zigma is a multiplayer RPG quiz game where knowledge is power!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121216",
+  "theme_color": "#72BF78",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo/SkeletonV1.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo/Zigma-logo-fix.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

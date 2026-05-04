@@ -10,6 +10,7 @@ import { QRCodePopup } from '../../../ui/shared/QRCodePopup';
 import { HAIR_OPTIONS, getHairById } from '../../../data/characterData';
 import * as QRCode from 'qrcode';
 import { i18n } from '../../../utils/i18n';
+import { AudioManager } from '../../../systems/AudioManager';
 
 export class HostWaitingRoomScene extends Phaser.Scene {
     room!: Room;
@@ -225,8 +226,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         const waitingUiEl = document.getElementById('waiting-ui');
         if (waitingUiEl) waitingUiEl.classList.add('hidden');
 
-        // Force reload to Select Quiz to ensure clean state and proper routing
-        window.location.href = '/host/select-quiz';
+        // Force reload to Lobby to ensure clean state and proper routing
+        window.location.href = '/';
     }
 
     /** Muncullkan Notifikasi Toast Kustom */
@@ -346,9 +347,15 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         // Listen for Countdown
         this.room.state.listen("countdown", (val: number, previousVal: number) => {
             if (val > 0) {
-                // --- UNIFIED GLOBAL COUNTDOWN ---
+                // --- GLOBAL UNIFIED COUNTDOWN ---
                 TransitionManager.ensureClosed();
                 TransitionManager.setCountdownText(val.toString());
+
+                // Stop lobby music as soon as countdown starts
+                AudioManager.getInstance().stopBGM();
+
+                // Play countdown sequence sound (guarded against doubles in AudioManager)
+                AudioManager.getInstance().playCountdownSFX();
 
                 // --- OPTIMIZATION: Start Game Transition Early ---
                 // Similar to player side, we start loading the scene in background during countdown
@@ -372,6 +379,16 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         this.room.onMessage("gameStarted", () => {
             this.handleGameStart();
         });
+
+        // --- ROOM MUSIC CONTROL ---
+        this.room.state.listen("isMusicEnabled", (isEnabled: boolean) => {
+            console.log(`[HostLobby] 🏠 Room Music Enabled: ${isEnabled}`);
+            AudioManager.getInstance().setRoomMute(!isEnabled);
+        });
+        // Initial set
+        if (this.room.state.isMusicEnabled !== undefined) {
+             AudioManager.getInstance().setRoomMute(!this.room.state.isMusicEnabled);
+        }
 
         // Safety net: on first full state change, update room code/QR/URL
         // This handles the case where listen("roomCode") misses initial value
@@ -1744,8 +1761,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
             if (this.waitingUI) this.waitingUI.classList.add('hidden');
 
-            // Force reload to Select Quiz to ensure clean state and proper routing
-            window.location.href = '/host/select-quiz';
+            // Force reload to Lobby to ensure clean state and proper routing
+            window.location.href = '/';
 
             // Global TransitionManager handles cleanup
         }

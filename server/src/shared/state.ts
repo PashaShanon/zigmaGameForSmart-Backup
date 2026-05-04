@@ -84,4 +84,5 @@ export class GameState extends Schema {
     @type("number") countdown: number = 0; // Countdown timer (0 = not running)
     @type("number") totalTimeMinutes: number = 5;
     @type("string") questionLimit: string = "all";
+    @type("boolean") isMusicEnabled: boolean = true;
 }

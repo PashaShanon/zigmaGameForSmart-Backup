@@ -3,6 +3,7 @@ import { Room } from 'colyseus.js';
 import { Router } from '../../../utils/Router';
 import { TransitionManager } from '../../../utils/TransitionManager';
 import { OrientationManager } from '../../../utils/OrientationManager';
+import { AudioManager } from '../../../systems/AudioManager';
 
 export class HostProgressScene extends Phaser.Scene {
     room!: Room;
@@ -59,10 +60,18 @@ export class HostProgressScene extends Phaser.Scene {
                     this.isGameStarted = true;
                     TransitionManager.setCountdownText(""); // Clear "GO!" or countdown
                     if (this.isGameReady) {
-                        TransitionManager.open();
+                        this.revealGame();
                     }
                 }
             });
+
+            // --- ROOM MUSIC CONTROL ---
+            this.room.state.listen("isMusicEnabled", (isEnabled: boolean) => {
+                console.log(`[HostProgressScene] 🏠 Room Music Enabled: ${isEnabled}`);
+                AudioManager.getInstance().setRoomMute(!isEnabled);
+            });
+            // Initial set
+            AudioManager.getInstance().setRoomMute(!this.room.state.isMusicEnabled);
         }
 
         this.room.onMessage('gameEnded', (data: any) => {
@@ -157,7 +166,17 @@ export class HostProgressScene extends Phaser.Scene {
         return new Promise(resolve => setTimeout(resolve, 0));
     }
 
+    private revealGame() {
+        console.log("[Spectator] Game Ready & Started! Opening Iris and starting music.");
+        TransitionManager.open();
+        
+        // Start in-game music when game is revealed
+        AudioManager.getInstance().playBGM('bgm_game');
+    }
+
     async create() {
+        // Music will be started in revealGame() or when iris opens
+        
         console.log(`[Spectator][Room:${this.room?.id}] Creating... SessionId: ${this.room?.sessionId}`);
         if (!this.room) {
             console.error("[Spectator] Create failed: No room!");
@@ -165,8 +184,9 @@ export class HostProgressScene extends Phaser.Scene {
         }
 
         // --- SPEED OPTIMIZATION: Open Iris immediately if game is already active during refresh ---
+        this.isGameReady = true;
         if (this.room.state.isGameStarted) {
-            TransitionManager.open();
+            this.revealGame();
         }
 
         // --- Map Rendering ---

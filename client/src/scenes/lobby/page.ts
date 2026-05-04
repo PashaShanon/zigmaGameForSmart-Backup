@@ -7,6 +7,9 @@ import { LobbyUI } from './ui';
 import { i18n } from '../../utils/i18n';
 import { Html5Qrcode } from 'html5-qrcode';
 
+import { initializeGame } from '../../game';
+import { AudioManager } from '../../systems/AudioManager';
+
 export class LobbyManager {
     client!: Client;
     lobbyUI: HTMLElement | null = null;
@@ -19,6 +22,13 @@ export class LobbyManager {
     async init(data?: { autoJoinCode?: string, didExit?: boolean }) {
         this.pendingJoinCode = null;
         this.didExit = !!data?.didExit;
+
+        // Auto-initialize game for audio if not already done
+        initializeGame('BootScene');
+        // Give a tiny delay for boot scene to start and audio to be ready
+        setTimeout(() => {
+            AudioManager.getInstance().playBGM('bgm_main');
+        }, 500);
 
         if (this.didExit) {
             console.log("🚀 [LobbyManager] User exited deliberately. Auto-join disabled.");
@@ -316,25 +326,37 @@ export class LobbyManager {
 
             const soundContainer = document.getElementById('lobby-sound-container');
             if (soundContainer) {
-                let soundEnabled = localStorage.getItem('globalSoundEnabled') === 'true';
+                // Synchronize with AudioManager's key: 'audio_muted'
+                // Note: isMuted = true means Sound is OFF. So soundEnabled = !isMuted
+                const audioManager = AudioManager.getInstance();
+                let soundEnabled = !audioManager.getMuteStatus();
+                
                 const sBtn = document.getElementById('lobby-sound-btn');
                 const sKnob = document.getElementById('lobby-sound-knob');
                 
-                if (soundEnabled) {
-                    if (sBtn) { sBtn.classList.remove('bg-white'); sBtn.classList.add('bg-[#478D47]'); }
-                    if (sKnob) sKnob.classList.add('translate-x-5');
-                }
-
-                soundContainer.onclick = (e) => {
-                    e.stopPropagation();
-                    soundEnabled = !soundEnabled;
-                    localStorage.setItem('globalSoundEnabled', String(soundEnabled));
-                    if (soundEnabled) {
+                const updateToggleUI = (enabled: boolean) => {
+                    if (enabled) {
                         if (sBtn) { sBtn.classList.remove('bg-white'); sBtn.classList.add('bg-[#478D47]'); }
                         if (sKnob) sKnob.classList.add('translate-x-5');
                     } else {
                         if (sBtn) { sBtn.classList.remove('bg-[#478D47]'); sBtn.classList.add('bg-white'); }
                         if (sKnob) sKnob.classList.remove('translate-x-5');
+                    }
+                };
+
+                // Initial UI state
+                updateToggleUI(soundEnabled);
+
+                soundContainer.onclick = (e) => {
+                    e.stopPropagation();
+                    const newMuteStatus = audioManager.toggleMute();
+                    soundEnabled = !newMuteStatus;
+                    updateToggleUI(soundEnabled);
+                    
+                    // Resume audio context on first interaction if suspended
+                    const game = (window as any).gameInstance;
+                    if (game && game.sound && game.sound.context && game.sound.context.state === 'suspended') {
+                        game.sound.context.resume();
                     }
                 };
             }
@@ -398,27 +420,6 @@ export class LobbyManager {
 
         if (qrScannerClose) qrScannerClose.onclick = closeScanner;
         if (qrScannerBackdrop) qrScannerBackdrop.onclick = closeScanner;
-
-        if (codeInput && scanQrBtn) {
-            const updateScanBtnVisibility = () => {
-                if (codeInput.value.length > 0) {
-                    scanQrBtn.style.width = '0px';
-                    scanQrBtn.style.opacity = '0';
-                    scanQrBtn.style.marginRight = '0px';
-                    scanQrBtn.style.pointerEvents = 'none';
-                } else {
-                    scanQrBtn.style.width = '48px'; // w-12 = 3rem = 48px
-                    scanQrBtn.style.opacity = '1';
-                    scanQrBtn.style.marginRight = '8px'; // mr-2 = 0.5rem = 8px
-                    scanQrBtn.style.pointerEvents = 'auto';
-                }
-            };
-
-            // Initial check if code was populated (e.g. from restore)
-            updateScanBtnVisibility();
-
-            codeInput.addEventListener('input', updateScanBtnVisibility);
-        }
 
         if (createRoomBtn) {
             createRoomBtn.onclick = () => {

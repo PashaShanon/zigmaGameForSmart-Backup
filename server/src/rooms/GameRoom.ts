@@ -87,6 +87,7 @@ export class GameRoom extends Room<GameState> {
         this.state.difficulty = options.difficulty || "mudah";
         // Use provided room code from client (which matches Supabase session) or generate one
         this.state.roomCode = options.roomCode || this.generateRoomCode();
+        this.state.isMusicEnabled = options.isMusicEnabled !== undefined ? options.isMusicEnabled : true;
 
         // Load Questions from Options
         if (options.questions && Array.isArray(options.questions)) {
@@ -829,33 +830,40 @@ export class GameRoom extends Room<GameState> {
 
         // --- NON-HOST PLAYERS ONLY ---
         
-        // Anti-duplicate: Jika userId sudah ada (ghost dari session sebelumnya), hapus yang lama
-        if (options.userId) {
+        // Anti-duplicate: Jika userId atau Nama sudah ada (ghost dari session sebelumnya), hapus yang lama segera
+        const incomingUserId = options.userId;
+        const incomingName = options.name;
+
+        if (incomingUserId || incomingName) {
             this.state.players.forEach((p, sid) => {
-                if (p.userId === options.userId) {
-                    console.log(`[GameRoom] Removing duplicate ghost player ${sid} for userId ${options.userId}`);
+                const isSameUser = incomingUserId && p.userId === incomingUserId;
+                const isSameName = incomingName && p.name === incomingName;
+
+                if (isSameUser || isSameName) {
+                    console.log(`[GameRoom] Removing duplicate ghost player ${sid} for user ${incomingName} (${incomingUserId})`);
                     
-                    // Cleanup spawn point
+                    // 1. Cleanup spawn point
                     if (p.spawnIndex !== -1) {
                         this.usedSpawnIndices.delete(p.spawnIndex);
                     }
                     
-                    // Cleanup sub-room
+                    // 2. Cleanup sub-room
                     const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
                     if (subRoom) {
                         const idx = subRoom.playerIds.indexOf(sid);
                         if (idx > -1) subRoom.playerIds.splice(idx, 1);
                     }
                     
-                    this.state.players.delete(sid);
-
-                    // Beri tahu client lama jika masih terkoneksi (kasus tab ganda)
+                    // 3. Kick old client if still exists (to prevent concurrent access)
                     const oldClient = this.clients.find(c => c.sessionId === sid);
                     if (oldClient) {
                         (oldClient as any).kicked = true;
                         oldClient.send("kicked", { message: "Joined from another device/tab." });
                         oldClient.leave();
                     }
+
+                    // 4. Delete from state immediately
+                    this.state.players.delete(sid);
                 }
             });
         }

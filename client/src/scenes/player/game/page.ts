@@ -3,6 +3,7 @@ import { Room } from 'colyseus.js';
 import { QuizPopup } from '../../../ui/shared/QuizPopup';
 import { UIScene } from '../ui/page';
 import { TransitionManager } from '../../../utils/TransitionManager';
+import { AudioManager } from '../../../systems/AudioManager';
 
 import { HTMLControlAdapter } from '../../../ui/shared/HTMLControlAdapter';
 import { OrientationManager } from '../../../utils/OrientationManager';
@@ -152,12 +153,27 @@ export class GameScene extends Phaser.Scene {
                 this.revealGame();
             }
         });
+
+        // --- ROOM MUSIC CONTROL ---
+        // Synchronize with Host's room-wide music setting
+        this.room.state.listen("isMusicEnabled", (isEnabled: boolean) => {
+            console.log(`[GameScene] 🏠 Room Music Enabled: ${isEnabled}`);
+            AudioManager.getInstance().setRoomMute(!isEnabled);
+        });
+        // Initial set
+        AudioManager.getInstance().setRoomMute(!this.room.state.isMusicEnabled);
     }
 
     private revealGame() {
-        console.log("Game Ready & Started! Opening Iris.");
+        console.log("Game Ready & Started! Opening Iris and starting music.");
         TransitionManager.setCountdownText("");
         TransitionManager.open();
+        
+        // Stop countdown sound if it's still playing
+        AudioManager.getInstance().stopCountdownSFX();
+
+        // Start in-game music when game is revealed
+        AudioManager.getInstance().playBGM('bgm_game');
     }
 
     preload() {
@@ -241,6 +257,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     async create() {
+        // Music will be started in revealGame() or when iris opens
+        
         // DEBUG: Check if textures are loaded
         console.log('[DEBUG] Textures loaded:');
         console.log('  skeleton_idle:', this.textures.exists('skeleton_idle'));

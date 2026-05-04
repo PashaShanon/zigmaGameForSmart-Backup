@@ -5,6 +5,7 @@ import { CharacterSelectPopup } from '../../../ui/shared/CharacterSelectPopup';
 import { HAIR_OPTIONS, getHairById } from '../../../data/characterData';
 import { OrientationManager } from '../../../utils/OrientationManager';
 import { i18n } from '../../../utils/i18n';
+import { AudioManager } from '../../../systems/AudioManager';
 
 export class PlayerWaitingRoomManager {
     room!: Room;
@@ -116,6 +117,16 @@ export class PlayerWaitingRoomManager {
             this.updateUILayout();
         });
 
+        // --- ROOM MUSIC CONTROL ---
+        this.room.state.listen("isMusicEnabled", (isEnabled: boolean) => {
+            console.log(`[PlayerLobby] 🏠 Room Music Enabled: ${isEnabled}`);
+            AudioManager.getInstance().setRoomMute(!isEnabled);
+        });
+        // Initial set
+        if (this.room.state.isMusicEnabled !== undefined) {
+            AudioManager.getInstance().setRoomMute(!this.room.state.isMusicEnabled);
+        }
+
         // Player Add/Remove/Change
         this.room.state.players.onAdd((player: any, key: string) => {
             this.updateAll();
@@ -222,6 +233,12 @@ export class PlayerWaitingRoomManager {
                     // --- GLOBAL UNIFIED COUNTDOWN ---
                     TransitionManager.ensureClosed();
                     TransitionManager.setCountdownText(val.toString());
+
+                    // Stop lobby music as soon as countdown starts
+                    AudioManager.getInstance().stopBGM();
+                    
+                    // Play countdown sequence sound (guarded against doubles in AudioManager)
+                    AudioManager.getInstance().playCountdownSFX();
 
                     // --- OPTIMIZATION: Start Game Transition Early ---
                     this.handleGameStart();
