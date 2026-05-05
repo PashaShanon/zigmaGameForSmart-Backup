@@ -32,6 +32,8 @@
     "guest": "Tamu",
     "menu": {
       "language": "Bahasa",
+      "how_to_play": "Cara Bermain",
+      "install_app": "Instal Aplikasi",
       "logout": "Keluar"
     },
     "host_card": {
@@ -66,6 +68,25 @@
       "conn_error": "Kesalahan koneksi, coba lagi",
       "joining_msg": "Bergabung ke Ruangan {code}...",
       "autojoin_failed": "Gagal bergabung otomatis: "
+    },
+    "qr_scanner": {
+      "desc": "Arahkan kamera Anda ke kode QR Host"
+    },
+    "install_modal": {
+      "title": "INSTAL ZIGMA GAME!",
+      "desc": "Nikmati pengalaman yang lebih cepat dan lancar dengan menginstal Zigma Game di perangkat Anda.",
+      "confirm": "INSTAL",
+      "cancel": "NANTI"
+    },
+    "how_to_play_modal": {
+      "title": "CARA BERMAIN",
+      "step1_title": "Pilih Mode",
+      "step1_desc": "Buat ruangan sebagai Host atau gabung menggunakan Kode Ruangan.",
+      "step2_title": "Pilih Kuis",
+      "step2_desc": "Pilih kategori kuis dan tingkat kesulitan untuk memulai petualangan.",
+      "step3_title": "Jawab & Bersaing",
+      "step3_desc": "Jawab pertanyaan dengan cepat dan tepat untuk meraih skor dan menang!",
+      "close": "TUTUP"
     }
   },
   "select_quiz": {
@@ -183,7 +204,15 @@
     "dialog_exit_title": "⚠ KELUAR?",
     "dialog_exit_desc": "Kamu akan meninggalkan<br>ruangan ini.",
     "dialog_exit_cancel": "BATAL",
-    "dialog_exit_confirm": "YA, KELUAR"
+    "dialog_exit_confirm": "YA, KELUAR",
+    "ok": "OKE",
+    "hair_0": "BAWAAN (TANPA RAMBUT)",
+    "hair_1": "RAMBUT MANGKUK",
+    "hair_2": "RAMBUT KERITING",
+    "hair_3": "RAMBUT PANJANG",
+    "hair_4": "RAMBUT MOP",
+    "hair_5": "RAMBUT PENDEK",
+    "hair_6": "RAMBUT LANCIP"
   },
   "host_leaderboard": {
     "rank": "JUARA",

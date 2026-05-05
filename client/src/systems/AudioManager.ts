@@ -13,7 +13,7 @@ export class AudioManager {
     private currentBgmKey: string | null = null;
     private pendingBgmKey: string | null = null;
     private loadedKeys: Set<string> = new Set();
-    private isMuted: boolean = false;
+    private isMuted: boolean = true;
     private isRoomMuted: boolean = false; // New flag for room-wide music control
     private bgmVolume: number = 0.5;
     private sfxVolume: number = 0.7;
@@ -22,7 +22,11 @@ export class AudioManager {
     private constructor() {
         // Load settings from localStorage
         const savedMute = localStorage.getItem('audio_muted');
-        this.isMuted = savedMute === 'true';
+        if (savedMute !== null) {
+            this.isMuted = savedMute === 'true';
+        } else {
+            this.isMuted = true; // Default music off
+        }
         
         const savedBgmVol = localStorage.getItem('audio_bgm_vol');
         if (savedBgmVol) this.bgmVolume = parseFloat(savedBgmVol);

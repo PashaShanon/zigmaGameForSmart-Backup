@@ -72,6 +72,14 @@ export class LobbyUI {
                                         <div id="lobby-sound-knob" class="absolute top-[1px] left-[2px] w-5 h-5 bg-[#6CC452] rounded-full shadow-md transform transition-transform duration-300"></div>
                                     </button>
                                 </div>
+                                <button id="lobby-how-to-play-btn" class="w-full text-left px-4 py-2.5 text-[10px] font-['Retro_Gaming'] text-[#6CC452] border-b border-[#6CC452]/10 mb-1 uppercase tracking-widest flex items-center gap-2 hover:bg-[#F1F8E9] transition-colors rounded-lg group">
+                                    <span class="material-symbols-outlined text-[16px] group-hover:rotate-12 transition-transform">help</span>
+                                    <span>${i18n.t('lobby.menu.how_to_play')}</span>
+                                </button>
+                                <button id="lobby-install-app-btn" class="w-full text-left px-4 py-2.5 text-[10px] font-['Retro_Gaming'] text-[#6CC452] border-b border-[#6CC452]/10 mb-1 uppercase tracking-widest flex items-center gap-2 hover:bg-[#F1F8E9] transition-colors rounded-lg group">
+                                    <span class="material-symbols-outlined text-[16px] group-hover:scale-110 transition-transform">download</span>
+                                    <span>${i18n.t('lobby.menu.install_app')}</span>
+                                </button>
                                 <button id="lobby-menu-logout-btn" class="w-full text-left px-4 py-3 text-sm font-['Retro_Gaming'] hover:bg-red-50 rounded-lg transition-colors text-red-500 uppercase tracking-tight flex items-center gap-3">
                                     <span class="material-symbols-outlined text-sm">logout</span> ${i18n.t('lobby.menu.logout')}
                                 </button>
@@ -148,6 +156,47 @@ export class LobbyUI {
                                 <button id="logout-cancel-btn" class="flex-1 py-3 bg-[#F1F8E9] text-[#478D47] font-['Retro_Gaming'] text-xs uppercase rounded-xl border-b-4 border-[#6CC452]/50 hover:bg-[#E8F5E9] active:border-b-0 active:translate-y-1 transition-all cursor-pointer pointer-events-auto">${i18n.t('lobby.logout_modal.cancel')}</button>
                                 <button id="logout-confirm-btn" class="flex-1 py-3 bg-[#FF5C5C] text-white font-['Retro_Gaming'] text-xs uppercase rounded-xl border-b-4 border-[#C0392B] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all cursor-pointer shadow-lg pointer-events-auto">${i18n.t('lobby.logout_modal.confirm')}</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How to Play Modal -->
+                <div id="how-to-play-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center px-4 pointer-events-auto">
+                    <div id="how-to-play-modal-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-0"></div>
+                    <div class="relative z-10 bg-white border-4 border-[#6CC452] border-b-[10px] border-b-[#478D47] rounded-[32px] p-6 md:p-8 max-w-lg w-full overflow-hidden shadow-2xl pointer-events-auto">
+                        <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#2d5a30 1px, transparent 1px); background-size: 16px 16px;"></div>
+                        
+                        <div class="relative z-10 flex flex-col items-center">
+                            <h3 class="text-[#478D47] font-['Retro_Gaming'] text-lg md:text-xl uppercase tracking-widest mb-6">${i18n.t('lobby.how_to_play_modal.title')}</h3>
+                            
+                            <div class="flex flex-col gap-5 w-full">
+                                <!-- Step 1 -->
+                                <div class="flex items-start gap-4 p-3 bg-[#F1F8E9] border-2 border-[#6CC452]/20 rounded-2xl">
+                                    <div class="w-10 h-10 bg-[#6CC452] text-white rounded-xl flex items-center justify-center font-bold font-['Retro_Gaming'] shrink-0">1</div>
+                                    <div class="flex flex-col">
+                                        <h4 class="text-[#478D47] font-['Retro_Gaming'] text-xs uppercase">${i18n.t('lobby.how_to_play_modal.step1_title')}</h4>
+                                        <p class="text-[#478D47]/70 font-['Space_Grotesk'] text-[10px] leading-tight mt-1">${i18n.t('lobby.how_to_play_modal.step1_desc')}</p>
+                                    </div>
+                                </div>
+                                <!-- Step 2 -->
+                                <div class="flex items-start gap-4 p-3 bg-[#F1F8E9] border-2 border-[#6CC452]/20 rounded-2xl">
+                                    <div class="w-10 h-10 bg-[#6CC452] text-white rounded-xl flex items-center justify-center font-bold font-['Retro_Gaming'] shrink-0">2</div>
+                                    <div class="flex flex-col">
+                                        <h4 class="text-[#478D47] font-['Retro_Gaming'] text-xs uppercase">${i18n.t('lobby.how_to_play_modal.step2_title')}</h4>
+                                        <p class="text-[#478D47]/70 font-['Space_Grotesk'] text-[10px] leading-tight mt-1">${i18n.t('lobby.how_to_play_modal.step2_desc')}</p>
+                                    </div>
+                                </div>
+                                <!-- Step 3 -->
+                                <div class="flex items-start gap-4 p-3 bg-[#F1F8E9] border-2 border-[#6CC452]/20 rounded-2xl">
+                                    <div class="w-10 h-10 bg-[#6CC452] text-white rounded-xl flex items-center justify-center font-bold font-['Retro_Gaming'] shrink-0">3</div>
+                                    <div class="flex flex-col">
+                                        <h4 class="text-[#478D47] font-['Retro_Gaming'] text-xs uppercase">${i18n.t('lobby.how_to_play_modal.step3_title')}</h4>
+                                        <p class="text-[#478D47]/70 font-['Space_Grotesk'] text-[10px] leading-tight mt-1">${i18n.t('lobby.how_to_play_modal.step3_desc')}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="how-to-play-close-btn" class="mt-8 px-10 py-3 bg-[#336B23] text-white font-['Retro_Gaming'] text-xs uppercase rounded-xl border-b-4 border-[#1F4514] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all cursor-pointer shadow-lg">${i18n.t('lobby.how_to_play_modal.close')}</button>
                         </div>
                     </div>
                 </div>

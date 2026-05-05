@@ -32,6 +32,8 @@
     "guest": "Guest",
     "menu": {
       "language": "Language",
+      "how_to_play": "How to Play",
+      "install_app": "Install App",
       "logout": "Logout"
     },
     "host_card": {
@@ -69,6 +71,22 @@
     },
     "qr_scanner": {
       "desc": "Point your camera at the Host QR code"
+    },
+    "install_modal": {
+      "title": "INSTALL ZIGMA GAME!",
+      "desc": "Enjoy a faster and smoother experience by installing Zigma Game on your device.",
+      "confirm": "INSTALL",
+      "cancel": "LATER"
+    },
+    "how_to_play_modal": {
+      "title": "HOW TO PLAY",
+      "step1_title": "Choose Mode",
+      "step1_desc": "Create a room as a Host or join using a Room Code.",
+      "step2_title": "Select Quiz",
+      "step2_desc": "Pick a quiz category and difficulty to start the adventure.",
+      "step3_title": "Answer & Compete",
+      "step3_desc": "Answer questions quickly and accurately to score points and win!",
+      "close": "CLOSE"
     }
   },
   "select_quiz": {

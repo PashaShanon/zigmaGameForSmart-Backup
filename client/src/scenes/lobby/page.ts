@@ -9,6 +9,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 
 import { initializeGame } from '../../game';
 import { AudioManager } from '../../systems/AudioManager';
+import { InstallPromptUI } from '../../ui/InstallPromptUI';
 
 export class LobbyManager {
     client!: Client;
@@ -398,6 +399,44 @@ export class LobbyManager {
             };
         }
 
+        // --- HOW TO PLAY MODAL ---
+        const howToPlayBtn = document.getElementById('lobby-how-to-play-btn');
+        const howToPlayModal = document.getElementById('how-to-play-modal');
+        const howToPlayCloseBtn = document.getElementById('how-to-play-close-btn');
+        const howToPlayBackdrop = document.getElementById('how-to-play-modal-backdrop');
+
+        if (howToPlayBtn && howToPlayModal) {
+            howToPlayBtn.onclick = (e) => {
+                e.stopPropagation();
+                // Close menu dropdown first
+                if (lobbyMenuDropdown) {
+                    lobbyMenuDropdown.classList.remove('scale-100', 'opacity-100');
+                    lobbyMenuDropdown.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => lobbyMenuDropdown.classList.add('hidden'), 200);
+                }
+                howToPlayModal.classList.remove('hidden');
+            };
+        }
+
+        const hideHowToPlayModal = () => { if (howToPlayModal) howToPlayModal.classList.add('hidden'); };
+        if (howToPlayCloseBtn) howToPlayCloseBtn.onclick = () => hideHowToPlayModal();
+        if (howToPlayBackdrop) howToPlayBackdrop.onclick = () => hideHowToPlayModal();
+
+        // --- INSTALL APP ---
+        const installAppBtn = document.getElementById('lobby-install-app-btn');
+        if (installAppBtn) {
+            installAppBtn.onclick = (e) => {
+                e.stopPropagation();
+                // Close menu dropdown first
+                if (lobbyMenuDropdown) {
+                    lobbyMenuDropdown.classList.remove('scale-100', 'opacity-100');
+                    lobbyMenuDropdown.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => lobbyMenuDropdown.classList.add('hidden'), 200);
+                }
+                InstallPromptUI.triggerPrompt();
+            };
+        }
+
         const createRoomBtn = document.getElementById('create-room-btn');
         const joinBtn = document.getElementById('join-room-btn');
         const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
@@ -408,6 +447,7 @@ export class LobbyManager {
 
         if (scanQrBtn && qrScannerModal) {
             scanQrBtn.addEventListener('click', async () => {
+                this.clearJoinErrors(); // Clear any previous errors before opening
                 qrScannerModal.classList.remove('hidden');
                 this.startQrScanner();
             });
@@ -415,6 +455,7 @@ export class LobbyManager {
 
         const closeScanner = () => {
             if (qrScannerModal) qrScannerModal.classList.add('hidden');
+            this.clearJoinErrors(); // Clear any stale camera/scanner errors
             this.stopQrScanner();
         };
 
@@ -818,9 +859,14 @@ export class LobbyManager {
             return;
         }
 
-        if (!this.qrScanner) {
-            this.qrScanner = new Html5Qrcode("qr-reader");
+        // Reset the scanner instance each time to avoid stale state from previous sessions
+        if (this.qrScanner) {
+            try {
+                if (this.qrScanner.isScanning) await this.qrScanner.stop();
+            } catch (_) { /* ignore */ }
+            this.qrScanner = null;
         }
+        this.qrScanner = new Html5Qrcode("qr-reader");
 
         // Optimized config for better compatibility across mobile devices
         const config = { 
