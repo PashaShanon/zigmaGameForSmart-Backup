@@ -1,6 +1,6 @@
 import { Client } from 'colyseus.js';
 import { Router } from '../../../utils/Router';
-import { Quiz, fetchQuizzesPaginated, fetchCategoriesWithRaw, toggleFavoriteInSupabase, fetchUserFavorites } from '../../../data/QuizData';
+import { Quiz, fetchQuizzesPaginated, fetchCategoriesWithRaw, toggleFavoriteInSupabase, fetchUserFavorites, fetchQuizById } from '../../../data/QuizData';
 import { TransitionManager } from '../../../utils/TransitionManager';
 import { authService } from '../../../services/auth/AuthService';
 import { i18n } from '../../../utils/i18n';
@@ -565,13 +565,7 @@ export class SelectQuizManager {
 
             card.onclick = (e) => {
                 if (!(e.target as HTMLElement).closest('.fav-btn')) {
-                    TransitionManager.transitionTo(() => {
-                        this.hideUI();
-                        this.cleanup();
-                        localStorage.setItem('tempSettingsQuizId', quiz.id);
-                        Router.navigate('/host/settings');
-                        this.startManager('QuizSettingManager', { quiz, client: this.client });
-                    });
+                    this.showQuizDetailModal(quiz);
                 }
             };
 
@@ -664,6 +658,111 @@ export class SelectQuizManager {
             if (el) el.classList.add('hidden');
         });
         if (this.quizSelectionUI) this.quizSelectionUI.classList.add('hidden');
+    }
+
+    async showQuizDetailModal(quiz: Quiz) {
+        const modal = document.getElementById('quiz-detail-modal');
+        const backdrop = document.getElementById('quiz-detail-backdrop');
+        const content = document.getElementById('quiz-detail-content');
+        const loading = document.getElementById('quiz-detail-loading');
+        
+        if (!modal || !backdrop || !content || !loading) return;
+
+        // Reset and show modal with loading state
+        modal.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        
+        // Setup initial text so it's not empty while loading
+        document.getElementById('quiz-detail-title')!.innerText = quiz.title;
+        const catKey = 'categories.' + quiz.category.toLowerCase();
+        const translatedCat = i18n.t(catKey) === catKey ? quiz.category : i18n.t(catKey);
+        document.getElementById('quiz-detail-category')!.innerText = translatedCat;
+        document.getElementById('quiz-detail-language')!.innerText = (quiz as any).language?.toUpperCase() || 'ID';
+
+        // Animate in
+        requestAnimationFrame(() => {
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
+            content.classList.remove('opacity-0', 'scale-95');
+            content.classList.add('opacity-100', 'scale-100');
+        });
+
+        // Setup close handlers
+        const closeHandler = () => this.closeQuizDetailModal();
+        document.getElementById('quiz-detail-backdrop')!.onclick = closeHandler;
+        document.getElementById('quiz-detail-close-top')!.onclick = closeHandler;
+        document.getElementById('quiz-detail-close-btn')!.onclick = closeHandler;
+
+        // Setup start button
+        const startBtn = document.getElementById('quiz-detail-start-btn');
+        if (startBtn) {
+            startBtn.onclick = () => {
+                this.closeQuizDetailModal();
+                TransitionManager.transitionTo(() => {
+                    this.hideUI();
+                    this.cleanup();
+                    localStorage.setItem('tempSettingsQuizId', quiz.id);
+                    Router.navigate('/host/settings');
+                    this.startManager('QuizSettingManager', { quiz, client: this.client });
+                });
+            };
+        }
+
+        // Fetch full details from Supabase
+        const fullQuiz = await fetchQuizById(quiz.id);
+        
+        if (fullQuiz) {
+            // Populate fields
+            document.getElementById('quiz-detail-title')!.innerText = fullQuiz.title;
+            document.getElementById('quiz-detail-desc')!.innerText = fullQuiz.description || 'Tidak ada deskripsi.';
+            
+            const catKey = 'categories.' + fullQuiz.category.toLowerCase();
+            const translatedCat = i18n.t(catKey) === catKey ? fullQuiz.category : i18n.t(catKey);
+            document.getElementById('quiz-detail-category')!.innerText = translatedCat;
+            document.getElementById('quiz-detail-language')!.innerText = fullQuiz.language?.toUpperCase() || 'ID';
+            
+            document.getElementById('quiz-detail-questions')!.innerText = String(fullQuiz.questionCount || 0);
+            document.getElementById('quiz-detail-played')!.innerText = fullQuiz.played + 'x';
+            document.getElementById('quiz-detail-favorite')!.innerText = String(fullQuiz.favorite ? fullQuiz.favorite.length : 0);
+            
+            // Hide loading
+            loading.classList.add('hidden');
+            
+            // Update start button with full quiz data
+            if (startBtn) {
+                startBtn.onclick = () => {
+                    this.closeQuizDetailModal();
+                    TransitionManager.transitionTo(() => {
+                        this.hideUI();
+                        this.cleanup();
+                        localStorage.setItem('tempSettingsQuizId', fullQuiz.id);
+                        Router.navigate('/host/settings');
+                        this.startManager('QuizSettingManager', { quiz: fullQuiz, client: this.client });
+                    });
+                };
+            }
+        } else {
+            // Failed to fetch, just hide loading and maybe show error, but we can just use basic quiz info
+            loading.classList.add('hidden');
+            document.getElementById('quiz-detail-desc')!.innerText = 'Gagal memuat detail dari server.';
+        }
+    }
+
+    closeQuizDetailModal() {
+        const modal = document.getElementById('quiz-detail-modal');
+        const backdrop = document.getElementById('quiz-detail-backdrop');
+        const content = document.getElementById('quiz-detail-content');
+        
+        if (!modal || !backdrop || !content) return;
+
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0');
+        content.classList.remove('opacity-100', 'scale-100');
+        content.classList.add('opacity-0', 'scale-95');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
     }
 
     showQuizSelection() {

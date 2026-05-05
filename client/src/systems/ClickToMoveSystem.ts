@@ -210,7 +210,13 @@ export class ClickToMoveSystem {
         const dy = target.y - player.y;
         const angle = Math.atan2(dy, dx);
 
-        const speed = this.MOVEMENT_SPEED * (delta / 1000);
+        const myPlayerState = (this.scene as any).room?.state?.players?.get((this.scene as any).room?.sessionId);
+        let speedMult = 1.0;
+        if (myPlayerState && myPlayerState.hasSpeedBoost) {
+            speedMult = 1.5;
+        }
+
+        const speed = this.MOVEMENT_SPEED * speedMult * (delta / 1000);
         const vx = Math.cos(angle) * speed;
         const vy = Math.sin(angle) * speed;
 

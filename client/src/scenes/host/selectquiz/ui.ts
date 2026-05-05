@@ -80,6 +80,84 @@ export class QuizSelectionUI {
                                 <span class="material-symbols-outlined text-base">chevron_right</span>
                             </button>
                         </div>
+
+                        <!-- Quiz Detail Modal -->
+                        <div id="quiz-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+                            <!-- Backdrop -->
+                            <div id="quiz-detail-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 opacity-0 cursor-pointer"></div>
+                            
+                            <!-- Modal Content -->
+                            <div id="quiz-detail-content" class="relative bg-white border-4 border-[#6CC452] border-b-[6px] border-b-[#478D47] rounded-2xl p-5 md:p-6 w-full max-w-lg shadow-2xl transform scale-95 opacity-0 transition-all duration-300 flex flex-col gap-4">
+                                
+                                <!-- Loading Spinner -->
+                                <div id="quiz-detail-loading" class="hidden absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center rounded-xl">
+                                    <span class="material-symbols-outlined animate-spin text-5xl text-[#6CC452]">refresh</span>
+                                    <p class="mt-3 text-[#478D47] font-['Retro_Gaming'] text-sm tracking-widest uppercase">Memuat...</p>
+                                </div>
+
+                                <!-- Header: Badges -->
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex flex-wrap gap-2">
+                                        <span id="quiz-detail-category" class="px-2 py-1 bg-[#336B23] text-white border-2 border-[#1F4514] text-[10px] md:text-xs font-bold rounded uppercase tracking-wider font-['Retro_Gaming']">CATEGORY</span>
+                                        <span id="quiz-detail-language" class="px-2 py-1 bg-[#F1F8E9] text-[#478D47] border-2 border-[#6CC452]/30 text-[10px] md:text-xs font-bold rounded uppercase tracking-wider font-['Retro_Gaming']">LANG</span>
+                                    </div>
+                                    <button id="quiz-detail-close-top" class="text-[#94A3B8] hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors cursor-pointer shrink-0 absolute top-3 right-3 z-30">
+                                        <span class="material-symbols-outlined text-xl font-bold">close</span>
+                                    </button>
+                                </div>
+
+                                <!-- Title & Description -->
+                                <div class="flex flex-col gap-2 mt-1">
+                                    <h2 id="quiz-detail-title" class="text-[#478D47] font-['Retro_Gaming'] text-lg md:text-xl uppercase tracking-tight leading-tight break-words pr-6">Quiz Title</h2>
+                                    <div class="w-full h-1 bg-[#6CC452]/20 rounded-full mt-1 mb-1"></div>
+                                    <p id="quiz-detail-desc" class="text-[#4B5563] font-['Space_Grotesk'] text-sm md:text-base leading-relaxed max-h-32 overflow-y-auto custom-scrollbar pr-2">Deskripsi...</p>
+                                </div>
+
+                                <!-- Stats -->
+                                <div class="flex items-center justify-between gap-2 py-3 px-3 md:px-4 bg-[#F1F8E9] rounded-xl border-2 border-[#6CC452]/20 mt-1">
+                                    <div class="flex items-center gap-2 flex-1 justify-center">
+                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white flex items-center justify-center border-2 border-[#6CC452]/30 shrink-0">
+                                            <span class="material-symbols-outlined text-[#478D47] fill-icon text-base md:text-xl">menu_book</span>
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">Soal</span>
+                                            <span id="quiz-detail-questions" class="text-[#478D47] font-bold text-sm md:text-base font-['Space_Grotesk']">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-0.5 h-8 md:h-10 bg-[#6CC452]/20"></div>
+                                    <div class="flex items-center gap-2 flex-1 justify-center">
+                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white flex items-center justify-center border-2 border-[#6CC452]/30 shrink-0">
+                                            <span class="material-symbols-outlined text-[#478D47] fill-icon text-base md:text-xl">sports_esports</span>
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">Main</span>
+                                            <span id="quiz-detail-played" class="text-[#478D47] font-bold text-sm md:text-base font-['Space_Grotesk']">0x</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-0.5 h-8 md:h-10 bg-[#6CC452]/20"></div>
+                                    <div class="flex items-center gap-2 flex-1 justify-center">
+                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white flex items-center justify-center border-2 border-[#6CC452]/30 shrink-0">
+                                            <span class="material-symbols-outlined text-red-500 fill-icon text-base md:text-xl">favorite</span>
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">Suka</span>
+                                            <span id="quiz-detail-favorite" class="text-[#478D47] font-bold text-sm md:text-base font-['Space_Grotesk']">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex gap-3 mt-2">
+                                    <button id="quiz-detail-close-btn" class="flex-1 py-3 bg-[#F1F8E9] text-[#478D47] font-['Retro_Gaming'] text-[11px] uppercase rounded-xl border-b-4 border-[#6CC452]/30 hover:bg-[#E8F5E9] active:border-b-0 active:translate-y-1 transition-all">
+                                        Tutup
+                                    </button>
+                                    <button id="quiz-detail-start-btn" class="flex-[2] py-3 bg-[#336B23] text-white font-['Retro_Gaming'] text-[11px] uppercase rounded-xl border-b-4 border-[#1F4514] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 shadow-lg">
+                                        Mulai Quiz <span class="material-symbols-outlined text-base">arrow_forward</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </main>
             `;

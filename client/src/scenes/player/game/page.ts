@@ -637,7 +637,7 @@ export class GameScene extends Phaser.Scene {
         // --- Chest Sync ---
         this.room.state.chests.onAdd((chest: any, index: number) => {
             const container = this.add.container(chest.x, chest.y);
-            container.setDepth(50);
+            container.setDepth(8);
 
             container.setSize(32, 32);
             this.physics.world.enable(container);
@@ -1042,7 +1042,8 @@ export class GameScene extends Phaser.Scene {
         const dist = Phaser.Math.Distance.Between(this.currentPlayer.x, this.currentPlayer.y, chestContainer.x, chestContainer.y);
 
         if (dist > 50) return;
-        if (myPlayer.hasUsedChest || chest.isCollected || !myPlayer.hasWrongAnswer) return;
+        // Check if chest is available and player doesn't have an active speed boost
+        if (myPlayer.hasSpeedBoost || chest.isCollected) return;
 
         this.room.send('collectChest', { chestIndex });
         this.activeChestIndex = chestIndex;
@@ -1102,7 +1103,11 @@ export class GameScene extends Phaser.Scene {
 
         // Enemy collision auto-trigger removed in favor of manual attack hitbox
 
-        const speed = 130;
+        const myPlayerState = this.room.state.players.get(this.room.sessionId);
+        let speed = 130;
+        if (myPlayerState && myPlayerState.hasSpeedBoost) {
+            speed *= 1.05; // 5% boost
+        }
         const velocity = { x: 0, y: 0 };
         const inputPayload = { left: false, right: false, up: false, down: false };
 

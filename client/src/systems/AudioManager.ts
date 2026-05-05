@@ -99,10 +99,22 @@ export class AudioManager {
             return;
         }
         
-        // Stop current BGM if different
+        // Stop current BGM if different (with fade out)
         if (this.currentBgmKey && this.currentBgmKey !== key) {
-            console.log(`[AudioManager] 🛑 Stopping current BGM: ${this.currentBgmKey}`);
-            this.stopBGM();
+            console.log(`[AudioManager] 🛑 Fading out current BGM: ${this.currentBgmKey}`);
+            const oldMusic = this.bgm[this.currentBgmKey];
+            if (oldMusic && oldMusic.isPlaying) {
+                this.scene.tweens.add({
+                    targets: oldMusic,
+                    volume: 0,
+                    duration: 800,
+                    onComplete: () => {
+                        oldMusic.stop();
+                    }
+                });
+            } else if (oldMusic) {
+                oldMusic.stop();
+            }
         }
 
         if (this.currentBgmKey === key && this.bgm[key]?.isPlaying) return;
@@ -114,15 +126,23 @@ export class AudioManager {
             // Check if already added to sound manager
             let music = this.bgm[key];
             if (!music) {
-                music = this.scene.sound.add(key, { loop, volume: this.bgmVolume });
+                music = this.scene.sound.add(key, { loop, volume: 0 });
                 this.bgm[key] = music;
             }
 
             if (!this.isMuted && !this.isRoomMuted) {
                 if (!music.isPlaying) {
+                    (music as any).setVolume(0);
                     music.play();
-                    console.log(`[AudioManager] ▶️ Playing: ${key}`);
+                    console.log(`[AudioManager] ▶️ Fading in: ${key}`);
                 }
+                
+                // Always tween volume up
+                this.scene.tweens.add({
+                    targets: music,
+                    volume: this.bgmVolume,
+                    duration: 800
+                });
             } else {
                 console.log(`[AudioManager] 🔇 Music is muted (Personal: ${this.isMuted}, Room: ${this.isRoomMuted}), ${key} prepared but not played.`);
             }
@@ -134,7 +154,19 @@ export class AudioManager {
     /** Stop Current Background Music */
     public stopBGM() {
         if (this.currentBgmKey && this.bgm[this.currentBgmKey]) {
-            this.bgm[this.currentBgmKey].stop();
+            const music = this.bgm[this.currentBgmKey];
+            if (music.isPlaying) {
+                this.scene.tweens.add({
+                    targets: music,
+                    volume: 0,
+                    duration: 800,
+                    onComplete: () => {
+                        music.stop();
+                    }
+                });
+            } else {
+                music.stop();
+            }
             this.currentBgmKey = null;
         }
     }
@@ -156,13 +188,35 @@ export class AudioManager {
         console.log(`[AudioManager] 🏠 Room mute set to: ${muted}`);
         
         if (this.isRoomMuted) {
-            this.scene.sound.pauseAll();
+            // Fade out BGM
+            if (this.currentBgmKey && this.bgm[this.currentBgmKey] && this.bgm[this.currentBgmKey].isPlaying) {
+                const music = this.bgm[this.currentBgmKey];
+                this.scene.tweens.add({
+                    targets: music,
+                    volume: 0,
+                    duration: 800,
+                    onComplete: () => {
+                        if (this.isRoomMuted) music.pause();
+                    }
+                });
+            }
             this.stopCountdownSFX();
         } else if (!this.isMuted) {
-            this.scene.sound.resumeAll();
-            // Ensure BGM is playing if it was supposed to
-            if (this.currentBgmKey && this.bgm[this.currentBgmKey] && !this.bgm[this.currentBgmKey].isPlaying) {
-                this.bgm[this.currentBgmKey].play();
+            // Fade in BGM
+            if (this.currentBgmKey && this.bgm[this.currentBgmKey]) {
+                const music = this.bgm[this.currentBgmKey];
+                if (!music.isPlaying) {
+                    (music as any).setVolume(0);
+                    music.play();
+                } else if (music.isPaused) {
+                    music.resume();
+                }
+                
+                this.scene.tweens.add({
+                    targets: music,
+                    volume: this.bgmVolume,
+                    duration: 800
+                });
             }
         }
     }
@@ -204,12 +258,34 @@ export class AudioManager {
         localStorage.setItem('audio_muted', String(this.isMuted));
         
         if (this.isMuted) {
-            this.scene.sound.pauseAll();
+            // Fade out BGM
+            if (this.currentBgmKey && this.bgm[this.currentBgmKey] && this.bgm[this.currentBgmKey].isPlaying) {
+                const music = this.bgm[this.currentBgmKey];
+                this.scene.tweens.add({
+                    targets: music,
+                    volume: 0,
+                    duration: 800,
+                    onComplete: () => {
+                        if (this.isMuted) music.pause();
+                    }
+                });
+            }
         } else {
-            this.scene.sound.resumeAll();
-            // Ensure BGM is playing if it was supposed to
-            if (this.currentBgmKey && this.bgm[this.currentBgmKey] && !this.bgm[this.currentBgmKey].isPlaying) {
-                this.bgm[this.currentBgmKey].play();
+            // Fade in BGM
+            if (this.currentBgmKey && this.bgm[this.currentBgmKey]) {
+                const music = this.bgm[this.currentBgmKey];
+                if (!music.isPlaying) {
+                    (music as any).setVolume(0);
+                    music.play();
+                } else if (music.isPaused) {
+                    music.resume();
+                }
+                
+                this.scene.tweens.add({
+                    targets: music,
+                    volume: this.bgmVolume,
+                    duration: 800
+                });
             }
         }
         

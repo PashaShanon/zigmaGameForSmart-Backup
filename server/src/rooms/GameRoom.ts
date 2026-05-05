@@ -459,12 +459,30 @@ export class GameRoom extends Room<GameState> {
             const chestIndex = data.chestIndex;
             const chest = this.state.chests[chestIndex];
 
-            if (player && chest && !chest.isCollected && !player.hasUsedChest && player.hasWrongAnswer) {
+            // Only allow collection if chest is available and player doesn't already have a speed boost
+            if (player && chest && !chest.isCollected && !player.hasSpeedBoost) {
                 chest.isCollected = true;
                 chest.collectedBy = client.sessionId;
-                player.hasUsedChest = true;
+                
+                player.hasSpeedBoost = true;
+                
+                // Notify client for visual/audio effects if necessary
+                client.send("speedBoostActivated");
 
-                client.send("retryQuestion", { questionId: player.lastWrongQuestionId });
+                // Speed boost lasts 5 seconds
+                this.clock.setTimeout(() => {
+                    const p = this.state.players.get(client.sessionId);
+                    if (p) {
+                        p.hasSpeedBoost = false;
+                        client.send("speedBoostDeactivated");
+                    }
+                }, 5000);
+
+                // Respawn chest randomly after ~30 seconds
+                const respawnDelay = 25000 + Math.random() * 10000;
+                this.clock.setTimeout(() => {
+                    this.respawnChest(chest);
+                }, respawnDelay);
             }
         });
 
@@ -1189,15 +1207,40 @@ export class GameRoom extends Room<GameState> {
         // Create Chests from Map Data
         console.log("[Debug] mapData.chests:", mapData?.chests);
         if (mapData && mapData.chests.length > 0) {
-            mapData.chests.forEach((c: any) => {
+            // Spawn only 30% of chests (or at least 3) initially to avoid cluttering
+            const numToSpawn = Math.max(3, Math.floor(mapData.chests.length * 0.3));
+            const shuffledSpots = [...mapData.chests].sort(() => 0.5 - Math.random());
+            
+            for (let i = 0; i < Math.min(numToSpawn, shuffledSpots.length); i++) {
+                const c = shuffledSpots[i];
                 const chest = new Chest();
                 chest.x = c.x;
                 chest.y = c.y;
+                chest.isCollected = false;
                 this.state.chests.push(chest);
                 console.log(`[Debug] Created chest at (${c.x}, ${c.y})`);
-            });
+            }
         }
         console.log(`[Debug] Total chests created: ${this.state.chests.length}`);
+    }
+
+    private respawnChest(chest: Chest) {
+        if (!this.cachedMapData || !this.cachedMapData.chests || this.cachedMapData.chests.length === 0) return;
+        
+        const possibleSpots = this.cachedMapData.chests;
+        // Find spots that do NOT have an active chest nearby
+        const availableSpots = possibleSpots.filter((spot: any) => {
+            return !this.state.chests.some(c => !c.isCollected && Math.abs(c.x - spot.x) < 32 && Math.abs(c.y - spot.y) < 32);
+        });
+
+        if (availableSpots.length > 0) {
+            const spot = availableSpots[Math.floor(Math.random() * availableSpots.length)];
+            chest.x = spot.x;
+            chest.y = spot.y;
+            chest.isCollected = false;
+            chest.collectedBy = "";
+            console.log(`[Spawn] Chest respawned at (${spot.x}, ${spot.y})`);
+        }
     }
 
     // --- Game Timer & End Logic ---

@@ -52,6 +52,7 @@ export class Player extends Schema {
     @type("boolean") isFinished: boolean = false; // Player finished all questions
     @type("number") finishTime: number = 0; // Timestamp when player finished (for tie-breaker)
     @type("boolean") hasUsedChest: boolean = false;
+    @type("boolean") hasSpeedBoost: boolean = false;
     @type("boolean") hasWrongAnswer: boolean = false;
     @type("number") lastWrongQuestionId: number = 0;
     @type("string") sessionId!: string;
