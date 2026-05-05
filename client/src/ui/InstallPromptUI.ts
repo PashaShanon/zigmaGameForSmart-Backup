@@ -1,21 +1,17 @@
 import { i18n } from '../utils/i18n';
 
-// ─── Module-level capture ────────────────────────────────────────────────────
-// Register the beforeinstallprompt listener IMMEDIATELY when this module is
-// imported — before any class code or init() call — so the event is never missed
-// even if it fires during the early page load phase.
-let _deferredPrompt: any = null;
+// We now rely on the inline script in index.html to capture the event early
+// into (window as any).zigmaDeferredPrompt.
 let _pendingAutoShow = false;
 
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
-    _deferredPrompt = e;
-    console.log('[PWA] 📥 beforeinstallprompt captured at module level');
+    (window as any).zigmaDeferredPrompt = e;
+    console.log('[PWA] 📥 beforeinstallprompt captured at module level (fallback)');
 
     const dismissed = sessionStorage.getItem(InstallPromptUI.STORAGE_KEY);
     if (!dismissed) {
         _pendingAutoShow = true;
-        // Delay to let i18n load user's saved language from localStorage
         setTimeout(() => {
             if (_pendingAutoShow) {
                 _pendingAutoShow = false;
@@ -27,7 +23,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 window.addEventListener('appinstalled', () => {
     console.log('[PWA] 🎉 App installed successfully');
-    _deferredPrompt = null;
+    (window as any).zigmaDeferredPrompt = null;
     _pendingAutoShow = false;
     InstallPromptUI.hide();
     sessionStorage.setItem(InstallPromptUI.STORAGE_KEY, 'true');
@@ -105,17 +101,18 @@ export class InstallPromptUI {
     }
 
     private static async handleInstall() {
-        if (!_deferredPrompt) {
+        const deferredPrompt = (window as any).zigmaDeferredPrompt;
+        if (!deferredPrompt) {
             console.warn('[PWA] No deferred prompt — browser may not support install or app is already installed.');
             return;
         }
-        _deferredPrompt.prompt();
-        const { outcome } = await _deferredPrompt.userChoice;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
         console.log(`[PWA] User response: ${outcome}`);
         if (outcome === 'accepted') {
             sessionStorage.setItem(this.STORAGE_KEY, 'true');
         }
-        _deferredPrompt = null;
+        (window as any).zigmaDeferredPrompt = null;
         this.hide();
     }
 
@@ -124,17 +121,19 @@ export class InstallPromptUI {
      * Fires native browser prompt if available, otherwise shows custom modal.
      */
     static async triggerPrompt() {
-        if (_deferredPrompt) {
-            _deferredPrompt.prompt();
-            const { outcome } = await _deferredPrompt.userChoice;
+        const deferredPrompt = (window as any).zigmaDeferredPrompt;
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
             console.log(`[PWA] Direct prompt response: ${outcome}`);
             if (outcome === 'accepted') {
                 sessionStorage.setItem(this.STORAGE_KEY, 'true');
             }
-            _deferredPrompt = null;
+            (window as any).zigmaDeferredPrompt = null;
             this.hide();
         } else {
             // Fallback: show custom modal (dev/localhost or already installed)
+            console.log('[PWA] No deferred prompt found, showing custom modal instead.');
             this.show();
         }
     }

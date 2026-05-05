@@ -11,6 +11,7 @@ import { AuthLoadingUI } from './scenes/login/auth-loading-ui';
 import { GameOverlayUI } from './scenes/player/game/ui';
 
 import { TestLabManager } from './scenes/TestLabManager';
+import { InstallPromptUI } from './ui/InstallPromptUI';
 
 async function bootstrap() {
     // Pre-render all global UIs
@@ -22,6 +23,8 @@ async function bootstrap() {
     WaitingRoomUI.render();
     AuthLoadingUI.render();
     GameOverlayUI.render();
+    InstallPromptUI.render();
+    InstallPromptUI.init();
 
     const currentPath = window.location.pathname;
 

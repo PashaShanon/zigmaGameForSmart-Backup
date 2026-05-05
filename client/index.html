@@ -5,6 +5,14 @@
   <meta charset="UTF-8" />
   <link rel="manifest" href="/manifest.json" />
   <script>
+    // Capture beforeinstallprompt as early as possible
+    window.zigmaDeferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.zigmaDeferredPrompt = e;
+      console.log('[PWA] 📥 beforeinstallprompt captured at HTML level');
+    });
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');
