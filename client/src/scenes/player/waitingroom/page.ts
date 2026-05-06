@@ -992,6 +992,8 @@ export class PlayerWaitingRoomManager {
 
     leaveRoom() {
         if (this.room) {
+            // Signal server to remove player immediately without waiting for reconnection
+            this.room.send("manualPlayerLeave");
             this.room.leave();
         }
 

@@ -249,6 +249,32 @@ export class GameRoom extends Room<GameState> {
 
         this.onMessage("manualLeave", (client) => {
             (client as any).manualLeave = true;
+            console.log(`[GameRoom] Client ${client.sessionId} manual leave signaled.`);
+        });
+
+        this.onMessage("manualPlayerLeave", (client) => {
+            const player = this.state.players.get(client.sessionId);
+            if (player) {
+                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) manual leave signaled. Removing immediately.`);
+                
+                // Cleanup spawn point
+                if (player.spawnIndex !== -1) {
+                    this.usedSpawnIndices.delete(player.spawnIndex);
+                }
+                
+                // Cleanup sub-room
+                const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
+                if (subRoom) {
+                    const idx = subRoom.playerIds.indexOf(client.sessionId);
+                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                }
+
+                // Delete from state
+                this.state.players.delete(client.sessionId);
+                
+                // Mark client as intentionally leaving to avoid reconnection wait in onLeave
+                (client as any).kicked = true; 
+            }
         });
 
         this.onMessage("engageEnemy", (client, data) => {
@@ -853,36 +879,47 @@ export class GameRoom extends Room<GameState> {
         const incomingName = options.name;
 
         if (incomingUserId || incomingName) {
+            const toDelete: string[] = [];
+            const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
+
             this.state.players.forEach((p, sid) => {
                 const isSameUser = incomingUserId && p.userId === incomingUserId;
-                const isSameName = incomingName && p.name && p.name.trim().toLowerCase() === incomingName.trim().toLowerCase();
+                const normalizedPName = p.name ? p.name.trim().toLowerCase() : "";
+                const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
 
                 if (isSameUser || isSameName) {
-                    console.log(`[GameRoom] Removing duplicate ghost player ${sid} for user ${incomingName} (${incomingUserId})`);
-                    
-                    // 1. Cleanup spawn point
-                    if (p.spawnIndex !== -1) {
-                        this.usedSpawnIndices.delete(p.spawnIndex);
-                    }
-                    
-                    // 2. Cleanup sub-room
-                    const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
-                    if (subRoom) {
-                        const idx = subRoom.playerIds.indexOf(sid);
-                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
-                    }
-                    
-                    // 3. Kick old client if still exists (to prevent concurrent access)
-                    const oldClient = this.clients.find(c => c.sessionId === sid);
-                    if (oldClient) {
-                        (oldClient as any).kicked = true;
-                        oldClient.send("kicked", { message: "Joined from another device/tab." });
-                        oldClient.leave();
-                    }
-
-                    // 4. Delete from state immediately
-                    this.state.players.delete(sid);
+                    toDelete.push(sid);
                 }
+            });
+
+            toDelete.forEach(sid => {
+                const p = this.state.players.get(sid);
+                if (!p) return;
+
+                console.log(`[GameRoom] Removing duplicate session ${sid} for user ${p.name}`);
+                
+                // 1. Cleanup spawn point
+                if (p.spawnIndex !== -1) {
+                    this.usedSpawnIndices.delete(p.spawnIndex);
+                }
+                
+                // 2. Cleanup sub-room
+                const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
+                if (subRoom) {
+                    const idx = subRoom.playerIds.indexOf(sid);
+                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                }
+                
+                // 3. Kick old client if still exists
+                const oldClient = this.clients.find(c => c.sessionId === sid);
+                if (oldClient) {
+                    (oldClient as any).kicked = true;
+                    oldClient.send("kicked", { message: "Joined from another device/tab." });
+                    oldClient.leave();
+                }
+
+                // 4. Delete from state immediately
+                this.state.players.delete(sid);
             });
         }
 
