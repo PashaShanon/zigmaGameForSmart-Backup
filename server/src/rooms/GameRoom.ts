@@ -923,7 +923,12 @@ export class GameRoom extends Room<GameState> {
                     oldClient.leave();
                 }
 
-                // 4. Delete from state immediately
+                // 4. Remove from Supabase B
+                if (p.userId) {
+                    this.removeParticipantFromSupabaseB(p.userId);
+                }
+
+                // 5. Delete from state immediately
                 this.state.players.delete(sid);
             });
         }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zigma-cache-v1.3'; // Force update
+const CACHE_NAME = 'zigma-cache-v1.4'; // Force update
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
