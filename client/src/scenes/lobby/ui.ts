@@ -31,8 +31,11 @@ export class LobbyUI {
                             <span id="lobby-user-name" class="text-[#478D47] font-bold text-sm md:text-lg font-['Retro_Gaming'] tracking-tight truncate max-w-[100px] md:max-w-[150px]">${i18n.t('lobby.guest')}</span>
                         </div>
 
-                        <div class="relative">
-                            <button id="lobby-menu-btn" class="w-10 h-10 md:w-11 md:h-11 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all">
+                        <div class="relative flex items-center gap-2">
+                            <button id="lobby-install-btn" class="hidden w-10 h-10 md:w-11 md:h-11 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all shadow-lg group">
+                                <span class="material-symbols-outlined text-[#6CC452] text-xl group-hover:scale-110 transition-transform">download</span>
+                            </button>
+                            <button id="lobby-menu-btn" class="w-10 h-10 md:w-11 md:h-11 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all shadow-lg">
                                 <span class="material-symbols-outlined text-[#6CC452] text-xl">menu</span>
                             </button>
                             <div id="lobby-menu-dropdown" class="hidden absolute top-[calc(100%+8px)] right-0 w-48 bg-white border-2 border-[#6CC452] rounded-xl shadow-2xl overflow-hidden transform transition-all duration-200 origin-top-right scale-95 opacity-0 flex flex-col p-1 z-[60]">

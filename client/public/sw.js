@@ -1,9 +1,8 @@
-const CACHE_NAME = 'zigma-cache-v1';
+const CACHE_NAME = 'zigma-cache-v1.5'; // Force update
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo/SkeletonV1.webp',
   '/logo/Zigma-logo-fix.webp'
 ];
 
@@ -17,14 +16,40 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
-  console.log('[SW] Activated & Claiming clients');
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+  // STRATEGY: Only intercept GET requests from the same origin.
+  // This ensures Colyseus (port 2567) and POST requests are handled by the browser directly.
+  if (event.request.method === 'GET' && event.request.url.startsWith(self.location.origin)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+  }
 });

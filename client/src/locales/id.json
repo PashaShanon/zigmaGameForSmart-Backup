@@ -99,8 +99,14 @@
     "login_required_my_quiz": "Silakan login untuk melihat kuis buatan Anda.",
     "login_required_favorite": "Silakan login untuk menyimpan favorit.",
     "no_quiz_found": "Kuis Tidak Ditemukan",
+    "no_favorite_found": "Belum ada yang di favorite",
     "reset_filter": "Hapus Filter",
-    "going_back": "Kembali..."
+    "going_back": "Kembali...",
+    "likes": "Suka",
+    "played": "Main",
+    "questions": "Soal",
+    "close": "Tutup",
+    "start_btn": "Mulai Quiz"
   },
   "categories": {
     "math": "Matematika",
@@ -135,6 +141,8 @@
     "m_10": "10 Menit",
     "m_15": "15 Menit",
     "m_20": "20 Menit",
+    "m_25": "25 Menit",
+    "m_30": "30 Menit",
     "diff_easy": "Mudah",
     "diff_medium": "Sedang",
     "diff_hard": "Sulit",

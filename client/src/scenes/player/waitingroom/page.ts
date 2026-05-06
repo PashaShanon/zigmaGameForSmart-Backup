@@ -12,6 +12,7 @@ export class PlayerWaitingRoomManager {
     isHost: boolean = false;
     mySessionId: string = '';
     isGameStarting: boolean = false;
+    isManuallyLeaving: boolean = false;
 
     // UI Elements
     waitingUI: HTMLElement | null = null;
@@ -134,6 +135,15 @@ export class PlayerWaitingRoomManager {
             player.listen("hairId", () => this.updateAll());
         });
         this.room.state.players.onRemove(() => this.updateAll());
+        
+        // Handle unexpected disconnection (e.g. host closes room)
+        this.room.onLeave((code) => {
+            console.log(`[PlayerLobby] Room connection lost (code: ${code}). isManuallyLeaving: ${this.isManuallyLeaving}`);
+            // Only cleanup if this is NOT a manual exit (manual exit handles its own cleanup)
+            if (!this.isGameStarting && !this.isManuallyLeaving) {
+                this.cleanupAndGoLobby();
+            }
+        });
 
         // Game Start
         this.room.onMessage("gameStarted", () => {
@@ -198,7 +208,14 @@ export class PlayerWaitingRoomManager {
             };
         }
 
-
+        const soundBtn = document.getElementById('player-sound-btn');
+        const soundIcon = document.getElementById('player-sound-icon');
+        if (soundBtn && soundIcon) {
+            soundBtn.onclick = () => {
+                const isMuted = AudioManager.getInstance().toggleMute();
+                soundIcon.innerText = isMuted ? 'volume_off' : 'volume_up';
+            };
+        }
 
         const chooseCharBtn = document.getElementById('player-choose-char-btn');
         if (chooseCharBtn) {
@@ -534,9 +551,9 @@ export class PlayerWaitingRoomManager {
                     width: 100%;
                 }
                 .player-name-tooltip {
-                    position: absolute;
-                    top: 100%;
-                    left: 50%;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
                     transform: translateX(-50%) translateY(0);
                     background: #1a1a2e;
                     color: white;
@@ -547,17 +564,17 @@ export class PlayerWaitingRoomManager {
                     white-space: nowrap;
                     opacity: 0;
                     visibility: hidden;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                     border: 2px solid #6CC452;
                     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
                     pointer-events: none;
-                    z-index: 100;
-                    margin-top: 2px;
+                    z-index: 999999;
+                    margin-top: 0;
                 }
-                .player-name-container:hover .player-name-tooltip {
-                    opacity: 1;
-                    visibility: visible;
-                    transform: translateX(-50%) translateY(2px);
+                .player-name-container .player-name-tooltip.visible {
+                    opacity: 1 !important;
+                    visibility: visible !important;
+                    transform: translateX(-50%) translateY(15px) !important;
                 }
                 .player-name-tooltip::after {
                     content: '';
@@ -677,6 +694,11 @@ export class PlayerWaitingRoomManager {
 
             <!-- Sticky Bottom Buttons -->
             <div class="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 z-30 w-[90%] md:w-auto justify-center">
+                <!-- SOUND Button -->
+                <button id="player-sound-btn" class="standard-pixel-btn btn-exit-standard" style="background-color: #facc15; border-bottom-color: #ca8a04; color: black;">
+                    <span class="material-symbols-outlined text-base" id="player-sound-icon">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
+                </button>
+
                 <!-- EXIT Button (Red Host Style) -->
                 <button id="player-back-btn" class="standard-pixel-btn btn-exit-standard">
                     ${i18n.t('player_lobby.exit')}
@@ -971,22 +993,29 @@ export class PlayerWaitingRoomManager {
     }
 
     leaveRoom() {
-        if (this.room) {
-            this.room.leave();
-        }
+        this.isManuallyLeaving = true;
 
-        // Hapus session data
+        // Hapus session data TERLEBIH DAHULU agar tidak bisa auto-rejoin
         localStorage.removeItem('currentRoomId');
         localStorage.removeItem('currentSessionId');
         localStorage.removeItem('currentReconnectionToken');
-
-        // IMPORTANT: Clear any zombie pending join codes so we don't auto-join again
         localStorage.removeItem('pendingJoinRoomCode');
+
+        if (this.room) {
+            // Signal server to remove player immediately without waiting for reconnection
+            try { this.room.send("manualPlayerLeave"); } catch (_) {}
+
+            // CRITICAL: Delay room.leave() by 300ms to ensure the message
+            // reaches the server BEFORE the WebSocket connection closes.
+            // Without this delay, the message is lost and the server waits 60s for reconnection.
+            const roomRef = this.room;
+            setTimeout(() => {
+                try { roomRef.leave(); } catch (_) {}
+            }, 300);
+        }
 
         if (this.waitingUI) this.waitingUI.classList.add('hidden');
         OrientationManager.disable();
-
-        // TransitionManager handles iris/overlay
 
         const lobbyUI = document.getElementById('lobby-ui');
         if (lobbyUI) lobbyUI.classList.remove('hidden');
@@ -1170,8 +1199,8 @@ export class PlayerWaitingRoomManager {
                     
                     <!-- Player Name -->
                     <div class="player-name-container" style="text-align: center; width: 100%; margin-top: 4px; padding: 0 4px;">
-                        <span style="font-size: 14px; color: #FFFFFF; font-family: 'Press Start 2P', cursive; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; ${isMe ? 'text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);' : ''}">
-                            ${player.name || i18n.t('host_lobby.player_upper')}
+                        <span class="player-name-truncated" data-fullname="${player.name || i18n.t('host_lobby.player_upper')}" style="font-size: 14px; color: #FFFFFF; font-family: 'Press Start 2P', cursive; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; ${isMe ? 'text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);' : ''}">
+                            ${(player.name || i18n.t('host_lobby.player_upper')).split(' ')[0]}
                         </span>
                         <div class="player-name-tooltip">
                             ${player.name || i18n.t('host_lobby.player_upper')}
@@ -1184,11 +1213,47 @@ export class PlayerWaitingRoomManager {
         });
 
         this.playerGridEl.innerHTML = html;
+        this.setupPlayerCardTooltips();
 
-        // Expose name update globally
         (window as any).updatePlayerName = (name: string) => {
             this.room.send('updateName', { name });
         };
+    }
+
+    private setupPlayerCardTooltips() {
+        const containers = document.querySelectorAll('.player-name-container');
+        containers.forEach(container => {
+            const nameEl = container.querySelector('.player-name-truncated') as HTMLElement;
+            const tooltipEl = container.querySelector('.player-name-tooltip') as HTMLElement;
+
+            if (!nameEl || !tooltipEl) return;
+
+            const checkTruncation = () => {
+                const fullName = nameEl.getAttribute('data-fullname') || "";
+                return nameEl.scrollWidth > nameEl.clientWidth || nameEl.innerText.trim().toUpperCase() !== fullName.trim().toUpperCase();
+            };
+
+            container.addEventListener('mouseenter', (e: Event) => {
+                const mouseEvent = e as MouseEvent;
+                if (checkTruncation()) {
+                    tooltipEl.style.left = `${mouseEvent.clientX}px`;
+                    tooltipEl.style.top = `${mouseEvent.clientY}px`;
+                    tooltipEl.classList.add('visible');
+                }
+            });
+
+            container.addEventListener('mousemove', (e: Event) => {
+                const mouseEvent = e as MouseEvent;
+                if (tooltipEl.classList.contains('visible')) {
+                    tooltipEl.style.left = `${mouseEvent.clientX}px`;
+                    tooltipEl.style.top = `${mouseEvent.clientY}px`;
+                }
+            });
+
+            container.addEventListener('mouseleave', () => {
+                tooltipEl.classList.remove('visible');
+            });
+        });
     }
 
     // Walking character spawner — sama persis seperti home page

@@ -350,6 +350,14 @@ export class ResultManager {
             return url;
         };
 
+        const getInitials = (name: string) => {
+            if (!name) return '?';
+            const cleanName = name.trim();
+            if (cleanName.length <= 1) return cleanName.toUpperCase();
+            // Ambil 2 karakter pertama, contoh: "Pasha" -> "Pa"
+            return cleanName.substring(0, 1).toUpperCase() + cleanName.substring(1, 2).toLowerCase();
+        };
+
         const savedState = sessionStorage.getItem('playerResultState');
         const questionTotal = savedState ? (JSON.parse(savedState).questionTotal || 5) : 5;
 
@@ -363,12 +371,11 @@ export class ResultManager {
             <img src="/logo/gameforsmart-logo-fix.webp" class="logo-right" />
 
             <div class="result-card pointer-events-auto">
-                <div class="result-avatar-container">
+                <div class="result-avatar-container" style="background: #336B23; color: white;">
                     ${myEntry.avatarUrl ? 
-                        `<img src="${upscaleAvatarUrl(myEntry.avatarUrl)}" class="result-avatar-img" />` :
-                        `<div class="char-anim result-char anim-play" style="${characterVisuals.base}"></div>
-                         <div class="char-anim result-char anim-play" style="${characterVisuals.tools}"></div>
-                         ${characterVisuals.hair ? `<div class="char-anim result-char anim-play" style="${characterVisuals.hair}"></div>` : ''}`
+                        `<img src="${upscaleAvatarUrl(myEntry.avatarUrl)}" class="result-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                         <div class="initial-fallback text-6xl" style="display:none; width: 100%; height: 100%; align-items: center; justify-content: center; text-shadow: 2px 2px 0 #000;">${getInitials(myEntry.name)}</div>` :
+                        `<div class="initial-fallback text-6xl" style="display:flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-shadow: 2px 2px 0 #000;">${getInitials(myEntry.name)}</div>`
                     }
                 </div>
                 <div class="result-name">${myEntry.name}</div>
@@ -381,7 +388,7 @@ export class ResultManager {
                     </div>
                     <div class="stat-box">
                         <span class="material-symbols-outlined stat-icon">workspace_premium</span>
-                        <div class="stat-value">${Math.round(myEntry.score)}</div>
+                        <div class="stat-value">${Math.min(100, Math.round(myEntry.score))}</div>
                         <div id="txt-pr-score" class="stat-label">${i18n.t('player_result.score')}</div>
                     </div>
                     <div class="stat-box">

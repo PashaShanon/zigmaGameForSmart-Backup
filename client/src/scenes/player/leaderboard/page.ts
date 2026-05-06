@@ -17,11 +17,13 @@ export class PlayerLeaderboardManager {
     private mySessionId: string = "";
     private room: any;
     private spawnerInterval: any = null;
+    private tooltip: HTMLElement | null = null;
 
     constructor() {}
 
     start(data?: { room?: any, leaderboardData?: any[], mySessionId?: string }) {
         TransitionManager.ensureClosed();
+        this.createTooltip();
         OrientationManager.requirePortrait();
         this.room = data?.room;
         this.rankings = data?.leaderboardData || [];
@@ -80,7 +82,7 @@ export class PlayerLeaderboardManager {
             .rank-1 .podium-body { height: 260px; background: linear-gradient(180deg, #FFD700 0%, #B8860B 100%); }
             .rank-2 .podium-body { height: 230px; background: linear-gradient(180deg, #E0E0E0 0%, #808080 100%); }
             .rank-3 .podium-body { height: 230px; background: linear-gradient(180deg, #CD7F32 0%, #8B4513 100%); }
-            .podium-name-text { background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 6px; font-size: 8px; color: white; white-space: nowrap; margin-bottom: 10px; }
+            .podium-name-text { background: rgba(0,0,0,0.6); padding: 6px 10px; border-radius: 6px; font-size: 8px; color: white; white-space: nowrap; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; cursor: help; }
             .podium-avatar { width: 100%; height: 80px; position: relative; display: flex; justify-content: center; align-items: center; }
             .char-anim { width: 96px; height: 64px; image-rendering: pixelated; position: absolute; transform: scale(3.5); animation: lb-play-idle 1s steps(9) infinite; }
             @keyframes lb-play-idle { from { background-position: 0 0; } to { background-position: -864px 0; } }
@@ -193,7 +195,13 @@ export class PlayerLeaderboardManager {
             return `
                 <div class="podium-column rank-${p.rank}">
                     <div class="podium-body">
-                        <span class="podium-name-text">${p.name}</span>
+                        <span class="podium-name-text podium-name-truncated relative z-50 cursor-help" 
+                              style="pointer-events: auto;"
+                              data-name="${p.name}"
+                              onmouseenter="window.lbTooltip.show(event, '${p.name.replace(/'/g, "\\'")}')"
+                              onmousemove="window.lbTooltip.move(event)"
+                              onmouseleave="window.lbTooltip.hide()">
+                             ${p.name.split(' ')[0]}</span>
                         <div class="podium-avatar">
                             <div class="char-anim" style="background-image:url('/assets/base_idle_strip9.png')"></div>
                             ${hairKey ? `<div class="char-anim" style="background-image:url('/assets/${hairKey}_idle_strip9.png')"></div>` : ''}
@@ -286,6 +294,61 @@ export class PlayerLeaderboardManager {
         };
         setupStats(statsBtn);
         setupStats(document.getElementById('lb-stats-btn-mobile'));
+
+        this.setupPodiumTooltips();
+    }
+
+    private setupPodiumTooltips() {
+        (window as any).lbTooltip = {
+            show: (e: MouseEvent, fullName: string) => {
+                const nameEl = e.currentTarget as HTMLElement;
+                const displayName = nameEl.innerText.trim().toUpperCase();
+                const fullUpper = fullName.trim().toUpperCase();
+                
+                if (nameEl.scrollWidth > nameEl.clientWidth || displayName !== fullUpper) {
+                    this.showTooltip(fullName);
+                    this.moveTooltip(e);
+                }
+            },
+            move: (e: MouseEvent) => {
+                this.moveTooltip(e);
+            },
+            hide: () => {
+                this.hideTooltip();
+            }
+        };
+    }
+
+    private createTooltip() {
+        let t = document.getElementById('podium-name-tooltip');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'podium-name-tooltip';
+            t.className = "lb-name-tooltip";
+            document.body.appendChild(t);
+        }
+        this.tooltip = t;
+    }
+
+    private showTooltip(text: string) {
+        if (!this.tooltip) return;
+        this.tooltip.innerText = text;
+        this.tooltip.classList.add('visible');
+    }
+
+    private moveTooltip(e: MouseEvent) {
+        if (!this.tooltip) return;
+        let x = e.clientX + 15;
+        let y = e.clientY + 15;
+        if (x + this.tooltip.offsetWidth > window.innerWidth) x = e.clientX - this.tooltip.offsetWidth - 15;
+        if (y + this.tooltip.offsetHeight > window.innerHeight) y = e.clientY - this.tooltip.offsetHeight - 15;
+        this.tooltip.style.left = `${x}px`;
+        this.tooltip.style.top = `${y}px`;
+    }
+
+    private hideTooltip() {
+        if (!this.tooltip) return;
+        this.tooltip.classList.remove('visible');
     }
 
     cleanup() {

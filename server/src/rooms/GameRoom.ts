@@ -249,6 +249,38 @@ export class GameRoom extends Room<GameState> {
 
         this.onMessage("manualLeave", (client) => {
             (client as any).manualLeave = true;
+            console.log(`[GameRoom] Client ${client.sessionId} manual leave signaled.`);
+        });
+
+        this.onMessage("manualPlayerLeave", (client) => {
+            const player = this.state.players.get(client.sessionId);
+            if (player) {
+                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) manual leave signaled. Removing immediately.`);
+                
+                // Cleanup spawn point
+                if (player.spawnIndex !== -1) {
+                    this.usedSpawnIndices.delete(player.spawnIndex);
+                }
+                
+                // Cleanup sub-room
+                const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
+                if (subRoom) {
+                    const idx = subRoom.playerIds.indexOf(client.sessionId);
+                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                }
+
+                // Remove from Supabase B if in lobby
+                if (!this.state.isGameStarted && player.userId) {
+                    this.removeParticipantFromSupabaseB(player.userId);
+                }
+
+                // Delete from state
+                this.state.players.delete(client.sessionId);
+                
+                // Mark client as intentionally leaving to avoid reconnection wait in onLeave
+                (client as any).kicked = true;
+                (client as any).manualLeave = true;
+            }
         });
 
         this.onMessage("engageEnemy", (client, data) => {
@@ -538,6 +570,11 @@ export class GameRoom extends Room<GameState> {
                     if (subRoom) {
                         const idx = subRoom.playerIds.indexOf(targetSessionId);
                         if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                    }
+
+                    // Cleanup Supabase B
+                    if (!this.state.isGameStarted && player.userId) {
+                        this.removeParticipantFromSupabaseB(player.userId);
                     }
                     
                     this.state.players.delete(targetSessionId);
@@ -853,36 +890,52 @@ export class GameRoom extends Room<GameState> {
         const incomingName = options.name;
 
         if (incomingUserId || incomingName) {
+            const toDelete: string[] = [];
+            const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
+
             this.state.players.forEach((p, sid) => {
                 const isSameUser = incomingUserId && p.userId === incomingUserId;
-                const isSameName = incomingName && p.name === incomingName;
+                const normalizedPName = p.name ? p.name.trim().toLowerCase() : "";
+                const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
 
                 if (isSameUser || isSameName) {
-                    console.log(`[GameRoom] Removing duplicate ghost player ${sid} for user ${incomingName} (${incomingUserId})`);
-                    
-                    // 1. Cleanup spawn point
-                    if (p.spawnIndex !== -1) {
-                        this.usedSpawnIndices.delete(p.spawnIndex);
-                    }
-                    
-                    // 2. Cleanup sub-room
-                    const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
-                    if (subRoom) {
-                        const idx = subRoom.playerIds.indexOf(sid);
-                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
-                    }
-                    
-                    // 3. Kick old client if still exists (to prevent concurrent access)
-                    const oldClient = this.clients.find(c => c.sessionId === sid);
-                    if (oldClient) {
-                        (oldClient as any).kicked = true;
-                        oldClient.send("kicked", { message: "Joined from another device/tab." });
-                        oldClient.leave();
-                    }
-
-                    // 4. Delete from state immediately
-                    this.state.players.delete(sid);
+                    toDelete.push(sid);
                 }
+            });
+
+            toDelete.forEach(sid => {
+                const p = this.state.players.get(sid);
+                if (!p) return;
+
+                console.log(`[GameRoom] Removing duplicate session ${sid} for user ${p.name}`);
+                
+                // 1. Cleanup spawn point
+                if (p.spawnIndex !== -1) {
+                    this.usedSpawnIndices.delete(p.spawnIndex);
+                }
+                
+                // 2. Cleanup sub-room
+                const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
+                if (subRoom) {
+                    const idx = subRoom.playerIds.indexOf(sid);
+                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                }
+                
+                // 3. Kick old client if still exists
+                const oldClient = this.clients.find(c => c.sessionId === sid);
+                if (oldClient) {
+                    (oldClient as any).kicked = true;
+                    oldClient.send("kicked", { message: "Joined from another device/tab." });
+                    oldClient.leave();
+                }
+
+                // 4. Remove from Supabase B
+                if (p.userId) {
+                    this.removeParticipantFromSupabaseB(p.userId);
+                }
+
+                // 5. Delete from state immediately
+                this.state.players.delete(sid);
             });
         }
 
@@ -989,7 +1042,7 @@ export class GameRoom extends Room<GameState> {
 
         // Cek jika di-kick secara paksa
         const isKicked = (client as any).kicked === true;
-        // manualLeave = true hanya jika host eksplisit klik tombol EXIT
+        // manualLeave = true jika player/host eksplisit klik tombol EXIT
         const isManualLeave = (client as any).manualLeave === true;
 
         if (isHostLeave) {
@@ -997,8 +1050,13 @@ export class GameRoom extends Room<GameState> {
                 console.log(`[GameRoom] Host clicked EXIT. Disposing room.`);
                 // Notify all remaining players that the host has left
                 this.broadcast("hostLeft");
-                this.reallyReallyDisconnect = true;
-                this.disconnect();
+                
+                // Berikan jeda sebentar agar broadcast terkirim sebelum room ditutup total
+                this.clock.setTimeout(() => {
+                    console.log(`[GameRoom] Delay finished. Disposing room now.`);
+                    this.reallyReallyDisconnect = true;
+                    this.disconnect();
+                }, 1500); 
                 return;
             } else {
                 // Host disconnect tak terduga (refresh browser, koneksi putus, dll).
@@ -1009,21 +1067,24 @@ export class GameRoom extends Room<GameState> {
             }
         }
 
-        // Jika TIDAK di-kick DAN TIDAK sengaja keluar (consented = false), berikan waktu reconnect
-        if (!isKicked && !consented) {
+        // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect
+        // Jika salah satu dari isKicked, consented, atau isManualLeave = true → langsung hapus
+        if (!isKicked && !consented && !isManualLeave) {
+            // Standard: 60 detik reconnect untuk refresh/koneksi putus.
+            // Jika player masuk kembali dengan ID yang sama, onJoin deduplication akan mengganti sesi lama.
+            // Jika player sengaja EXIT, flag manualLeave akan aktif dan skip blok ini.
             console.log(`[GameRoom] Player ${client.sessionId} disconnected (unintentional). Allowing 60s reconnection...`);
             try {
-                // Allow reconnection for 60 seconds (Standard professional practice)
                 await this.allowReconnection(client, 60);
                 console.log(`[GameRoom] Player ${client.sessionId} reconnected!`);
                 return;
             } catch (e) {
-                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out.`);
+                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after 60s.`);
                 // Continue to cleanup
             }
         } else {
-            // Jika di-kick atau sengaja klik keluar (consented=true), langsung hapus tanpa menunggu
-            console.log(`[GameRoom] Player ${client.sessionId} left intentionally or was kicked. Cleaning up immediately.`);
+            // Jika di-kick, sengaja klik EXIT (consented/manualLeave), langsung hapus tanpa menunggu
+            console.log(`[GameRoom] Player ${client.sessionId} left intentionally (consented=${consented}, kicked=${isKicked}, manual=${isManualLeave}). Cleaning up immediately.`);
         }
 
         // Hapus player dari state (timeout, di-kick, atau keluar sengaja)
@@ -1037,6 +1098,12 @@ export class GameRoom extends Room<GameState> {
             if (subRoom) {
                 const idx = subRoom.playerIds.indexOf(client.sessionId);
                 if (idx > -1) subRoom.playerIds.splice(idx, 1);
+            }
+
+            // --- DATABASE CLEANUP ---
+            // Remove from Supabase B if game hasn't started yet (Lobby only)
+            if (!this.state.isGameStarted && player.userId) {
+                this.removeParticipantFromSupabaseB(player.userId);
             }
         }
         this.state.players.delete(client.sessionId);
@@ -1592,6 +1659,26 @@ export class GameRoom extends Room<GameState> {
             }
         } catch (e: any) {
             console.error(`[Supabase B] Sync Exception for ${player.name}:`, e.message);
+        }
+    }
+
+    private async removeParticipantFromSupabaseB(userId: string) {
+        if (!this.sessionId || !userId) return;
+        try {
+            console.log(`[Supabase B] Removing participant ${userId} from session ${this.sessionId}`);
+            const { error } = await supabaseB
+                .from('participants')
+                .delete()
+                .eq('session_id', this.sessionId)
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error(`[Supabase B] Failed to remove participant:`, error.message);
+            } else {
+                console.log(`[Supabase B] Participant ${userId} removed from Supabase.`);
+            }
+        } catch (e: any) {
+            console.error(`[Supabase B] Exception on removeParticipant:`, e.message);
         }
     }
 

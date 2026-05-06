@@ -76,6 +76,34 @@ export class LeaderboardUI {
             }
             .hide-scrollbar::-webkit-scrollbar { display: none; }
             .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+            .lb-name-tooltip {
+                position: fixed;
+                pointer-events: none;
+                z-index: 9999;
+                padding: 10px 16px;
+                background: #2d5a27;
+                border: 2px solid #ffffff;
+                color: #ffffff;
+                font-family: 'Retro Gaming', monospace;
+                font-size: 12px;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+                opacity: 0;
+                transform: translateY(10px);
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                max-width: 250px;
+                word-wrap: break-word;
+                display: none;
+                text-transform: uppercase;
+                text-align: center;
+                line-height: 1.4;
+            }
+            .lb-name-tooltip.visible {
+                opacity: 1 !important;
+                transform: translateY(0) !important;
+                display: block !important;
+            }
         `;
     }
 
@@ -95,7 +123,13 @@ export class LeaderboardUI {
             return `${m}:${s.toString().padStart(2, '0')}`;
         };
 
-        const getInitials = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
+        const getInitials = (name: string) => {
+            if (!name) return '?';
+            const cleanName = name.trim();
+            if (cleanName.length <= 1) return cleanName.toUpperCase();
+            // Ambil 2 karakter pertama, contoh: "Pasha" -> "Pa"
+            return cleanName.substring(0, 1).toUpperCase() + cleanName.substring(1, 2).toLowerCase();
+        };
         const upscaleAvatarUrl = (url?: string) => {
             if (!url) return url;
             if (url.includes('googleusercontent.com')) {
@@ -158,12 +192,14 @@ export class LeaderboardUI {
                             `}
                         </div>
 
-                        <!-- Name (Truncated) -->
-                        <div class="w-full text-[10px] md:text-md font-bold text-center uppercase truncate px-1" 
-                             style="color: #ffffff; font-family: 'Retro Gaming', monospace; text-shadow: 1px 1px 0 #000;"
-                             title="${p.name}">
-                            ${p.name}
-                        </div>
+                         <div class="podium-name-truncated w-full text-[10px] md:text-md font-bold text-center uppercase truncate px-1 relative z-50 cursor-help" 
+                              style="color: #ffffff; font-family: 'Retro Gaming', monospace; text-shadow: 1px 1px 0 #000; pointer-events: auto;"
+                              data-name="${p.name}"
+                              onmouseenter="window.lbTooltip.show(event, '${p.name.replace(/'/g, "\\'")}')"
+                              onmousemove="window.lbTooltip.move(event)"
+                              onmouseleave="window.lbTooltip.hide()">
+                             ${p.name.split(' ')[0]}
+                         </div>
                     </div>
 
                     <!-- The literal podium block (Always visible now) -->
@@ -173,6 +209,13 @@ export class LeaderboardUI {
                         <!-- Rank Number on Podium -->
                         <div class="text-4xl md:text-7xl font-bold relative z-10" style="font-family: 'Retro Gaming', monospace; color: ${colorHex}; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; -webkit-font-smoothing: none;">
                             ${rank}
+                        </div>
+
+                        <!-- SCORE BADGE (New) -->
+                        <div class="absolute bottom-[-10px] md:bottom-[-15px] px-3 py-1 bg-white border-2 border-black rounded-lg shadow-lg z-40 transform scale-75 md:scale-100">
+                            <span class="text-black font-bold text-xs md:text-sm" style="font-family: 'Retro Gaming', monospace;">
+                                ${Math.min(100, Math.round(p.score))} PTS
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -195,7 +238,7 @@ export class LeaderboardUI {
                     </div>
                     <div class="font-bold text-xs md:text-lg truncate max-w-[150px] md:max-w-[300px] py-1 uppercase text-[#336B23]">${p.name}</div>
                 </div>
-                <div class="text-center text-[#478D47] font-bold text-sm md:text-xl">${Math.round(p.score)}</div>
+                <div class="text-center text-[#478D47] font-bold text-sm md:text-xl">${Math.min(100, Math.round(p.score))}</div>
                 <div class="text-center text-gray-700 text-xs md:text-base font-bold">
                     ${formatTime(p.duration)}
                 </div>
