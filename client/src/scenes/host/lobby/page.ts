@@ -77,6 +77,13 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.room.onMessage('timerUpdate', () => {
                 // No-op: actual timer UI is handled by HostProgressScene or GameScene
             });
+
+            this.room.onLeave((code) => {
+                console.log(`[HostLobby] Room connection lost (code: ${code}).`);
+                if (!this.isManuallyLeaving && !this.isGameStarting) {
+                    window.location.href = '/';
+                }
+            });
         }
     }
 

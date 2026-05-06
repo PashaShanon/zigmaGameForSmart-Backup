@@ -130,6 +130,15 @@ export class GameScene extends Phaser.Scene {
             this.showHostLeftModal();
         });
 
+        // Handle unexpected disconnection (e.g. host closes room)
+        this.room.onLeave((code) => {
+            console.log(`[GameScene] Room connection lost (code: ${code}).`);
+            // Only show modal if we didn't leave intentionally
+            if (code !== 1000) { 
+                this.showHostLeftModal();
+            }
+        });
+
         this.room.onMessage('speedBoostActivated', () => {
             if (this.currentPlayer) {
                 const text = this.add.text(this.currentPlayer.x, this.currentPlayer.y - 40, 'SPEED BOOST!', {

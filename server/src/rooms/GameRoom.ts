@@ -855,7 +855,7 @@ export class GameRoom extends Room<GameState> {
         if (incomingUserId || incomingName) {
             this.state.players.forEach((p, sid) => {
                 const isSameUser = incomingUserId && p.userId === incomingUserId;
-                const isSameName = incomingName && p.name === incomingName;
+                const isSameName = incomingName && p.name && p.name.trim().toLowerCase() === incomingName.trim().toLowerCase();
 
                 if (isSameUser || isSameName) {
                     console.log(`[GameRoom] Removing duplicate ghost player ${sid} for user ${incomingName} (${incomingUserId})`);
@@ -997,8 +997,13 @@ export class GameRoom extends Room<GameState> {
                 console.log(`[GameRoom] Host clicked EXIT. Disposing room.`);
                 // Notify all remaining players that the host has left
                 this.broadcast("hostLeft");
-                this.reallyReallyDisconnect = true;
-                this.disconnect();
+                
+                // Berikan jeda sebentar agar broadcast terkirim sebelum room ditutup total
+                this.clock.setTimeout(() => {
+                    console.log(`[GameRoom] Delay finished. Disposing room now.`);
+                    this.reallyReallyDisconnect = true;
+                    this.disconnect();
+                }, 1500); 
                 return;
             } else {
                 // Host disconnect tak terduga (refresh browser, koneksi putus, dll).

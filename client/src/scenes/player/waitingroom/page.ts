@@ -134,6 +134,14 @@ export class PlayerWaitingRoomManager {
             player.listen("hairId", () => this.updateAll());
         });
         this.room.state.players.onRemove(() => this.updateAll());
+        
+        // Handle unexpected disconnection (e.g. host closes room)
+        this.room.onLeave((code) => {
+            console.log(`[PlayerLobby] Room connection lost (code: ${code}). Returning to lobby.`);
+            if (!this.isGameStarting) {
+                this.cleanupAndGoLobby();
+            }
+        });
 
         // Game Start
         this.room.onMessage("gameStarted", () => {
