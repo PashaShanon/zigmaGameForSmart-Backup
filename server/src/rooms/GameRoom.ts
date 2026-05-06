@@ -1070,18 +1070,20 @@ export class GameRoom extends Room<GameState> {
         // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect
         // Jika salah satu dari isKicked, consented, atau isManualLeave = true → langsung hapus
         if (!isKicked && !consented && !isManualLeave) {
+            // Standard: 60 detik reconnect untuk refresh/koneksi putus.
+            // Jika player masuk kembali dengan ID yang sama, onJoin deduplication akan mengganti sesi lama.
+            // Jika player sengaja EXIT, flag manualLeave akan aktif dan skip blok ini.
             console.log(`[GameRoom] Player ${client.sessionId} disconnected (unintentional). Allowing 60s reconnection...`);
             try {
-                // Allow reconnection for 60 seconds (Standard professional practice)
                 await this.allowReconnection(client, 60);
                 console.log(`[GameRoom] Player ${client.sessionId} reconnected!`);
                 return;
             } catch (e) {
-                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out.`);
+                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after 60s.`);
                 // Continue to cleanup
             }
         } else {
-            // Jika di-kick, sengaja klik keluar (consented=true), atau manual leave → langsung hapus
+            // Jika di-kick, sengaja klik EXIT (consented/manualLeave), langsung hapus tanpa menunggu
             console.log(`[GameRoom] Player ${client.sessionId} left intentionally (consented=${consented}, kicked=${isKicked}, manual=${isManualLeave}). Cleaning up immediately.`);
         }
 
