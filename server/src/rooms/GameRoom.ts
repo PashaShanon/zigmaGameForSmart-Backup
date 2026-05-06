@@ -269,6 +269,11 @@ export class GameRoom extends Room<GameState> {
                     if (idx > -1) subRoom.playerIds.splice(idx, 1);
                 }
 
+                // Remove from Supabase B if in lobby
+                if (!this.state.isGameStarted && player.userId) {
+                    this.removeParticipantFromSupabaseB(player.userId);
+                }
+
                 // Delete from state
                 this.state.players.delete(client.sessionId);
                 
@@ -1080,6 +1085,12 @@ export class GameRoom extends Room<GameState> {
                 const idx = subRoom.playerIds.indexOf(client.sessionId);
                 if (idx > -1) subRoom.playerIds.splice(idx, 1);
             }
+
+            // --- DATABASE CLEANUP ---
+            // Remove from Supabase B if game hasn't started yet (Lobby only)
+            if (!this.state.isGameStarted && player.userId) {
+                this.removeParticipantFromSupabaseB(player.userId);
+            }
         }
         this.state.players.delete(client.sessionId);
 
@@ -1634,6 +1645,26 @@ export class GameRoom extends Room<GameState> {
             }
         } catch (e: any) {
             console.error(`[Supabase B] Sync Exception for ${player.name}:`, e.message);
+        }
+    }
+
+    private async removeParticipantFromSupabaseB(userId: string) {
+        if (!this.sessionId || !userId) return;
+        try {
+            console.log(`[Supabase B] Removing participant ${userId} from session ${this.sessionId}`);
+            const { error } = await supabaseB
+                .from('participants')
+                .delete()
+                .eq('session_id', this.sessionId)
+                .eq('user_id', userId);
+
+            if (error) {
+                console.error(`[Supabase B] Failed to remove participant:`, error.message);
+            } else {
+                console.log(`[Supabase B] Participant ${userId} removed from Supabase.`);
+            }
+        } catch (e: any) {
+            console.error(`[Supabase B] Exception on removeParticipant:`, e.message);
         }
     }
 
