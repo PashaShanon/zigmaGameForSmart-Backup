@@ -991,24 +991,27 @@ export class PlayerWaitingRoomManager {
     }
 
     leaveRoom() {
-        if (this.room) {
-            // Signal server to remove player immediately without waiting for reconnection
-            this.room.send("manualPlayerLeave");
-            this.room.leave();
-        }
-
-        // Hapus session data
+        // Hapus session data TERLEBIH DAHULU agar tidak bisa auto-rejoin
         localStorage.removeItem('currentRoomId');
         localStorage.removeItem('currentSessionId');
         localStorage.removeItem('currentReconnectionToken');
-
-        // IMPORTANT: Clear any zombie pending join codes so we don't auto-join again
         localStorage.removeItem('pendingJoinRoomCode');
+
+        if (this.room) {
+            // Signal server to remove player immediately without waiting for reconnection
+            try { this.room.send("manualPlayerLeave"); } catch (_) {}
+
+            // CRITICAL: Delay room.leave() by 300ms to ensure the message
+            // reaches the server BEFORE the WebSocket connection closes.
+            // Without this delay, the message is lost and the server waits 60s for reconnection.
+            const roomRef = this.room;
+            setTimeout(() => {
+                try { roomRef.leave(); } catch (_) {}
+            }, 300);
+        }
 
         if (this.waitingUI) this.waitingUI.classList.add('hidden');
         OrientationManager.disable();
-
-        // TransitionManager handles iris/overlay
 
         const lobbyUI = document.getElementById('lobby-ui');
         if (lobbyUI) lobbyUI.classList.remove('hidden');
