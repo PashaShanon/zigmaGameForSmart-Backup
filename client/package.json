@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.95.3",
     "colyseus.js": "^0.15.28",
     "html5-qrcode": "^2.3.8",

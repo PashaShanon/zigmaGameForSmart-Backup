@@ -5381,7 +5381,7 @@
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }, 
@@ -5526,7 +5526,7 @@
         {
          "columns":64,
          "firstgid":1,
-         "image":"..\/..\/..\/..\/..\/..\/Sunnyside_World_ASSET_PACK_V2.1\/Sunnyside_World_Assets\/Tileset\/spr_tileset_sunnysideworld_16px.png",
+         "image":"../spr_tileset_sunnysideworld_16px.png",
          "imageheight":1024,
          "imagewidth":1024,
          "margin":0,
@@ -5539,7 +5539,7 @@
         {
          "columns":20,
          "firstgid":4097,
-         "image":"spr_tileset_sunnysideworld_forest_32px.png",
+         "image":"../tileset/spr_tileset_sunnysideworld_forest_32px.png",
          "imageheight":576,
          "imagewidth":320,
          "margin":0,
