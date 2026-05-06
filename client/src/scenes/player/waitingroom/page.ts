@@ -12,6 +12,7 @@ export class PlayerWaitingRoomManager {
     isHost: boolean = false;
     mySessionId: string = '';
     isGameStarting: boolean = false;
+    isManuallyLeaving: boolean = false;
 
     // UI Elements
     waitingUI: HTMLElement | null = null;
@@ -137,8 +138,9 @@ export class PlayerWaitingRoomManager {
         
         // Handle unexpected disconnection (e.g. host closes room)
         this.room.onLeave((code) => {
-            console.log(`[PlayerLobby] Room connection lost (code: ${code}). Returning to lobby.`);
-            if (!this.isGameStarting) {
+            console.log(`[PlayerLobby] Room connection lost (code: ${code}). isManuallyLeaving: ${this.isManuallyLeaving}`);
+            // Only cleanup if this is NOT a manual exit (manual exit handles its own cleanup)
+            if (!this.isGameStarting && !this.isManuallyLeaving) {
                 this.cleanupAndGoLobby();
             }
         });
@@ -991,6 +993,8 @@ export class PlayerWaitingRoomManager {
     }
 
     leaveRoom() {
+        this.isManuallyLeaving = true;
+
         // Hapus session data TERLEBIH DAHULU agar tidak bisa auto-rejoin
         localStorage.removeItem('currentRoomId');
         localStorage.removeItem('currentSessionId');
