@@ -9,6 +9,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
     (window as any).zigmaDeferredPrompt = e;
     console.log('[PWA] 📥 beforeinstallprompt captured at module level (fallback)');
 
+    // Show the dedicated install buttons if they exist
+    const lobbyBtn = document.getElementById('lobby-install-btn');
+    if (lobbyBtn) lobbyBtn.classList.remove('hidden');
+    const hostBtn = document.getElementById('host-install-btn');
+    if (hostBtn) hostBtn.classList.remove('hidden');
+
     const dismissed = sessionStorage.getItem(InstallPromptUI.STORAGE_KEY);
     if (!dismissed) {
         _pendingAutoShow = true;
@@ -27,6 +33,12 @@ window.addEventListener('appinstalled', () => {
     _pendingAutoShow = false;
     InstallPromptUI.hide();
     sessionStorage.setItem(InstallPromptUI.STORAGE_KEY, 'true');
+
+    // Hide the dedicated install buttons
+    const lobbyBtn = document.getElementById('lobby-install-btn');
+    if (lobbyBtn) lobbyBtn.classList.add('hidden');
+    const hostBtn = document.getElementById('host-install-btn');
+    if (hostBtn) hostBtn.classList.add('hidden');
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -48,6 +60,12 @@ export class InstallPromptUI {
 
         // Check if event was already captured by index.html before module loaded
         if ((window as any).zigmaDeferredPrompt) {
+            // Show the dedicated install buttons if they exist
+            const lobbyBtn = document.getElementById('lobby-install-btn');
+            if (lobbyBtn) lobbyBtn.classList.remove('hidden');
+            const hostBtn = document.getElementById('host-install-btn');
+            if (hostBtn) hostBtn.classList.remove('hidden');
+
             const dismissed = sessionStorage.getItem(InstallPromptUI.STORAGE_KEY);
             if (!dismissed) {
                 setTimeout(() => {

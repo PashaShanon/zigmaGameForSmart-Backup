@@ -11,10 +11,6 @@ export class QuizSettingsUI {
             quizSettingsUI.innerHTML = `
                 ${GlobalBackground.getHTML('quizsettings')}
 
-                <!-- Back Button (Bottom Left) -->
-                <button id="settings-back-btn" class="fixed bottom-4 left-4 md:bottom-10 md:left-10 z-[100] w-12 h-12 md:w-16 md:h-16 bg-white border-4 border-[#6CC452] rounded-2xl flex items-center justify-center hover:bg-[#F1F8E9] shadow-[0_4px_0_#478D47] transition-all hover:scale-110 active:translate-y-1 active:shadow-none cursor-pointer pointer-events-auto">
-                    <span class="material-symbols-outlined text-[#478D47] text-3xl md:text-5xl font-bold">arrow_back</span>
-                </button>
 
                 <!-- LOGO TOP LEFT (Zigma) — Desktop only -->
                 <img id="settings-zigma-logo" src="/logo/Zigma-logo-fix.webp" style="top: -20px; left: -10px;" class="absolute w-64 z-50 object-contain cursor-pointer login-desktop-only" />

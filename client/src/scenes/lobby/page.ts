@@ -260,8 +260,20 @@ export class LobbyManager {
 
     private setupEventListeners() {
         const lobbyMenuBtn = document.getElementById('lobby-menu-btn');
+        const lobbyInstallBtn = document.getElementById('lobby-install-btn');
         const lobbyMenuDropdown = document.getElementById('lobby-menu-dropdown');
         const lobbyLogoutBtn = document.getElementById('lobby-menu-logout-btn');
+
+        // Show install button if prompt is available
+        if (lobbyInstallBtn) {
+            if ((window as any).zigmaDeferredPrompt) {
+                lobbyInstallBtn.classList.remove('hidden');
+            }
+            lobbyInstallBtn.onclick = (e) => {
+                e.stopPropagation();
+                InstallPromptUI.triggerPrompt();
+            };
+        }
 
         if (lobbyMenuBtn && lobbyMenuDropdown) {
             lobbyMenuBtn.onclick = (e) => {

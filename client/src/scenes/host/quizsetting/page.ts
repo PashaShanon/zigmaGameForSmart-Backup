@@ -277,20 +277,8 @@ export class QuizSettingManager {
         };
         document.addEventListener('click', this._outsideClickHandler);
 
-        const settingsBackBtn = document.getElementById('settings-back-btn');
-        if (settingsBackBtn) {
-            const newBackBtn = settingsBackBtn.cloneNode(true) as HTMLElement;
-            settingsBackBtn.parentNode?.replaceChild(newBackBtn, settingsBackBtn);
-            newBackBtn.onclick = () => {
-                const modal = document.getElementById('settings-back-confirm-modal');
-                if (modal) {
-                    modal.classList.remove('hidden');
-                    this.setupModalButtons();
-                } else {
-                    TransitionManager.transitionTo(() => this.goBackToQuizSelection());
-                }
-            };
-        }
+        // Back button event listener removed as the button was removed from UI
+
 
         const settingsContinueBtn = document.getElementById('settings-continue-btn') as HTMLButtonElement;
         if (settingsContinueBtn) {

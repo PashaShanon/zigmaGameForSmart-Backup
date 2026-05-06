@@ -796,7 +796,10 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                                 <button id="host-add-friends-btn" class="w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg">
                                     <span class="material-symbols-outlined text-xl md:text-2xl">person_add</span>
                                 </button>
-                                <button id="host-sound-btn" class="w-10 h-10 md:w-12 md:h-12 bg-[#facc15] border-2 border-[#ca8a04] text-black flex items-center justify-center rounded-xl hover:brightness-110 transition-all shadow-lg">
+                                <button id="host-install-btn" class="hidden w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg group">
+                                    <span class="material-symbols-outlined text-xl md:text-2xl group-hover:scale-110 transition-transform">download</span>
+                                </button>
+                                <button id="host-sound-btn" class="w-10 h-10 md:w-12 md:h-12 bg-[#336B23] border-2 border-[#1F4514] text-white flex items-center justify-center rounded-xl hover:brightness-110 transition-all shadow-lg">
                                     <span class="material-symbols-outlined text-xl md:text-2xl" id="host-sound-icon">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
                                 </button>
                             </div>
@@ -978,6 +981,18 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             soundBtn.onclick = () => {
                 const isMuted = AudioManager.getInstance().toggleMute();
                 soundIcon.innerText = isMuted ? 'volume_off' : 'volume_up';
+            };
+        }
+
+        const hostInstallBtn = document.getElementById('host-install-btn');
+        if (hostInstallBtn) {
+            if ((window as any).zigmaDeferredPrompt) {
+                hostInstallBtn.classList.remove('hidden');
+            }
+            hostInstallBtn.onclick = () => {
+                import('../../../ui/InstallPromptUI').then(m => {
+                    m.InstallPromptUI.triggerPrompt();
+                });
             };
         }
         if (yesBtn) {
