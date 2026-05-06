@@ -78,9 +78,17 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 // No-op: actual timer UI is handled by HostProgressScene or GameScene
             });
 
+            // Track page refresh/unload to distinguish from actual disconnections
+            let isPageUnloading = false;
+            window.addEventListener('beforeunload', () => {
+                isPageUnloading = true;
+            });
+
             this.room.onLeave((code) => {
-                console.log(`[HostLobby] Room connection lost (code: ${code}).`);
-                if (!this.isManuallyLeaving && !this.isGameStarting) {
+                console.log(`[HostLobby] Room connection lost (code: ${code}). isPageUnloading: ${isPageUnloading}`);
+                // ONLY redirect to lobby if this is a genuine disconnect,
+                // NOT a page refresh or intentional navigation.
+                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading) {
                     window.location.href = '/';
                 }
             });
