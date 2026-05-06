@@ -130,6 +130,36 @@ export class GameScene extends Phaser.Scene {
             this.showHostLeftModal();
         });
 
+        this.room.onMessage('speedBoostActivated', () => {
+            if (this.currentPlayer) {
+                const text = this.add.text(this.currentPlayer.x, this.currentPlayer.y - 40, 'SPEED BOOST!', {
+                    fontSize: '16px', fontFamily: '"Retro Gaming"', color: '#ffff00', stroke: '#000000', strokeThickness: 4
+                }).setOrigin(0.5).setDepth(100);
+                this.tweens.add({
+                    targets: text,
+                    y: text.y - 30,
+                    alpha: 0,
+                    duration: 1500,
+                    onComplete: () => text.destroy()
+                });
+            }
+        });
+
+        this.room.onMessage('speedBoostDeactivated', () => {
+            if (this.currentPlayer) {
+                const text = this.add.text(this.currentPlayer.x, this.currentPlayer.y - 40, 'BOOST ENDED', {
+                    fontSize: '12px', fontFamily: '"Retro Gaming"', color: '#ff8800', stroke: '#000000', strokeThickness: 4
+                }).setOrigin(0.5).setDepth(100);
+                this.tweens.add({
+                    targets: text,
+                    y: text.y - 30,
+                    alpha: 0,
+                    duration: 1000,
+                    onComplete: () => text.destroy()
+                });
+            }
+        });
+
         // --- BACKGROUND LOADING SYNC ---
         // Ensure screen is closed and showing countdown EVEN DURING PRELOAD
         if (this.room.state.countdown > 0) {
@@ -1106,7 +1136,7 @@ export class GameScene extends Phaser.Scene {
         const myPlayerState = this.room.state.players.get(this.room.sessionId);
         let speed = 130;
         if (myPlayerState && myPlayerState.hasSpeedBoost) {
-            speed *= 1.05; // 5% boost
+            speed *= 1.5; // 50% boost
         }
         const velocity = { x: 0, y: 0 };
         const inputPayload = { left: false, right: false, up: false, down: false };

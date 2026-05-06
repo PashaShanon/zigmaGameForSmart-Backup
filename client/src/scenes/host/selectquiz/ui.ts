@@ -101,9 +101,6 @@ export class QuizSelectionUI {
                                         <span id="quiz-detail-category" class="px-2 py-1 bg-[#336B23] text-white border-2 border-[#1F4514] text-[10px] md:text-xs font-bold rounded uppercase tracking-wider font-['Retro_Gaming']">CATEGORY</span>
                                         <span id="quiz-detail-language" class="px-2 py-1 bg-[#F1F8E9] text-[#478D47] border-2 border-[#6CC452]/30 text-[10px] md:text-xs font-bold rounded uppercase tracking-wider font-['Retro_Gaming']">LANG</span>
                                     </div>
-                                    <button id="quiz-detail-close-top" class="text-[#94A3B8] hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors cursor-pointer shrink-0 absolute top-3 right-3 z-30">
-                                        <span class="material-symbols-outlined text-xl font-bold">close</span>
-                                    </button>
                                 </div>
 
                                 <!-- Title & Description -->
@@ -120,7 +117,7 @@ export class QuizSelectionUI {
                                             <span class="material-symbols-outlined text-[#478D47] fill-icon text-base md:text-xl">menu_book</span>
                                         </div>
                                         <div class="flex flex-col">
-                                            <span class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">Soal</span>
+                                            <span id="txt-quiz-detail-questions" class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">${i18n.t('select_quiz.questions')}</span>
                                             <span id="quiz-detail-questions" class="text-[#478D47] font-bold text-sm md:text-base font-['Space_Grotesk']">0</span>
                                         </div>
                                     </div>
@@ -130,29 +127,29 @@ export class QuizSelectionUI {
                                             <span class="material-symbols-outlined text-[#478D47] fill-icon text-base md:text-xl">sports_esports</span>
                                         </div>
                                         <div class="flex flex-col">
-                                            <span class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">Main</span>
+                                            <span id="txt-quiz-detail-main" class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">${i18n.t('select_quiz.played')}</span>
                                             <span id="quiz-detail-played" class="text-[#478D47] font-bold text-sm md:text-base font-['Space_Grotesk']">0x</span>
                                         </div>
                                     </div>
                                     <div class="w-0.5 h-8 md:h-10 bg-[#6CC452]/20"></div>
-                                    <div class="flex items-center gap-2 flex-1 justify-center">
-                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white flex items-center justify-center border-2 border-[#6CC452]/30 shrink-0">
-                                            <span class="material-symbols-outlined text-red-500 fill-icon text-base md:text-xl">favorite</span>
+                                    <button id="quiz-detail-fav-btn" class="flex items-center gap-2 flex-1 justify-center hover:bg-red-50 rounded-xl transition-all active:scale-95 p-1 group/fav">
+                                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white flex items-center justify-center border-2 border-red-500/20 group-hover/fav:border-red-500/50 shrink-0 transition-colors">
+                                            <span id="quiz-detail-fav-icon" class="material-symbols-outlined text-red-500 text-base md:text-xl transition-all">favorite</span>
                                         </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">Suka</span>
+                                        <div class="flex flex-col text-left">
+                                            <span id="txt-quiz-detail-likes" class="text-[#6CC452] text-[8px] md:text-[10px] font-bold uppercase font-['Retro_Gaming']">${i18n.t('select_quiz.likes')}</span>
                                             <span id="quiz-detail-favorite" class="text-[#478D47] font-bold text-sm md:text-base font-['Space_Grotesk']">0</span>
                                         </div>
-                                    </div>
+                                    </button>
                                 </div>
 
                                 <!-- Actions -->
                                 <div class="flex gap-3 mt-2">
                                     <button id="quiz-detail-close-btn" class="flex-1 py-3 bg-[#F1F8E9] text-[#478D47] font-['Retro_Gaming'] text-[11px] uppercase rounded-xl border-b-4 border-[#6CC452]/30 hover:bg-[#E8F5E9] active:border-b-0 active:translate-y-1 transition-all">
-                                        Tutup
+                                        ${i18n.t('select_quiz.close')}
                                     </button>
                                     <button id="quiz-detail-start-btn" class="flex-[2] py-3 bg-[#336B23] text-white font-['Retro_Gaming'] text-[11px] uppercase rounded-xl border-b-4 border-[#1F4514] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2 shadow-lg">
-                                        Mulai Quiz <span class="material-symbols-outlined text-base">arrow_forward</span>
+                                        ${i18n.t('select_quiz.start_btn')} <span class="material-symbols-outlined text-base">arrow_forward</span>
                                     </button>
                                 </div>
                             </div>

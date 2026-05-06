@@ -45,6 +45,16 @@ export class InstallPromptUI {
                 this.render();
             }
         });
+
+        // Check if event was already captured by index.html before module loaded
+        if ((window as any).zigmaDeferredPrompt) {
+            const dismissed = sessionStorage.getItem(InstallPromptUI.STORAGE_KEY);
+            if (!dismissed) {
+                setTimeout(() => {
+                    InstallPromptUI.show();
+                }, 1000);
+            }
+        }
     }
 
     static render() {

@@ -161,24 +161,14 @@ export class QuizSettingManager {
             const logo = document.getElementById(id);
             if (logo) {
                 logo.onclick = () => {
-                    const overlay = document.getElementById('auth-loading-overlay');
-                    const text = document.getElementById('auth-loading-text');
-                    if (overlay) {
-                        overlay.classList.remove('hidden');
-                        if (text) text.innerText = i18n.t('quiz_setting.going_back');
+                    const modal = document.getElementById('settings-back-confirm-modal');
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                        this.setupModalButtons();
+                    } else {
+                        // Fallback if modal not found
+                        this.handleBackNavigation();
                     }
-
-                    TransitionManager.close(() => {
-                        this.cleanup();
-                        this.hideSettingsUI();
-                        Router.navigate('/host/select-quiz');
-                        this.startManager('SelectQuizManager');
-                        
-                        setTimeout(() => {
-                            TransitionManager.open();
-                            setTimeout(() => { if (overlay) overlay.classList.add('hidden'); }, 100);
-                        }, 500);
-                    });
                 };
             }
         });
@@ -292,7 +282,13 @@ export class QuizSettingManager {
             const newBackBtn = settingsBackBtn.cloneNode(true) as HTMLElement;
             settingsBackBtn.parentNode?.replaceChild(newBackBtn, settingsBackBtn);
             newBackBtn.onclick = () => {
-                TransitionManager.transitionTo(() => this.goBackToQuizSelection());
+                const modal = document.getElementById('settings-back-confirm-modal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    this.setupModalButtons();
+                } else {
+                    TransitionManager.transitionTo(() => this.goBackToQuizSelection());
+                }
             };
         }
 
@@ -490,6 +486,67 @@ export class QuizSettingManager {
             document.removeEventListener('click', this._outsideClickHandler);
             this._outsideClickHandler = null;
         }
+    }
+
+    private setupModalButtons() {
+        const modal = document.getElementById('settings-back-confirm-modal');
+        const deleteBtn = document.getElementById('settings-confirm-delete-btn');
+        const cancelBtn = document.getElementById('settings-confirm-cancel-btn');
+
+        if (deleteBtn) {
+            deleteBtn.onclick = async () => {
+                if (modal) modal.classList.add('hidden');
+                await this.handleBackNavigation();
+            };
+        }
+
+        if (cancelBtn) {
+            cancelBtn.onclick = () => {
+                if (modal) modal.classList.add('hidden');
+            };
+        }
+
+        if (modal) {
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.classList.add('hidden');
+            };
+        }
+    }
+
+    private async handleBackNavigation() {
+        const overlay = document.getElementById('auth-loading-overlay');
+        const text = document.getElementById('auth-loading-text');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            if (text) text.innerText = i18n.t('quiz_setting.going_back');
+        }
+
+        // Delete session from Supabase B if it exists
+        const sessionId = localStorage.getItem('supabaseSessionId');
+        if (sessionId) {
+            console.log("Deleting session from Supabase B:", sessionId);
+            try {
+                await supabaseB.from(SESSION_TABLE).delete().eq('id', sessionId);
+            } catch (e) {
+                console.error("Failed to delete session:", e);
+            }
+            localStorage.removeItem('supabaseSessionId');
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('currentSessionId');
+            localStorage.removeItem('currentReconnectionToken');
+        }
+
+        TransitionManager.close(() => {
+            this.cleanup();
+            this.hideSettingsUI();
+            Router.navigate('/host/select-quiz');
+            this.startManager('SelectQuizManager');
+            
+            setTimeout(() => {
+                TransitionManager.open();
+                setTimeout(() => { if (overlay) overlay.classList.add('hidden'); }, 100);
+            }, 500);
+        });
     }
 
     private startManager(managerName: string, data?: any) {

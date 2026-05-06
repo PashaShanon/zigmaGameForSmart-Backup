@@ -413,15 +413,15 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                     from { background-position: 0 0; }
                     to { background-position: -864px 0; }
                 }
-                .name-container:hover .name-tooltip {
+                .name-container .name-tooltip.visible {
                     opacity: 1 !important;
                     visibility: visible !important;
-                    transform: translateX(-50%) translateY(2px) !important;
+                    transform: translateX(-50%) translateY(15px) !important;
                 }
                 .name-tooltip {
-                    position: absolute;
-                    top: 100%;
-                    left: 50%;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
                     transform: translateX(-50%) translateY(0);
                     background: #1a1a2e;
                     color: white;
@@ -432,12 +432,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                     white-space: nowrap;
                     opacity: 0;
                     visibility: hidden;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                     border: 2px solid #6CC452;
                     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
                     pointer-events: none;
-                    z-index: 100;
-                    margin-top: 2px;
+                    z-index: 999999;
+                    margin-top: 0;
                 }
                 .name-tooltip::after {
                     content: '';
@@ -605,17 +605,14 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             if (hEmptyMsg) hEmptyMsg.innerText = i18n.t('host_lobby.waiting_players_join');
 
             // Modals
-            const mLeaveTitle = document.getElementById('host-ui-leave-title');
-            if (mLeaveTitle) mLeaveTitle.innerText = i18n.t('host_lobby.leave_room_title');
-
-            const mLeaveDesc = document.getElementById('host-ui-leave-desc');
-            if (mLeaveDesc) mLeaveDesc.innerText = i18n.t('host_lobby.leave_room_desc');
+            const mConfirmEnd = document.getElementById('host-ui-confirm-end');
+            if (mConfirmEnd) mConfirmEnd.innerText = i18n.t('host_lobby.end_game_title');
 
             const mLeaveNo = document.getElementById('host-confirm-no');
-            if (mLeaveNo) mLeaveNo.innerText = i18n.t('host_lobby.no');
+            if (mLeaveNo) mLeaveNo.innerText = i18n.t('host_lobby.cancel');
 
             const mLeaveYes = document.getElementById('host-confirm-yes');
-            if (mLeaveYes) mLeaveYes.innerText = i18n.t('host_lobby.yes');
+            if (mLeaveYes) mLeaveYes.innerText = i18n.t('host_lobby.yes_end_game');
 
             const mMngGrpTitle = document.getElementById('host-ui-invite-group-title');
             if (mMngGrpTitle) mMngGrpTitle.innerHTML = `<span class="material-symbols-outlined text-primary text-3xl">group</span> ${i18n.t('host_lobby.invite_groups')}`;
@@ -784,6 +781,9 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                                 <button id="host-add-friends-btn" class="w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg">
                                     <span class="material-symbols-outlined text-xl md:text-2xl">person_add</span>
                                 </button>
+                                <button id="host-sound-btn" class="w-10 h-10 md:w-12 md:h-12 bg-[#facc15] border-2 border-[#ca8a04] text-black flex items-center justify-center rounded-xl hover:brightness-110 transition-all shadow-lg">
+                                    <span class="material-symbols-outlined text-xl md:text-2xl" id="host-sound-icon">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
+                                </button>
                             </div>
                         </div>
 
@@ -813,29 +813,6 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                         <div id="host-player-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4 w-full h-full overflow-y-auto custom-scrollbar p-2 hidden z-10 relative"></div>
                     </div>
                 </section>
-                </div>
-            </div>
-
-            <!-- CONFIRM BACK MODAL -->
-            <div id="host-back-confirm-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                <div class="bg-surface-dark border-4 border-red-500 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_rgba(255,0,0,0.3)] text-center relative overflow-hidden">
-                    <div class="absolute inset-0 pixel-bg-pattern opacity-10 pointer-events-none"></div>
-                    
-                    <span class="material-symbols-outlined text-6xl text-red-500 mb-4 drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]">warning</span>
-                    
-                    <h3 id="host-ui-leave-title" class="text-xl text-white font-['Retro_Gaming'] mb-4 leading-relaxed">${i18n.t('host_lobby.leave_room_title')}</h3>
-                    <p id="host-ui-leave-desc" class="text-white/60 font-['Retro_Gaming'] text-[10px] mb-8 leading-loose">
-                        ${i18n.t('host_lobby.leave_room_desc')}
-                    </p>
-
-                    <div class="flex gap-4 justify-center">
-                        <button id="host-confirm-no" class="px-6 py-3 bg-white/10 text-white font-['Retro_Gaming'] text-xs rounded-xl border-b-4 border-white/20 hover:bg-white/20 active:border-b-0 active:translate-y-1 transition-all">
-                            ${i18n.t('host_lobby.no')}
-                        </button>
-                        <button id="host-confirm-yes" class="px-6 py-3 bg-red-500 text-white font-['Retro_Gaming'] text-xs rounded-xl border-b-4 border-red-700 hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all shadow-[0_0_15px_rgba(255,0,0,0.4)]">
-                            ${i18n.t('host_lobby.yes')}
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -946,10 +923,11 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         hostExitModal.innerHTML = `
             <div class="bg-surface-dark border-4 border-red-500/50 rounded-2xl p-6 md:p-8 max-w-sm w-full text-center shadow-[0_0_30px_rgba(239,68,68,0.2)]">
                 <span class="material-symbols-outlined text-5xl text-red-500 mb-4 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">warning</span>
-                <h3 id="host-ui-confirm-end" class="text-white font-['Press_Start_2P'] text-sm md:text-base leading-loose mb-6">${i18n.t('host_lobby.end_game_title')}</h3>
+                <h3 id="host-ui-confirm-end" class="text-white font-['Press_Start_2P'] text-sm md:text-base leading-loose mb-2">DELETE SESSION?</h3>
+                <p class="text-white/60 font-['Retro_Gaming'] text-[10px] mb-8 leading-loose">This will permanently delete this session.</p>
                 <div class="flex flex-col gap-3">
                     <button id="host-confirm-yes" class="w-full py-4 bg-red-500 text-white font-['Press_Start_2P'] uppercase text-[10px] md:text-xs rounded-xl border-b-4 border-red-700 hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all cursor-pointer">
-                        ${i18n.t('host_lobby.yes_end_game')}
+                        DELETE
                     </button>
                     <button id="host-confirm-no" class="w-full py-4 bg-white/10 text-white font-['Press_Start_2P'] uppercase text-[10px] md:text-xs rounded-xl hover:bg-white/20 transition-all cursor-pointer">
                         ${i18n.t('host_lobby.cancel')}
@@ -976,6 +954,15 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (this.backBtn) {
             this.backBtn.onclick = () => {
                 if (modal) modal.classList.remove('hidden');
+            };
+        }
+
+        const soundBtn = document.getElementById('host-sound-btn');
+        const soundIcon = document.getElementById('host-sound-icon');
+        if (soundBtn && soundIcon) {
+            soundBtn.onclick = () => {
+                const isMuted = AudioManager.getInstance().toggleMute();
+                soundIcon.innerText = isMuted ? 'volume_off' : 'volume_up';
             };
         }
         if (yesBtn) {
@@ -1353,7 +1340,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         filteredGroups.forEach((group: any) => {
             const name = group.name || 'Unnamed Group';
             const avatar = group.avatar_url || '/logo/gameforsmart-logo-fix.webp';
-            const memberCount = Array.isArray(group.members) ? group.members.length + 1 : 1;
+            const memberCount = Array.isArray(group.members) ? group.members.length : 0;
             const isSelected = this.selectedGroups.has(group.id);
             const canInvite = group.canInvite;
             const creatorNameText = group.creatorName || 'Creator';
@@ -1871,7 +1858,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             // New Host Layout Header
             const hostHeader = document.getElementById('host-player-count');
             if (hostHeader) {
-                const label = totalPlayers > 1 ? i18n.t('host_lobby.players_plural') : i18n.t('host_lobby.player_singular');
+                const label = totalPlayers === 1 ? i18n.t('host_lobby.player_singular') : i18n.t('host_lobby.players_plural');
                 hostHeader.innerText = `${totalPlayers} ${label}`;
             }
         } else {
@@ -2161,8 +2148,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
                     <!-- Player Name Container with Tooltip Trigger -->
                         <div class="name-container" style="text-align: center; width: 100%; padding: 0 4px; position: relative; pointer-events: auto; margin-top: 4px;">
-                            <span style="font-size: 14px; color: ${isMe ? '#FFFFFF' : 'white'}; font-family: 'Press Start 2P', cursive; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; ${isMe ? 'text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);' : ''}">
-                                ${player.name || 'PLAYER'}
+                            <span class="player-name-truncated" data-fullname="${player.name || 'PLAYER'}" style="font-size: 14px; color: ${isMe ? '#FFFFFF' : 'white'}; font-family: 'Press Start 2P', cursive; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; ${isMe ? 'text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);' : ''}">
+                                ${(player.name || 'PLAYER').split(' ')[0]}
                             </span>
                             
                             <!-- Tooltip (Only shows when name-container is hovered via CSS) -->
@@ -2185,6 +2172,44 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 align-content: start;
                 `;
         }
+
+        this.setupPlayerCardTooltips();
+    }
+
+    private setupPlayerCardTooltips() {
+        const containers = document.querySelectorAll('.name-container');
+        containers.forEach(container => {
+            const nameEl = container.querySelector('.player-name-truncated') as HTMLElement;
+            const tooltipEl = container.querySelector('.name-tooltip') as HTMLElement;
+
+            if (!nameEl || !tooltipEl) return;
+
+            const checkTruncation = () => {
+                const fullName = nameEl.getAttribute('data-fullname') || "";
+                return nameEl.scrollWidth > nameEl.clientWidth || nameEl.innerText.trim().toUpperCase() !== fullName.trim().toUpperCase();
+            };
+
+            container.addEventListener('mouseenter', (e: Event) => {
+                const mouseEvent = e as MouseEvent;
+                if (checkTruncation()) {
+                    tooltipEl.style.left = `${mouseEvent.clientX}px`;
+                    tooltipEl.style.top = `${mouseEvent.clientY}px`;
+                    tooltipEl.classList.add('visible');
+                }
+            });
+
+            container.addEventListener('mousemove', (e: Event) => {
+                const mouseEvent = e as MouseEvent;
+                if (tooltipEl.classList.contains('visible')) {
+                    tooltipEl.style.left = `${mouseEvent.clientX}px`;
+                    tooltipEl.style.top = `${mouseEvent.clientY}px`;
+                }
+            });
+
+            container.addEventListener('mouseleave', () => {
+                tooltipEl.classList.remove('visible');
+            });
+        });
     }
 
     updateJoinUrl(code: string) {

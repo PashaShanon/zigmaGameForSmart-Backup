@@ -18,10 +18,12 @@ export class HostLeaderboardManager {
     private q: any;
     private sessionId: string | null = null;
     private isHost: boolean = true;
+    private tooltip: HTMLElement | null = null;
 
     start(data?: { rankings?: any[], isHost?: boolean, lastGameOptions?: any, lastSelectedQuiz?: any, mySessionId?: string }) {
         this.initializeClient();
         TransitionManager.ensureClosed();
+        this.createTooltip();
         OrientationManager.requirePortrait(i18n.t('host_leaderboard.portrait_req_title'), i18n.t('host_leaderboard.portrait_req_desc'));
 
         // Listen for language changes
@@ -191,6 +193,62 @@ export class HostLeaderboardManager {
         if (restartBtnMobile) {
             restartBtnMobile.onclick = handleRestart;
         }
+
+        this.setupPodiumTooltips();
+    }
+
+    private setupPodiumTooltips() {
+        (window as any).lbTooltip = {
+            show: (e: MouseEvent, fullName: string) => {
+                const nameEl = e.currentTarget as HTMLElement;
+                const displayName = nameEl.innerText.trim().toUpperCase();
+                const fullUpper = fullName.trim().toUpperCase();
+                
+                // Show if visually truncated OR if it's only showing the first name
+                if (nameEl.scrollWidth > nameEl.clientWidth || displayName !== fullUpper) {
+                    this.showTooltip(fullName);
+                    this.moveTooltip(e);
+                }
+            },
+            move: (e: MouseEvent) => {
+                this.moveTooltip(e);
+            },
+            hide: () => {
+                this.hideTooltip();
+            }
+        };
+    }
+
+    private createTooltip() {
+        let t = document.getElementById('podium-name-tooltip');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'podium-name-tooltip';
+            t.className = "lb-name-tooltip";
+            document.body.appendChild(t);
+        }
+        this.tooltip = t;
+    }
+
+    private showTooltip(text: string) {
+        if (!this.tooltip) return;
+        this.tooltip.innerText = text;
+        this.tooltip.classList.add('visible');
+    }
+
+    private moveTooltip(e: MouseEvent) {
+        if (!this.tooltip) return;
+        let x = e.clientX + 15;
+        let y = e.clientY + 15;
+        if (x + this.tooltip.offsetWidth > window.innerWidth) x = e.clientX - this.tooltip.offsetWidth - 15;
+        if (y + this.tooltip.offsetHeight > window.innerHeight) y = e.clientY - this.tooltip.offsetHeight - 15;
+        this.tooltip.style.left = `${x}px`;
+        this.tooltip.style.top = `${y}px`;
+    }
+
+    private hideTooltip() {
+        if (!this.tooltip) return;
+        this.tooltip.classList.remove('visible');
     }
 
     cleanup() {

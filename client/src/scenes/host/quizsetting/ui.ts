@@ -77,6 +77,8 @@ export class QuizSettingsUI {
                                                 <button class="timer-opt w-full ${i18n.getLanguage() === 'ar' ? 'text-right' : 'text-left'} px-4 py-2 hover:bg-[#F1F8E9] hover:text-[#478D47] rounded-lg transition-colors text-xs font-bold font-['Space_Grotesk'] text-[#478D47]" data-value="600" data-label="${i18n.t('quiz_setting.m_10')}">${i18n.t('quiz_setting.m_10')}</button>
                                                 <button class="timer-opt w-full ${i18n.getLanguage() === 'ar' ? 'text-right' : 'text-left'} px-4 py-2 hover:bg-[#F1F8E9] hover:text-[#478D47] rounded-lg transition-colors text-xs font-bold font-['Space_Grotesk'] text-[#478D47]" data-value="900" data-label="${i18n.t('quiz_setting.m_15')}">${i18n.t('quiz_setting.m_15')}</button>
                                                 <button class="timer-opt w-full ${i18n.getLanguage() === 'ar' ? 'text-right' : 'text-left'} px-4 py-2 hover:bg-[#F1F8E9] hover:text-[#478D47] rounded-lg transition-colors text-xs font-bold font-['Space_Grotesk'] text-[#478D47]" data-value="1200" data-label="${i18n.t('quiz_setting.m_20')}">${i18n.t('quiz_setting.m_20')}</button>
+                                                <button class="timer-opt w-full ${i18n.getLanguage() === 'ar' ? 'text-right' : 'text-left'} px-4 py-2 hover:bg-[#F1F8E9] hover:text-[#478D47] rounded-lg transition-colors text-xs font-bold font-['Space_Grotesk'] text-[#478D47]" data-value="1500" data-label="${i18n.t('quiz_setting.m_25')}">${i18n.t('quiz_setting.m_25')}</button>
+                                                <button class="timer-opt w-full ${i18n.getLanguage() === 'ar' ? 'text-right' : 'text-left'} px-4 py-2 hover:bg-[#F1F8E9] hover:text-[#478D47] rounded-lg transition-colors text-xs font-bold font-['Space_Grotesk'] text-[#478D47]" data-value="1800" data-label="${i18n.t('quiz_setting.m_30')}">${i18n.t('quiz_setting.m_30')}</button>
                                             </div>
                                         </div>
                                     </div>
@@ -121,6 +123,31 @@ export class QuizSettingsUI {
                                 </button>
                             </div>
 
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delete Session Confirmation Modal -->
+                <div id="settings-back-confirm-modal" class="hidden fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm pointer-events-auto">
+                    <div class="relative bg-[#1a1a2e] border-[3px] border-[#ef4444] rounded-[16px] p-8 md:p-10 max-w-sm w-full text-center shadow-[0_0_40px_rgba(239,68,68,0.3),_0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden transform transition-all duration-300">
+                        
+                        <div class="relative z-10 flex flex-col items-center">
+                            <h3 class="text-[#ef4444] font-['Retro_Gaming'] text-sm md:text-base uppercase tracking-wider mb-3 flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-base md:text-lg">warning</span>
+                                DELETE SESSION?
+                            </h3>
+                            <p class="text-white/60 font-['Retro_Gaming'] text-[9px] md:text-[10px] mb-8 leading-[1.8]">
+                                This will permanently delete<br>this session.
+                            </p>
+                            
+                            <div class="flex flex-row gap-3 w-full justify-center">
+                                <button id="settings-confirm-cancel-btn" class="flex-1 py-3 px-6 bg-white/5 text-white font-['Retro_Gaming'] uppercase text-[9px] md:text-[10px] rounded-[10px] border-2 border-white/15 hover:bg-white/10 transition-all cursor-pointer whitespace-nowrap">
+                                    ${i18n.t('host_lobby.cancel')}
+                                </button>
+                                <button id="settings-confirm-delete-btn" class="flex-1 py-3 px-6 bg-[#ef4444] text-white font-['Retro_Gaming'] uppercase text-[9px] md:text-[10px] rounded-[10px] border-2 border-b-4 border-[#b91c1c] hover:brightness-110 active:border-b-2 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap">
+                                    DELETE
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

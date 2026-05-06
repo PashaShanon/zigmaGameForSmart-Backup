@@ -524,7 +524,7 @@ export class HostProgressScene extends Phaser.Scene {
                 <span id="volume-icon" class="material-symbols-outlined text-[24px] md:text-[32px]">volume_up</span>
             </button>
 
-            <button id="spec-end-btn" class="absolute bottom-4 md:bottom-10 right-4 md:right-10 bg-[#ff0055] border-none px-4 py-2 md:px-9 md:py-4 text-white cursor-pointer font-inherit text-xs md:text-sm uppercase rounded-xl pointer-events-auto transition-all duration-75 tracking-widest shadow-[0_4px_0_#990033] md:shadow-[0_6px_0_#990033] active:translate-y-1 active:shadow-none">
+            <button id="spec-end-btn" class="absolute bottom-4 md:bottom-10 right-20 md:right-28 bg-[#ff0055] border-none px-4 py-2 md:px-9 md:py-4 text-white cursor-pointer font-inherit text-xs md:text-sm uppercase rounded-xl pointer-events-auto transition-all duration-75 tracking-widest shadow-[0_4px_0_#990033] md:shadow-[0_6px_0_#990033] active:translate-y-1 active:shadow-none">
                 Akhiri Game
             </button>
         `;
