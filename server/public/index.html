@@ -3,6 +3,22 @@
 
 <head>
   <meta charset="UTF-8" />
+  <link rel="manifest" href="/manifest.json" />
+  <script>
+    // Capture beforeinstallprompt as early as possible
+    window.zigmaDeferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.zigmaDeferredPrompt = e;
+      console.log('[PWA] 📥 beforeinstallprompt captured at HTML level');
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
 
   <!-- QUIZ SELECTION styles -->
   <style>
@@ -158,6 +174,20 @@
       padding: 0;
       overflow: hidden;
       background-color: #121216;
+    }
+
+    /* QR Scanner UI Fixes */
+    #qr-reader div[style*="background-color: rgb(255, 255, 255)"],
+    #qr-reader div[style*="background-color: white"],
+    #qr-shaded-region {
+      display: none !important;
+    }
+
+    #qr-reader video {
+      object-fit: cover !important;
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 12px;
     }
 
     #app {
@@ -754,7 +784,7 @@
       backface-visibility: hidden;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-CLQJ18Qk.js"></script>
+  <script type="module" crossorigin src="/assets/index-BILLolT4.js"></script>
 </head>
 
 <body class="bg-background-light dark:bg-background-dark text-white">
@@ -779,6 +809,11 @@
 
   <!-- GLOBAL TRANSITION OVERLAY -->
   <div id="transition-overlay"></div>
+
+  <!-- GLOBAL FULLSCREEN BUTTON -->
+  <button id="global-fullscreen-btn" class="fixed bottom-4 right-4 z-[9999] w-12 h-12 md:w-14 md:h-14 bg-white border-2 border-[#6CC452] rounded-full flex items-center justify-center hover:bg-[#F1F8E9] shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer pointer-events-auto">
+    <span id="global-fullscreen-icon" class="material-symbols-outlined text-[#478D47] text-2xl md:text-3xl">fullscreen</span>
+  </button>
 
   <!-- MAIN SCRIPT -->
 </body>

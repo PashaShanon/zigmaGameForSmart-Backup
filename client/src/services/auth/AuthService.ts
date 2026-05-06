@@ -1,4 +1,4 @@
-import { supabase, Profile, USER_SESSION_KEY, USER_PROFILE_KEY, syncSessionCookie, getSessionFromCookie } from '../../lib/supabase';
+import { supabase, Profile, USER_SESSION_KEY, USER_PROFILE_KEY } from '../../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 export interface AuthResult {
@@ -17,35 +17,46 @@ export class AuthService {
         // Initialize from stored session
         this.loadStoredSession();
 
-        // [SSO] Cek sesi shared cookie saat awal load
-        this.initializeSessionFromCookie();
-
         // Listen for auth state changes
         supabase.auth.onAuthStateChange((event, session) => {
-            console.log('Auth state changed:', event, session?.user?.email);
             if (session?.user) {
                 this.currentUser = session.user;
                 this.saveSession(session);
-
-                // [SSO] Simpan token ke cookie saat login / token refresh
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    syncSessionCookie({
-                        access_token: session.access_token,
-                        refresh_token: session.refresh_token
-                    });
-                }
             } else if (event === 'SIGNED_OUT' || !session) {
                 this.currentUser = null;
                 this.currentProfile = null;
                 this.clearSession();
-
-                // [SSO] Hapus shared cookie saat logout
-                syncSessionCookie(null);
             }
         });
 
-        // [SSO] Listener untuk sinkronisasi antar-tab
-        this.setupTabSyncListeners();
+        // Cross-tab / cross-subdomain sync via focus and visibility
+        if (typeof window !== 'undefined') {
+            const syncFromCookie = async () => {
+                try {
+                    // getSession() will read the latest cookie natively thanks to @supabase/ssr
+                    const { data: { session: currentSession } } = await supabase.auth.getSession();
+                    
+                    if (!currentSession && this.currentUser) {
+                        console.log('[AuthService] Logout detected from another tab/subdomain. Syncing...');
+                        this.currentUser = null;
+                        this.currentProfile = null;
+                        this.clearSession();
+                        window.location.reload();
+                    } else if (currentSession && !this.currentUser) {
+                        console.log('[AuthService] Login detected from another tab/subdomain. Syncing...');
+                        this.currentUser = currentSession.user;
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('[AuthService] Error checking cross-tab session state:', error);
+                }
+            };
+
+            window.addEventListener('focus', syncFromCookie);
+            window.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') syncFromCookie();
+            });
+        }
     }
 
     static getInstance(): AuthService {
@@ -55,77 +66,12 @@ export class AuthService {
         return AuthService.instance;
     }
 
-    private async initializeSessionFromCookie(): Promise<void> {
-        try {
-            const { data: { session: localSession } } = await supabase.auth.getSession();
-            
-            if (!localSession) {
-                const cookieSession = getSessionFromCookie();
-                if (cookieSession) {
-                    console.log('[AuthService/SSO] Sesi dari cookie terdeteksi, memulihkan (setSession)...');
-                    const { data, error } = await supabase.auth.setSession(cookieSession);
-                    if (!error && data.session) {
-                        console.log('[AuthService/SSO] Sesi berhasil dipulihkan dari cookie!');
-                        this.currentUser = data.session.user;
-                        await this.refreshProfile();
-                    } else {
-                        console.warn('[AuthService/SSO] Token cookie expired atau invalid, menghapus cookie');
-                        syncSessionCookie(null);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('[AuthService/SSO] Error initializing session from cookie:', error);
-        }
-    }
-
-    private setupTabSyncListeners(): void {
-        if (typeof window === 'undefined') return;
-
-        const syncFromCookie = async () => {
-            try {
-                const cookieSession = getSessionFromCookie();
-                const { data: { session: localSession } } = await supabase.auth.getSession();
-
-                // 1. Logout Sync: cookie kosong tapi kita masih login
-                if (!cookieSession) {
-                    if (localSession) {
-                        console.log('[AuthService/SSO] Logout dari app lain terdeteksi, sinkronisasi logout...');
-                        await this.signOut();
-                        window.location.reload();
-                    }
-                    return;
-                }
-
-                // 2. Token Sync / Login Sync
-                if (!localSession) {
-                    // Kita belum login tapi cookie login
-                    console.log('[AuthService/SSO] Login dari app lain terdeteksi, sinkronisasi login...');
-                    await supabase.auth.setSession(cookieSession);
-                    window.location.reload();
-                } else if (localSession.access_token !== cookieSession.access_token) {
-                    // Token berbeda (habis di-refresh di tab lain)
-                    console.log('[AuthService/SSO] Token refresh baru terdeteksi, update session lokal...');
-                    await supabase.auth.setSession(cookieSession);
-                }
-            } catch (error) {
-                console.error('[AuthService/SSO] Error sinkronisasi cookie antar-tab:', error);
-            }
-        };
-
-        window.addEventListener('focus', syncFromCookie);
-        window.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') syncFromCookie();
-        });
-    }
 
     private loadStoredSession(): void {
         try {
             const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
-            console.log(`[AuthService] Attempting to load stored profile from ${USER_PROFILE_KEY}`);
             if (storedProfile) {
                 this.currentProfile = JSON.parse(storedProfile);
-                console.log(`[AuthService] Loaded profile for user: ${this.currentProfile?.username || 'unknown'} (ID: ${this.currentProfile?.id})`);
             } else {
                 console.log(`[AuthService] No stored profile found.`);
             }
@@ -435,13 +381,7 @@ export class AuthService {
                 return null;
             }
 
-            console.log('[AuthService] Refreshing profile from Supabase for auth user:', session.user.id);
             const profile = await this.fetchUserProfile(session.user.id);
-            if (profile) {
-                console.log('[AuthService] Profile refreshed:', { id: profile.id, auth_user_id: profile.auth_user_id, username: profile.username });
-            } else {
-                console.warn('[AuthService] Profile refresh failed - no profile found for auth user:', session.user.id);
-            }
             return profile;
         } catch (error) {
             console.error('[AuthService] Error refreshing profile:', error);
