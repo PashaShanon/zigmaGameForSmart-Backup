@@ -1162,19 +1162,15 @@ export class PlayerWaitingRoomManager {
 
             const dedupeKey = p.userId || sessionId;
             
-            // If already exists, prefer the one with matching sessionId (current player)
-            if (playerMap.has(dedupeKey)) {
-                if (sessionId === this.mySessionId) {
-                    playerMap.set(dedupeKey, { sessionId, name: p.name, hairId: p.hairId });
-                }
-                return;
+            // DEDUPLICATION FIX: Prefer current session or LATEST session found
+            const existing = playerMap.get(dedupeKey);
+            if (!existing || sessionId === this.mySessionId) {
+                playerMap.set(dedupeKey, { 
+                    sessionId, 
+                    name: p.name, 
+                    hairId: p.hairId 
+                });
             }
-
-            playerMap.set(dedupeKey, {
-                sessionId,
-                name: p.name,
-                hairId: p.hairId,
-            });
         });
         const players = Array.from(playerMap.values());
 

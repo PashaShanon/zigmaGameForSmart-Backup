@@ -893,6 +893,9 @@ export class GameRoom extends Room<GameState> {
         if (incomingUserId || incomingName) {
             const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
             
+            console.log(`[DEDUPE] Checking for existing sessions for user: ${incomingName} (${incomingUserId})`);
+            console.log(`[DEDUPE] Current player count in state: ${this.state.players.size}`);
+
             // Cari semua session yang duplikat
             const duplicates: string[] = [];
             this.state.players.forEach((p, sid) => {
@@ -903,6 +906,7 @@ export class GameRoom extends Room<GameState> {
                 const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
 
                 if (isSameUser || isSameName) {
+                    console.log(`[DEDUPE] Found match! SID: ${sid}, Name: ${p.name}, UserID: ${p.userId}`);
                     duplicates.push(sid);
                 }
             });
