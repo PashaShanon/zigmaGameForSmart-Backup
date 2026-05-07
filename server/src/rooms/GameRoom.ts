@@ -885,12 +885,13 @@ export class GameRoom extends Room<GameState> {
 
         // --- NON-HOST PLAYERS ONLY ---
         
-        // Anti-duplicate: Jika userId atau Nama sudah ada (ghost dari session sebelumnya), hapus yang lama segera
+        // SESSION TAKEOVER: Jika userId atau Nama sudah ada di room (dari session sebelumnya),
+        // pindahkan data player lama ke session baru (takeover) agar tetap 1 player dan UI sync.
         const incomingUserId = options.userId;
         const incomingName = options.name;
 
         if (incomingUserId || incomingName) {
-            const toDelete: string[] = [];
+            let existingSessionId: string | null = null;
             const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
 
             this.state.players.forEach((p, sid) => {
@@ -899,44 +900,67 @@ export class GameRoom extends Room<GameState> {
                 const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
 
                 if (isSameUser || isSameName) {
-                    toDelete.push(sid);
+                    existingSessionId = sid;
                 }
             });
 
-            toDelete.forEach(sid => {
-                const p = this.state.players.get(sid);
-                if (!p) return;
+            if (existingSessionId && existingSessionId !== client.sessionId) {
+                const existingPlayer = this.state.players.get(existingSessionId)!;
+                console.log(`[GameRoom] SESSION TAKEOVER: ${existingPlayer.name} (${existingSessionId}) → (${client.sessionId})`);
 
-                console.log(`[GameRoom] Removing duplicate session ${sid} for user ${p.name}`);
-                
-                // 1. Cleanup spawn point
-                if (p.spawnIndex !== -1) {
-                    this.usedSpawnIndices.delete(p.spawnIndex);
-                }
-                
-                // 2. Cleanup sub-room
-                const subRoom = this.state.subRooms.find(r => r.id === p.subRoomId);
-                if (subRoom) {
-                    const idx = subRoom.playerIds.indexOf(sid);
-                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
-                }
-                
-                // 3. Kick old client if still exists
-                const oldClient = this.clients.find(c => c.sessionId === sid);
+                // 1. Kick old client connection if still alive
+                const oldClient = this.clients.find(c => c.sessionId === existingSessionId);
                 if (oldClient) {
                     (oldClient as any).kicked = true;
                     oldClient.send("kicked", { message: "Joined from another device/tab." });
                     oldClient.leave();
                 }
 
-                // 4. Remove from Supabase B
-                if (p.userId) {
-                    this.removeParticipantFromSupabaseB(p.userId);
+                // 2. Create new player entry with data from old session (TAKEOVER)
+                const takenOverPlayer = new Player();
+                takenOverPlayer.sessionId = client.sessionId;
+                takenOverPlayer.userId = existingPlayer.userId;
+                takenOverPlayer.avatarUrl = options.avatarUrl || existingPlayer.avatarUrl;
+                takenOverPlayer.name = existingPlayer.name;
+                takenOverPlayer.hairId = existingPlayer.hairId;
+                takenOverPlayer.x = existingPlayer.x;
+                takenOverPlayer.y = existingPlayer.y;
+                takenOverPlayer.spawnIndex = existingPlayer.spawnIndex;
+                takenOverPlayer.subRoomId = existingPlayer.subRoomId;
+                // Preserve game progress if game is active
+                takenOverPlayer.score = existingPlayer.score;
+                takenOverPlayer.correctAnswers = existingPlayer.correctAnswers;
+                takenOverPlayer.wrongAnswers = existingPlayer.wrongAnswers;
+                takenOverPlayer.answeredQuestions = existingPlayer.answeredQuestions;
+                takenOverPlayer.isFinished = existingPlayer.isFinished;
+                takenOverPlayer.finishTime = existingPlayer.finishTime;
+                takenOverPlayer.hasWrongAnswer = existingPlayer.hasWrongAnswer;
+                takenOverPlayer.lastWrongQuestionId = existingPlayer.lastWrongQuestionId;
+
+                // 3. Update sub-room: replace old sessionId with new one
+                const subRoom = this.state.subRooms.find(r => r.id === existingPlayer.subRoomId);
+                if (subRoom) {
+                    const idx = subRoom.playerIds.indexOf(existingSessionId!);
+                    if (idx > -1) {
+                        subRoom.playerIds.splice(idx, 1);
+                    }
+                    subRoom.playerIds.push(client.sessionId);
                 }
 
-                // 5. Delete from state immediately
-                this.state.players.delete(sid);
-            });
+                // 4. Transfer answer history
+                const oldAnswers = this.playerAnswers.get(existingSessionId!);
+                if (oldAnswers) {
+                    this.playerAnswers.set(client.sessionId, oldAnswers);
+                    this.playerAnswers.delete(existingSessionId!);
+                }
+
+                // 5. Remove old entry, set new entry (atomic swap)
+                this.state.players.delete(existingSessionId!);
+                this.state.players.set(client.sessionId, takenOverPlayer);
+
+                console.log(`[GameRoom] Takeover complete. Player ${takenOverPlayer.name} is now on session ${client.sessionId}. Total players: ${this.state.players.size}`);
+                return; // Skip creating a new player — takeover is done
+            }
         }
 
         const player = new Player();
@@ -1070,17 +1094,23 @@ export class GameRoom extends Room<GameState> {
         // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect
         // Jika salah satu dari isKicked, consented, atau isManualLeave = true → langsung hapus
         if (!isKicked && !consented && !isManualLeave) {
-            // Standard: 60 detik reconnect untuk refresh/koneksi putus.
-            // Jika player masuk kembali dengan ID yang sama, onJoin deduplication akan mengganti sesi lama.
-            // Jika player sengaja EXIT, flag manualLeave akan aktif dan skip blok ini.
-            console.log(`[GameRoom] Player ${client.sessionId} disconnected (unintentional). Allowing 60s reconnection...`);
-            try {
-                await this.allowReconnection(client, 60);
-                console.log(`[GameRoom] Player ${client.sessionId} reconnected!`);
-                return;
-            } catch (e) {
-                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after 60s.`);
-                // Continue to cleanup
+            if (this.state.isGameStarted && !this.state.isGameOver) {
+                // GAME PHASE: Izinkan reconnect 60 detik agar progress player tidak hilang
+                console.log(`[GameRoom] Player ${client.sessionId} disconnected during GAME. Allowing 60s reconnection...`);
+                try {
+                    await this.allowReconnection(client, 60);
+                    console.log(`[GameRoom] Player ${client.sessionId} reconnected!`);
+                    return;
+                } catch (e) {
+                    console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after 60s.`);
+                    // Continue to cleanup
+                }
+            } else {
+                // LOBBY PHASE: Langsung cleanup tanpa allowReconnection.
+                // Di lobby, player bisa join ulang kapan saja via joinById.
+                // allowReconnection di lobby menyebabkan ghost player (duplikasi) karena
+                // entry lama tetap ada di state saat player join kembali dengan session baru.
+                console.log(`[GameRoom] Player ${client.sessionId} disconnected during LOBBY. Cleaning up immediately (no reconnection wait).`);
             }
         } else {
             // Jika di-kick, sengaja klik EXIT (consented/manualLeave), langsung hapus tanpa menunggu

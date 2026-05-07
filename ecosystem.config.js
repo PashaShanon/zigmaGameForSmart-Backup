@@ -7,13 +7,13 @@ module.exports = {
       script: "./build/server/src/server.js", 
       
       /* 
-         PENTING: Untuk Game Server (Colyseus), sangat disarankan menggunakan 'fork' 
-         dengan 1 instance jika Anda tidak menggunakan Redis Presence. 
-         Cluster mode tanpa Redis akan menyebabkan error 'Session Not Found' 
-         saat player mencoba masuk ke room.
+         PENTING: Untuk Game Server (Colyseus), WAJIB menggunakan 'fork' 
+         dengan 1 instance jika tidak menggunakan Redis Presence. 
+         Cluster mode tanpa Redis menyebabkan duplikasi player dan error 
+         'Session Not Found' karena state tidak di-share antar instance.
       */
-      instances: "max", 
-      exec_mode: "cluster", 
+      instances: 1, 
+      exec_mode: "fork", 
       
       autorestart: true,
       watch: false,
