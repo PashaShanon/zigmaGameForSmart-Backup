@@ -395,6 +395,10 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.handleGameStart();
         });
 
+        this.room.onMessage("playerLeft", () => {
+            this.updateAll();
+        });
+
         // --- ROOM MUSIC CONTROL ---
         this.room.state.listen("isMusicEnabled", (isEnabled: boolean) => {
             console.log(`[HostLobby] 🏠 Room Music Enabled: ${isEnabled}`);
@@ -2079,7 +2083,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             // 1. My own session (if I'm a player)
             // 2. The LATEST session encountered (to ensure hair/name updates show up)
             const existing = playerMap.get(dedupeKey);
-            if (!existing || sessionId === this.mySessionId) {
+            
+            // DEDUPLICATION FIX (RUTHLESS):
+            // 1. If I am the HOST, I always want the LATEST data, so I overwrite any existing entry.
+            // 2. If I am a PLAYER, I only want to overwrite if the new session is MY session.
+            // 3. If there is no existing entry, always set it.
+            if (!existing || sessionId === this.mySessionId || this.isHost) {
                 playerMap.set(dedupeKey, { 
                     sessionId, 
                     name: p.name, 
