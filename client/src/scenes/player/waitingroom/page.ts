@@ -1002,31 +1002,32 @@ export class PlayerWaitingRoomManager {
         localStorage.removeItem('pendingJoinRoomCode');
 
         if (this.room) {
-            // CRITICAL FIX: Send manualPlayerLeave, then leave, then navigate.
-            // Previously navigation happened BEFORE the message was sent, causing
-            // the WebSocket to close before the server received the message.
-            // This resulted in ghost players (duplicates) because the server
-            // kept the old player entry alive.
+            const roomRef = this.room;
+            this.room = null as any; // Prevent double-leave
+
             try { 
-                this.room.send("manualPlayerLeave"); 
-                console.log("[PlayerLobby] ✅ manualPlayerLeave sent successfully");
+                // ONLY send if connection is open
+                if (roomRef.connection && (roomRef.connection as any).isOpen) {
+                    roomRef.send("manualPlayerLeave"); 
+                    console.log("[PlayerLobby] ✅ manualPlayerLeave sent successfully");
+                } else {
+                    console.log("[PlayerLobby] ℹ️ Skipping manualPlayerLeave, socket already closed.");
+                }
             } catch (e) {
                 console.warn("[PlayerLobby] ⚠️ manualPlayerLeave failed to send:", e);
             }
 
             // Leave room and THEN navigate (with safety timeout)
-            const roomRef = this.room;
-            this.room = null as any; // Prevent double-leave
-
-            // Wait for message delivery + room.leave() before navigating
             setTimeout(() => {
-                try { roomRef.leave(true); } catch (_) {} // consented=true
+                try { 
+                    if (roomRef.connection && (roomRef.connection as any).isOpen) {
+                        roomRef.leave(true); 
+                    }
+                } catch (_) {} // consented=true
                 
                 // Navigate to lobby after room is properly left
-                setTimeout(() => {
-                    this.navigateToLobby();
-                }, 100);
-            }, 200);
+                this.navigateToLobby();
+            }, 100);
         } else {
             // No room connection, navigate immediately
             this.navigateToLobby();
@@ -1040,11 +1041,12 @@ export class PlayerWaitingRoomManager {
         const lobbyUI = document.getElementById('lobby-ui');
         if (lobbyUI) lobbyUI.classList.remove('hidden');
 
-        // Use replace to prevent "Back" from re-joining
-        Router.replace('/');
-
         // Explicitly tell lobby we are exiting so it doesn't auto-join
-        this.startManager('LobbyManager', { didExit: true });
+        // Use a tiny delay to ensure Router state is updated if needed
+        setTimeout(() => {
+            Router.replace('/');
+            this.startManager('LobbyManager', { didExit: true });
+        }, 10);
     }
 
 
