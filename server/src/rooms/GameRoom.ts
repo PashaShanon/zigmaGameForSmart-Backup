@@ -292,6 +292,11 @@ export class GameRoom extends Room<GameState> {
             // Aggressive Cleanup from state
             const player = this.state.players.get(targetSid);
             if (player) {
+                // Cleanup Supabase B
+                if (!this.state.isGameStarted && player.userId) {
+                    this.removeParticipantFromSupabaseB(player.userId);
+                }
+
                 if (player.spawnIndex !== -1) this.usedSpawnIndices.delete(player.spawnIndex);
                 const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
                 if (subRoom) {
