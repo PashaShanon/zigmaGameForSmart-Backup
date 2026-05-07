@@ -894,15 +894,23 @@ export class GameRoom extends Room<GameState> {
             let existingSessionId: string | null = null;
             const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
 
+            // DEBUG: Log incoming player data
+            console.log(`[TAKEOVER-DEBUG] Incoming join: userId="${incomingUserId}", name="${incomingName}", normalized="${normalizedIncoming}"`);
+            console.log(`[TAKEOVER-DEBUG] Current players in room (${this.state.players.size}):`);
+
             this.state.players.forEach((p, sid) => {
                 const isSameUser = incomingUserId && p.userId === incomingUserId;
                 const normalizedPName = p.name ? p.name.trim().toLowerCase() : "";
                 const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
 
+                console.log(`[TAKEOVER-DEBUG]   - sid=${sid}, userId="${p.userId}", name="${p.name}", normalized="${normalizedPName}" → isSameUser=${isSameUser}, isSameName=${isSameName}`);
+
                 if (isSameUser || isSameName) {
                     existingSessionId = sid;
                 }
             });
+
+            console.log(`[TAKEOVER-DEBUG] Result: existingSessionId=${existingSessionId}, currentSessionId=${client.sessionId}`);
 
             if (existingSessionId && existingSessionId !== client.sessionId) {
                 const existingPlayer = this.state.players.get(existingSessionId)!;
