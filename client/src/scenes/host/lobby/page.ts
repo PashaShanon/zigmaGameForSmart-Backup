@@ -1877,11 +1877,16 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (!this.room) return; // Guard: room belum siap (sedang restore)
         const isCurrentHost = this.room.state.hostId === this.mySessionId;
 
-        // Count only non-host players
-        let totalPlayers = 0;
-        this.room.state.players.forEach((p: any) => {
-            if (!p.isHost) totalPlayers++;
+        // Count only non-host players, and deduplicate by userId for safety
+        const playerMap = new Map<string, any>();
+        this.room.state.players.forEach((p: any, sessionId: string) => {
+            if (p.isHost) return;
+            const dedupeKey = p.userId || sessionId;
+            if (!playerMap.has(dedupeKey)) {
+                playerMap.set(dedupeKey, p);
+            }
         });
+        const totalPlayers = playerMap.size;
 
         // UPDATE HEADER TEXT
         if (this.isHost) {
