@@ -510,15 +510,24 @@ export class SelectQuizManager {
         const pageItems = this.pageQuizzes;
 
         if (pageItems.length === 0) {
-            const emptyMessage = this.showFavoritesOnly ? i18n.t('select_quiz.no_favorite_found') : i18n.t('select_quiz.no_quiz_found');
-            const emptyIcon = this.showFavoritesOnly ? 'heart_broken' : 'search_off';
+            const isFav = this.showFavoritesOnly;
+            const emptyMessage = isFav ? i18n.t('select_quiz.no_favorite_found') : i18n.t('select_quiz.no_quiz_found');
+            const emptyIcon = isFav ? 'favorite' : 'search_off';
+            const iconColor = isFav ? 'text-red-400' : 'text-white/60';
+            const bgColor = isFav ? 'bg-red-500/10' : 'bg-white/10';
+            const borderColor = isFav ? 'border-red-500/20' : 'border-white/20';
+
             grid.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                    <div class="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-6 border border-white/20">
-                        <span class="material-symbols-outlined text-4xl text-white/60">${emptyIcon}</span>
+                <div class="col-span-full flex flex-col items-center justify-center py-16 text-center animate-in fade-in zoom-in duration-300">
+                    <div class="w-24 h-24 ${bgColor} rounded-full flex items-center justify-center mb-6 border ${borderColor} shadow-inner relative group">
+                        <span class="material-symbols-outlined text-5xl ${iconColor} transition-transform group-hover:scale-110">${emptyIcon}</span>
+                        ${isFav ? '<span class="absolute -bottom-1 -right-1 material-symbols-outlined text-2xl text-red-500 bg-white rounded-full">add_circle</span>' : ''}
                     </div>
-                    <p class="text-white font-['Retro_Gaming'] text-xl md:text-2xl uppercase mb-6 tracking-widest drop-shadow-lg">
+                    <h3 class="text-white font-['Retro_Gaming'] text-xl md:text-2xl uppercase mb-2 tracking-widest drop-shadow-lg px-4">
                         ${emptyMessage}
+                    </h3>
+                    <p class="text-white/60 font-['Retro_Gaming'] text-[10px] md:text-xs mb-8 max-w-xs mx-auto leading-relaxed">
+                        ${isFav ? 'Klik ikon hati pada kuis untuk menambahkannya ke daftar favorit Anda!' : 'Coba gunakan kata kunci lain atau hapus filter untuk melihat lebih banyak kuis.'}
                     </p>
                     <button id="reset-filters-btn" class="px-8 py-4 bg-white border-4 border-[#6CC452] border-b-[6px] border-b-[#478D47] text-[#478D47] hover:bg-[#F1F8E9] hover:scale-105 active:translate-y-1 active:border-b-4 font-['Retro_Gaming'] text-xl uppercase rounded-2xl transition-all flex items-center gap-3 shadow-2xl cursor-pointer">
                         <span class="material-symbols-outlined text-xl">refresh</span> ${i18n.t('select_quiz.reset_filter')}

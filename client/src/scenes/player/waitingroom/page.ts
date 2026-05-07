@@ -212,14 +212,6 @@ export class PlayerWaitingRoomManager {
             };
         }
 
-        const soundBtn = document.getElementById('player-sound-btn');
-        const soundIcon = document.getElementById('player-sound-icon');
-        if (soundBtn && soundIcon) {
-            soundBtn.onclick = () => {
-                const isMuted = AudioManager.getInstance().toggleMute();
-                soundIcon.innerText = isMuted ? 'volume_off' : 'volume_up';
-            };
-        }
 
         const chooseCharBtn = document.getElementById('player-choose-char-btn');
         if (chooseCharBtn) {
@@ -698,10 +690,6 @@ export class PlayerWaitingRoomManager {
 
             <!-- Sticky Bottom Buttons -->
             <div class="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 z-30 w-[90%] md:w-auto justify-center">
-                <!-- SOUND Button -->
-                <button id="player-sound-btn" class="standard-pixel-btn btn-exit-standard" style="background-color: #facc15; border-bottom-color: #ca8a04; color: black;">
-                    <span class="material-symbols-outlined text-base" id="player-sound-icon">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
-                </button>
 
                 <!-- EXIT Button (Red Host Style) -->
                 <button id="player-back-btn" class="standard-pixel-btn btn-exit-standard">
@@ -999,7 +987,10 @@ export class PlayerWaitingRoomManager {
     leaveRoom() {
         this.isManuallyLeaving = true;
 
-        // Hapus session data TERLEBIH DAHULU agar tidak bisa auto-rejoin
+        console.log("[PlayerLobby] 🚪 Leaving room manually...");
+
+        // 1. CLEAR LOCAL STORAGE IMMEDIATELY
+        // This prevents any auto-rejoin logic if the page refreshes during the exit process
         localStorage.removeItem('currentRoomId');
         localStorage.removeItem('currentSessionId');
         localStorage.removeItem('currentReconnectionToken');
@@ -1007,50 +998,62 @@ export class PlayerWaitingRoomManager {
 
         if (this.room) {
             const roomRef = this.room;
-            this.room = null as any; // Prevent double-leave
+            this.room = null as any; // Nullify early to avoid double-processing
 
             try { 
-                // ONLY send if connection is open
+                // 2. SIGNAL MANUAL LEAVE TO SERVER
+                // We send a custom message so the server can purge state immediately 
+                // before the socket actually closes.
                 if (roomRef.connection && (roomRef.connection as any).isOpen) {
                     roomRef.send("manualPlayerLeave"); 
-                    console.log("[PlayerLobby] ✅ manualPlayerLeave sent successfully");
-                } else {
-                    console.log("[PlayerLobby] ℹ️ Skipping manualPlayerLeave, socket already closed.");
+                    console.log("[PlayerLobby] ✅ manualPlayerLeave signal sent");
                 }
             } catch (e) {
-                console.warn("[PlayerLobby] ⚠️ manualPlayerLeave failed to send:", e);
+                console.warn("[PlayerLobby] ⚠️ manualPlayerLeave signal failed:", e);
             }
 
-            // Leave room and THEN navigate (with safety timeout)
+            // 3. LEAVE COLYSEUS ROOM
+            // consented=true (first arg) means we don't want to reconnect
+            try { 
+                if (roomRef.connection && (roomRef.connection as any).isOpen) {
+                    roomRef.leave(true); 
+                    console.log("[PlayerLobby] ✅ Room.leave(true) called");
+                }
+            } catch (_) {}
+
+            // 4. NAVIGATION WITH SAFETY DELAY
+            // Give the 'leave' message a tiny bit of time to reach the server
+            // and the UI to breathe before we switch scenes.
             setTimeout(() => {
-                try { 
-                    if (roomRef.connection && (roomRef.connection as any).isOpen) {
-                        roomRef.leave(true); 
-                    }
-                } catch (_) {} // consented=true
-                
-                // Navigate to lobby after room is properly left
                 this.navigateToLobby();
             }, 100);
         } else {
-            // No room connection, navigate immediately
+            // No active room, just go home
             this.navigateToLobby();
         }
     }
 
     private navigateToLobby() {
+        console.log("[PlayerLobby] 🏠 Navigating back to lobby...");
+        
+        // Ensure UI is hidden
         if (this.waitingUI) this.waitingUI.classList.add('hidden');
+        const globalWaitingUI = document.getElementById('waiting-ui');
+        if (globalWaitingUI) globalWaitingUI.classList.add('hidden');
+        
+        // Clean up intervals
+        if (this.waitingSpawnerInterval) {
+            clearInterval(this.waitingSpawnerInterval);
+            this.waitingSpawnerInterval = null;
+        }
+
         OrientationManager.disable();
 
-        const lobbyUI = document.getElementById('lobby-ui');
-        if (lobbyUI) lobbyUI.classList.remove('hidden');
-
-        // Explicitly tell lobby we are exiting so it doesn't auto-join
-        // Use a tiny delay to ensure Router state is updated if needed
-        setTimeout(() => {
-            Router.replace('/');
-            this.startManager('LobbyManager', { didExit: true });
-        }, 10);
+        // Use Router to go home and trigger LobbyManager re-init
+        Router.replace('/');
+        
+        // Explicitly start LobbyManager with didExit flag
+        this.startManager('LobbyManager', { didExit: true });
     }
 
 
