@@ -166,6 +166,29 @@ export class GameRoom extends Room<GameState> {
         this.saveInitialSessionToMainSupabase().catch(e => console.error("Initial Main Sync Error:", e));
         this.syncSessionToSupabaseB().catch(e => console.error("Initial Sync B Error:", e));
 
+        // --- GHOST PURGE FAILSAFE ---
+        // Periodically ensure state.players matches this.clients during lobby
+        this.setSimulationInterval(() => {
+            if (this.state.isGameStarted) return;
+            
+            let changed = false;
+            this.state.players.forEach((p, sid) => {
+                if (p.isHost) return;
+                const isConnected = this.clients.some(c => c.sessionId === sid);
+                if (!isConnected) {
+                    console.log(`[GhostPurge] 👻 Removing orphaned session: ${sid} (${p.name})`);
+                    this.state.players.delete(sid);
+                    this.playerAnswers.delete(sid);
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                console.log(`[GhostPurge] State cleaned. Current player count: ${this.state.players.size}`);
+                this.broadcast("playerLeft", { sessionId: "purge" });
+            }
+        }, 2000);
+
         // Set max clients for the entire lobby
         this.maxClients = LOBBY_MAX_PLAYERS;
 
