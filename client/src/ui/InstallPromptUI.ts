@@ -131,22 +131,30 @@ export class InstallPromptUI {
 
     private static async handleInstall() {
         const deferredPrompt = (window as any).zigmaDeferredPrompt;
+        
         if (!deferredPrompt) {
-            console.warn('[PWA] No prompt found');
-            this.hide();
+            console.error('[PWA-ERROR] No prompt available. Possible reasons:');
+            console.error('1. App is already installed.');
+            console.error('2. Service Worker or Manifest has an error (check console).');
+            console.error('3. You are not using HTTPS or localhost.');
+            console.error('4. Browser has not decided this site is installable yet (try scrolling/clicking around).');
+            this.show();
             return;
         }
 
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`[PWA] User response: ${outcome}`);
-        
-        if (outcome === 'accepted') {
-            localStorage.setItem(this.STORAGE_KEY, 'installed');
-            this.hide();
+        try {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`[PWA-SUCCESS] Outcome: ${outcome}`);
+            
+            if (outcome === 'accepted') {
+                localStorage.setItem(this.STORAGE_KEY, 'installed');
+                this.hide();
+                (window as any).zigmaDeferredPrompt = null;
+            }
+        } catch (err) {
+            console.error('[PWA-CRITICAL] Prompt failed:', err);
         }
-        
-        (window as any).zigmaDeferredPrompt = null;
     }
 
     static async triggerPrompt() {

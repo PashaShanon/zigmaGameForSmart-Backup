@@ -5,24 +5,33 @@
   <meta charset="UTF-8" />
   <link rel="manifest" href="/manifest.json" />
   <script>
-    // Capture beforeinstallprompt as early as possible for PWA
-    window.zigmaDeferredPrompt = null;
+    // --- PWA DIAGNOSTIC & CAPTURE ---
+    window.zigmaDeferredPrompt = window.zigmaDeferredPrompt || null;
+    console.log('[PWA-STATUS] 🛠️ Initialization started...');
+
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       window.zigmaDeferredPrompt = e;
-      console.log('[PWA] 📥 beforeinstallprompt captured successfully');
-      
-      // Notify the app that the prompt is ready
-      window.dispatchEvent(new CustomEvent('zigmaPromptReady'));
+      console.log('[PWA-STATUS] ✅ SUCCESS: beforeinstallprompt CAPTURED!');
+      window.dispatchEvent(new CustomEvent('zigmaPromptReady', { detail: e }));
     });
 
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
-      });
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+          console.log('[PWA-STATUS] ✅ ServiceWorker registered:', reg.scope);
+          reg.addEventListener('updatefound', () => console.log('[PWA-STATUS] 🔄 SW Update found!'));
+        })
+        .catch(err => console.error('[PWA-STATUS] ❌ ServiceWorker failed:', err));
+    } else {
+      console.warn('[PWA-STATUS] ⚠️ ServiceWorker NOT supported');
     }
+
+    // Check Manifest
+    fetch('/manifest.json')
+      .then(r => r.json())
+      .then(() => console.log('[PWA-STATUS] ✅ Manifest.json found and valid'))
+      .catch(e => console.error('[PWA-STATUS] ❌ Manifest.json error:', e));
   </script>
 
   <!-- QUIZ SELECTION styles -->
