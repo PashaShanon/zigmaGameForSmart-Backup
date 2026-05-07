@@ -2074,20 +2074,19 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
             const dedupeKey = p.userId || sessionId;
             
-            // If already exists, prefer the one with matching sessionId (current player)
-            if (playerMap.has(dedupeKey)) {
-                if (sessionId === this.mySessionId) {
-                    playerMap.set(dedupeKey, { sessionId, name: p.name, hairId: p.hairId, subRoomId: p.subRoomId });
-                }
-                return;
+            // DEDUPLICATION FIX:
+            // If multiple sessions exist for the same user, prefer:
+            // 1. My own session (if I'm a player)
+            // 2. The LATEST session encountered (to ensure hair/name updates show up)
+            const existing = playerMap.get(dedupeKey);
+            if (!existing || sessionId === this.mySessionId) {
+                playerMap.set(dedupeKey, { 
+                    sessionId, 
+                    name: p.name, 
+                    hairId: p.hairId, 
+                    subRoomId: p.subRoomId 
+                });
             }
-
-            playerMap.set(dedupeKey, {
-                sessionId,
-                name: p.name,
-                hairId: p.hairId,
-                subRoomId: p.subRoomId
-            });
         });
         const players = Array.from(playerMap.values());
 
