@@ -2,6 +2,7 @@ import http from "http";
 import express from "express";
 import cors from "cors";
 import { Server } from "colyseus";
+import { WebSocketTransport } from "@colyseus/ws-transport";
 import { monitor } from "@colyseus/monitor";
 import { GameRoom } from "./rooms/GameRoom";
 import crypto from "crypto";
@@ -69,11 +70,13 @@ app.get("/sitemap.xml", (req, res) => res.sendFile(path.join(clientBuildPath, "s
 
 const server = http.createServer(app);
 const gameServer = new Server({
-    server,
+    transport: new WebSocketTransport({
+        server,
+        pingInterval: 5000,
+        pingMaxRetries: 3,
+    }),
     // Gunakan publicAddress hanya jika didefinisikan (untuk production/VPS)
     publicAddress: process.env.PUBLIC_ADDRESS || undefined,
-    pingInterval: 5000,
-    pingMaxRetries: 3,
 });
 
 // Register Room Handlers
