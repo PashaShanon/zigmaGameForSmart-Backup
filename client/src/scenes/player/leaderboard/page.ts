@@ -1,63 +1,65 @@
-import { TransitionManager } from '../../../utils/TransitionManager';
-import { Router } from '../../../utils/Router';
-import { OrientationManager } from '../../../utils/OrientationManager';
+import { TransitionManager } from "../../../utils/TransitionManager";
+import { Router } from "../../../utils/Router";
+import { OrientationManager } from "../../../utils/OrientationManager";
 
 interface RankingEntry {
-    rank: number;
-    sessionId: string;
-    name: string;
-    hairId?: number;
-    score: number;
-    duration: number;
+  rank: number;
+  sessionId: string;
+  name: string;
+  hairId?: number;
+  score: number;
+  duration: number;
 }
 
 export class PlayerLeaderboardManager {
-    private container!: HTMLDivElement;
-    private rankings: RankingEntry[] = [];
-    private mySessionId: string = "";
-    private room: any;
-    private spawnerInterval: any = null;
-    private tooltip: HTMLElement | null = null;
+  private container!: HTMLDivElement;
+  private rankings: RankingEntry[] = [];
+  private mySessionId: string = "";
+  private room: any;
+  private spawnerInterval: any = null;
+  private tooltip: HTMLElement | null = null;
 
-    constructor() {}
+  constructor() {}
 
-    start(data?: { room?: any, leaderboardData?: any[], mySessionId?: string }) {
-        TransitionManager.ensureClosed();
-        this.createTooltip();
-        OrientationManager.requirePortrait();
-        this.room = data?.room;
-        this.rankings = data?.leaderboardData || [];
-        this.rankings.sort((a, b) => a.rank - b.rank);
-        
-        this.mySessionId = data?.mySessionId || (this.room ? this.room.sessionId : "");
+  start(data?: { room?: any; leaderboardData?: any[]; mySessionId?: string }) {
+    TransitionManager.ensureClosed();
+    this.createTooltip();
+    OrientationManager.requirePortrait();
+    this.room = data?.room;
+    this.rankings = data?.leaderboardData || [];
+    this.rankings.sort((a, b) => a.rank - b.rank);
 
-        this.container = document.createElement('div');
-        this.container.id = 'leaderboard-ui';
-        this.container.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; z-index:1000;';
-        document.body.appendChild(this.container);
+    this.mySessionId =
+      data?.mySessionId || (this.room ? this.room.sessionId : "");
 
-        if (!document.getElementById('leaderboard-styles')) {
-            const style = document.createElement('style');
-            style.id = 'leaderboard-styles';
-            style.innerHTML = this.getGlobalStyles();
-            document.head.appendChild(style);
-        }
+    this.container = document.createElement("div");
+    this.container.id = "leaderboard-ui";
+    this.container.style.cssText =
+      "position:absolute; top:0; left:0; width:100%; height:100%; z-index:1000;";
+    document.body.appendChild(this.container);
 
-        this.renderLeaderboard();
-
-        if (this.room) {
-            this.room.onMessage('gameEnded', (msgData: { rankings: any[] }) => {
-                this.rankings = msgData.rankings;
-                this.rankings.sort((a, b) => a.rank - b.rank);
-                this.renderLeaderboard();
-            });
-        }
-
-        setTimeout(() => TransitionManager.open(), 100);
+    if (!document.getElementById("leaderboard-styles")) {
+      const style = document.createElement("style");
+      style.id = "leaderboard-styles";
+      style.innerHTML = this.getGlobalStyles();
+      document.head.appendChild(style);
     }
 
-    private getGlobalStyles(): string {
-        return `
+    this.renderLeaderboard();
+
+    if (this.room) {
+      this.room.onMessage("gameEnded", (msgData: { rankings: any[] }) => {
+        this.rankings = msgData.rankings;
+        this.rankings.sort((a, b) => a.rank - b.rank);
+        this.renderLeaderboard();
+      });
+    }
+
+    setTimeout(() => TransitionManager.open(), 100);
+  }
+
+  private getGlobalStyles(): string {
+    return `
             #leaderboard-ui {
                 background: linear-gradient(180deg, #6CC452 0%, #478D47 100%);
                 color: white; display: flex; flex-direction: column; align-items: center;
@@ -177,22 +179,35 @@ export class PlayerLeaderboardManager {
                 .nav-btn-wide { display: none; }
             }
         `;
-    }
+  }
 
-    private renderLeaderboard() {
-        Router.navigate('/player/leaderboard');
-        const top3 = this.rankings.slice(0, 3);
-        const others = this.rankings.slice(3);
+  private renderLeaderboard() {
+    Router.navigate("/player/leaderboard");
+    const top3 = this.rankings.slice(0, 3);
+    const others = this.rankings.slice(3);
 
-        const formatTime = (ms: number) => {
-            const s = Math.floor(ms / 1000);
-            return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-        };
+    const formatTime = (ms: number) => {
+      const s = Math.floor(ms / 1000);
+      return `${Math.floor(s / 60)
+        .toString()
+        .padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+    };
 
-        const podiumHTML = [1, 0, 2].map(i => {
-            const p = top3[i]; if (!p) return `<div class="podium-column" style="opacity:0"></div>`;
-            const hairKey = p.hairId ? ['bowlhair', 'curlyhair', 'longhair', 'mophair', 'shorthair', 'spikeyhair'][p.hairId - 1] : null;
-            return `
+    const podiumHTML = [1, 0, 2]
+      .map((i) => {
+        const p = top3[i];
+        if (!p) return `<div class="podium-column" style="opacity:0"></div>`;
+        const hairKey = p.hairId
+          ? [
+              "bowlhair",
+              "curlyhair",
+              "longhair",
+              "mophair",
+              "shorthair",
+              "spikeyhair",
+            ][p.hairId - 1]
+          : null;
+        return `
                 <div class="podium-column rank-${p.rank}">
                     <div class="podium-body">
                         <span class="podium-name-text podium-name-truncated relative z-50 cursor-help" 
@@ -201,18 +216,19 @@ export class PlayerLeaderboardManager {
                               onmouseenter="window.lbTooltip.show(event, '${p.name.replace(/'/g, "\\'")}')"
                               onmousemove="window.lbTooltip.move(event)"
                               onmouseleave="window.lbTooltip.hide()">
-                             ${p.name.split(' ')[0]}</span>
+                             ${p.name.split(" ")[0]}</span>
                         <div class="podium-avatar">
                             <div class="char-anim" style="background-image:url('/assets/base_idle_strip9.png')"></div>
-                            ${hairKey ? `<div class="char-anim" style="background-image:url('/assets/${hairKey}_idle_strip9.png')"></div>` : ''}
+                            ${hairKey ? `<div class="char-anim" style="background-image:url('/assets/${hairKey}_idle_strip9.png')"></div>` : ""}
                         </div>
                         <div class="podium-score">${p.score}</div>
                     </div>
                 </div>
             `;
-        }).join('');
+      })
+      .join("");
 
-        this.container.innerHTML = `
+    this.container.innerHTML = `
             <!-- Pixel-art Background Decorations -->
             <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div class="absolute inset-0 pixel-bg-pattern opacity-[0.06]"></div>
@@ -234,11 +250,15 @@ export class PlayerLeaderboardManager {
             <img src="/logo/Zigma-logo-fix.webp" class="logo-left" />
             <img src="/logo/gameforsmart-logo-fix.webp" class="logo-right" />
             <div class="podium-section" style="position:relative; z-index:10;">${podiumHTML}</div>
-            <div class="list-section" style="position:relative; z-index:10;">${others.map(p => `
+            <div class="list-section" style="position:relative; z-index:10;">${others
+              .map(
+                (p) => `
                 <div class="list-item" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
                     <span>#${p.rank}</span><span style="font-weight:bold;">${p.name}</span><span>${formatTime(p.duration)}</span><span>${p.score}</span>
                 </div>
-            `).join('')}</div>
+            `,
+              )
+              .join("")}</div>
             <div class="lb-footer">
                 <button id="lb-home-btn" class="nav-btn"><span class="material-symbols-outlined">home</span></button>
                 <button id="lb-stats-btn" class="nav-btn"><span class="material-symbols-outlined">analytics</span></button>
@@ -249,147 +269,182 @@ export class PlayerLeaderboardManager {
                 <button id="lb-back-btn-mobile" class="nav-btn-wide"><span class="material-symbols-outlined">person</span>RESULT</button>
             </div>
         `;
-        this.startCharacterSpawner();
+    this.startCharacterSpawner();
 
-        this.attachListeners();
-    }
+    this.attachListeners();
+  }
 
-    private attachListeners() {
-        const homeBtn = document.getElementById('lb-home-btn');
-        const backBtn = document.getElementById('lb-back-btn');
-        const statsBtn = document.getElementById('lb-stats-btn');
+  private attachListeners() {
+    const homeBtn = document.getElementById("lb-home-btn");
+    const backBtn = document.getElementById("lb-back-btn");
+    const statsBtn = document.getElementById("lb-stats-btn");
 
-        const setupHome = (btn: HTMLElement | null) => {
-            if (btn) btn.onclick = () => TransitionManager.transitionTo(() => {
-                this.cleanup(); 
-                if (this.room) this.room.leave();
-                window.location.href = '/';
-            });
-        };
-        setupHome(homeBtn);
-        setupHome(document.getElementById('lb-home-btn-mobile'));
-
-        const setupBack = (btn: HTMLElement | null) => {
-            if (btn) btn.onclick = () => TransitionManager.transitionTo(() => {
-                this.cleanup();
-                import('../results/page').then((m) => {
-                    const manager = new m.ResultManager();
-                    manager.start({ room: this.room, leaderboardData: this.rankings });
-                });
-            });
-        };
-        setupBack(backBtn);
-        setupBack(document.getElementById('lb-back-btn-mobile'));
-
-        const setupStats = (btn: HTMLElement | null) => {
-            if (btn) btn.onclick = () => {
-                let sid = localStorage.getItem('supabaseSessionId');
-                if (!sid && this.rankings.length > 0) sid = (this.rankings[0] as any).sessionId;
-                if (sid && sid !== "undefined" && sid !== "null") {
-                    window.open(`https://gameforsmartnewui.vercel.app/stat/${sid}`, '_blank');
-                } else {
-                    alert("ID Sesi tidak ditemukan. Tidak dapat membuka statistik.");
-                }
-            };
-        };
-        setupStats(statsBtn);
-        setupStats(document.getElementById('lb-stats-btn-mobile'));
-
-        this.setupPodiumTooltips();
-    }
-
-    private setupPodiumTooltips() {
-        (window as any).lbTooltip = {
-            show: (e: MouseEvent, fullName: string) => {
-                const nameEl = e.currentTarget as HTMLElement;
-                const displayName = nameEl.innerText.trim().toUpperCase();
-                const fullUpper = fullName.trim().toUpperCase();
-                
-                if (nameEl.scrollWidth > nameEl.clientWidth || displayName !== fullUpper) {
-                    this.showTooltip(fullName);
-                    this.moveTooltip(e);
-                }
-            },
-            move: (e: MouseEvent) => {
-                this.moveTooltip(e);
-            },
-            hide: () => {
-                this.hideTooltip();
+    const setupHome = (btn: HTMLElement | null) => {
+      if (btn)
+        btn.onclick = () =>
+          TransitionManager.transitionTo(() => {
+            this.cleanup();
+            if (this.room) {
+              try {
+                this.room.send("manualPlayerLeave");
+              } catch (e) {
+                console.warn("manualPlayerLeave failed:", e);
+              }
+              this.room.leave();
             }
+            window.location.href = "/";
+          });
+    };
+    setupHome(homeBtn);
+    setupHome(document.getElementById("lb-home-btn-mobile"));
+
+    const setupBack = (btn: HTMLElement | null) => {
+      if (btn)
+        btn.onclick = () =>
+          TransitionManager.transitionTo(() => {
+            this.cleanup();
+            import("../results/page").then((m) => {
+              const manager = new m.ResultManager();
+              manager.start({
+                room: this.room,
+                leaderboardData: this.rankings,
+              });
+            });
+          });
+    };
+    setupBack(backBtn);
+    setupBack(document.getElementById("lb-back-btn-mobile"));
+
+    const setupStats = (btn: HTMLElement | null) => {
+      if (btn)
+        btn.onclick = () => {
+          let sid = localStorage.getItem("supabaseSessionId");
+          if (!sid && this.rankings.length > 0)
+            sid = (this.rankings[0] as any).sessionId;
+          if (sid && sid !== "undefined" && sid !== "null") {
+            window.open(
+              `https://gameforsmartnewui.vercel.app/stat/${sid}`,
+              "_blank",
+            );
+          } else {
+            alert("ID Sesi tidak ditemukan. Tidak dapat membuka statistik.");
+          }
         };
-    }
+    };
+    setupStats(statsBtn);
+    setupStats(document.getElementById("lb-stats-btn-mobile"));
 
-    private createTooltip() {
-        let t = document.getElementById('podium-name-tooltip');
-        if (!t) {
-            t = document.createElement('div');
-            t.id = 'podium-name-tooltip';
-            t.className = "lb-name-tooltip";
-            document.body.appendChild(t);
+    this.setupPodiumTooltips();
+  }
+
+  private setupPodiumTooltips() {
+    (window as any).lbTooltip = {
+      show: (e: MouseEvent, fullName: string) => {
+        const nameEl = e.currentTarget as HTMLElement;
+        const displayName = nameEl.innerText.trim().toUpperCase();
+        const fullUpper = fullName.trim().toUpperCase();
+
+        if (
+          nameEl.scrollWidth > nameEl.clientWidth ||
+          displayName !== fullUpper
+        ) {
+          this.showTooltip(fullName);
+          this.moveTooltip(e);
         }
-        this.tooltip = t;
-    }
+      },
+      move: (e: MouseEvent) => {
+        this.moveTooltip(e);
+      },
+      hide: () => {
+        this.hideTooltip();
+      },
+    };
+  }
 
-    private showTooltip(text: string) {
-        if (!this.tooltip) return;
-        this.tooltip.innerText = text;
-        this.tooltip.classList.add('visible');
+  private createTooltip() {
+    let t = document.getElementById("podium-name-tooltip");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "podium-name-tooltip";
+      t.className = "lb-name-tooltip";
+      document.body.appendChild(t);
     }
+    this.tooltip = t;
+  }
 
-    private moveTooltip(e: MouseEvent) {
-        if (!this.tooltip) return;
-        let x = e.clientX + 15;
-        let y = e.clientY + 15;
-        if (x + this.tooltip.offsetWidth > window.innerWidth) x = e.clientX - this.tooltip.offsetWidth - 15;
-        if (y + this.tooltip.offsetHeight > window.innerHeight) y = e.clientY - this.tooltip.offsetHeight - 15;
-        this.tooltip.style.left = `${x}px`;
-        this.tooltip.style.top = `${y}px`;
-    }
+  private showTooltip(text: string) {
+    if (!this.tooltip) return;
+    this.tooltip.innerText = text;
+    this.tooltip.classList.add("visible");
+  }
 
-    private hideTooltip() {
-        if (!this.tooltip) return;
-        this.tooltip.classList.remove('visible');
-    }
+  private moveTooltip(e: MouseEvent) {
+    if (!this.tooltip) return;
+    let x = e.clientX + 15;
+    let y = e.clientY + 15;
+    if (x + this.tooltip.offsetWidth > window.innerWidth)
+      x = e.clientX - this.tooltip.offsetWidth - 15;
+    if (y + this.tooltip.offsetHeight > window.innerHeight)
+      y = e.clientY - this.tooltip.offsetHeight - 15;
+    this.tooltip.style.left = `${x}px`;
+    this.tooltip.style.top = `${y}px`;
+  }
 
-    cleanup() {
-        if (this.spawnerInterval) {
-            clearInterval(this.spawnerInterval);
-            this.spawnerInterval = null;
-        }
-        if (this.container) this.container.remove();
-        const s = document.getElementById('leaderboard-styles'); if (s) s.remove();
-        OrientationManager.disable();
-    }
+  private hideTooltip() {
+    if (!this.tooltip) return;
+    this.tooltip.classList.remove("visible");
+  }
 
-    private startCharacterSpawner() {
-        if (this.spawnerInterval) return;
-        const container = document.getElementById('leaderboard-walking-characters-container');
-        if (!container) return;
-        this.checkAndSpawn(container);
-        this.spawnerInterval = setInterval(() => this.checkAndSpawn(container), 5000);
+  cleanup() {
+    if (this.spawnerInterval) {
+      clearInterval(this.spawnerInterval);
+      this.spawnerInterval = null;
     }
+    if (this.container) this.container.remove();
+    const s = document.getElementById("leaderboard-styles");
+    if (s) s.remove();
+    OrientationManager.disable();
+  }
 
-    private checkAndSpawn(container: HTMLElement) {
-        const activeChars = container.querySelectorAll('.walking-char').length;
-        if (activeChars >= 3) return;
-        if (Math.random() < (activeChars === 0 ? 0.8 : 0.4)) {
-            this.spawnCharacter(container);
-        }
-    }
+  private startCharacterSpawner() {
+    if (this.spawnerInterval) return;
+    const container = document.getElementById(
+      "leaderboard-walking-characters-container",
+    );
+    if (!container) return;
+    this.checkAndSpawn(container);
+    this.spawnerInterval = setInterval(
+      () => this.checkAndSpawn(container),
+      5000,
+    );
+  }
 
-    private spawnCharacter(container: HTMLElement) {
-        const char = document.createElement('div');
-        char.className = 'walking-char';
-        const fromRight = Math.random() > 0.5;
-        const speed = 20 + Math.random() * 10;
-        if (fromRight) {
-            char.style.animation = `base-walk-cycle 0.8s steps(8) infinite, walk-across-left ${speed}s linear forwards`;
-            char.style.transform = 'scale(-1.5, 1.5)';
-        } else {
-            char.style.animation = `base-walk-cycle 0.8s steps(8) infinite, walk-across-right ${speed}s linear forwards`;
-            char.style.transform = 'scale(1.5, 1.5)';
-        }
-        container.appendChild(char);
-        setTimeout(() => { if (char.parentElement) char.remove(); }, speed * 1000 + 500);
+  private checkAndSpawn(container: HTMLElement) {
+    const activeChars = container.querySelectorAll(".walking-char").length;
+    if (activeChars >= 3) return;
+    if (Math.random() < (activeChars === 0 ? 0.8 : 0.4)) {
+      this.spawnCharacter(container);
     }
+  }
+
+  private spawnCharacter(container: HTMLElement) {
+    const char = document.createElement("div");
+    char.className = "walking-char";
+    const fromRight = Math.random() > 0.5;
+    const speed = 20 + Math.random() * 10;
+    if (fromRight) {
+      char.style.animation = `base-walk-cycle 0.8s steps(8) infinite, walk-across-left ${speed}s linear forwards`;
+      char.style.transform = "scale(-1.5, 1.5)";
+    } else {
+      char.style.animation = `base-walk-cycle 0.8s steps(8) infinite, walk-across-right ${speed}s linear forwards`;
+      char.style.transform = "scale(1.5, 1.5)";
+    }
+    container.appendChild(char);
+    setTimeout(
+      () => {
+        if (char.parentElement) char.remove();
+      },
+      speed * 1000 + 500,
+    );
+  }
 }

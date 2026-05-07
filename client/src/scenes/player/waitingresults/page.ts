@@ -1,51 +1,53 @@
-import Phaser from 'phaser';
-import { TransitionManager } from '../../../utils/TransitionManager';
-import { Router } from '../../../utils/Router';
+import Phaser from "phaser";
+import { TransitionManager } from "../../../utils/TransitionManager";
+import { Router } from "../../../utils/Router";
 
 interface RankingEntry {
-    rank: number;
-    sessionId: string;
-    name: string;
-    hairId?: number;
-    score: number;
-    duration: number;
-    correctAnswers: number;
-    wrongAnswers: number;
+  rank: number;
+  sessionId: string;
+  name: string;
+  hairId?: number;
+  score: number;
+  duration: number;
+  correctAnswers: number;
+  wrongAnswers: number;
 }
 
 export class ResultScene extends Phaser.Scene {
-    private container!: HTMLDivElement;
-    private rankings: RankingEntry[] = [];
-    private mySessionId: string = "";
+  private container!: HTMLDivElement;
+  private rankings: RankingEntry[] = [];
+  private mySessionId: string = "";
 
-    constructor() {
-        super({ key: 'ResultScene' });
+  constructor() {
+    super({ key: "ResultScene" });
+  }
+
+  create() {
+    TransitionManager.ensureClosed();
+    this.rankings = this.registry.get("leaderboardData") || [];
+    const room = this.registry.get("room");
+    this.mySessionId =
+      this.registry.get("mySessionId") || (room ? room.sessionId : "");
+
+    this.container = document.createElement("div");
+    this.container.id = "result-ui";
+    this.container.style.cssText =
+      "position:absolute; top:0; left:0; width:100%; height:100%; z-index:1000;";
+    document.body.appendChild(this.container);
+
+    if (!document.getElementById("result-styles")) {
+      const style = document.createElement("style");
+      style.id = "result-styles";
+      style.innerHTML = this.getStyles();
+      document.head.appendChild(style);
     }
 
-    create() {
-        TransitionManager.ensureClosed();
-        this.rankings = this.registry.get('leaderboardData') || [];
-        const room = this.registry.get('room');
-        this.mySessionId = this.registry.get('mySessionId') || (room ? room.sessionId : "");
+    this.renderIndividualResult();
+    setTimeout(() => TransitionManager.open(), 100);
+  }
 
-        this.container = document.createElement('div');
-        this.container.id = 'result-ui';
-        this.container.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; z-index:1000;';
-        document.body.appendChild(this.container);
-
-        if (!document.getElementById('result-styles')) {
-            const style = document.createElement('style');
-            style.id = 'result-styles';
-            style.innerHTML = this.getStyles();
-            document.head.appendChild(style);
-        }
-
-        this.renderIndividualResult();
-        setTimeout(() => TransitionManager.open(), 100);
-    }
-
-    private getStyles(): string {
-        return `
+  private getStyles(): string {
+    return `
             #result-ui {
                 background: #151515; color: white; display: flex; flex-direction: column; align-items: center;
                 justify-content: center; font-family: 'Retro Gaming', monospace; height: 100vh; width: 100vw;
@@ -101,27 +103,40 @@ export class ResultScene extends Phaser.Scene {
             .logo-left { position: absolute; top: -30px; left: -40px; width: 256px; pointer-events: none; z-index: 1000; }
             .logo-right { position: absolute; top: -45px; right: -15px; width: 320px; pointer-events: none; z-index: 1000; }
         `;
-    }
+  }
 
-    private renderIndividualResult() {
-        Router.navigate('/player/result');
-        const myEntry = this.rankings.find(p => p.sessionId === this.mySessionId) || this.rankings[0];
-        if (!myEntry) return;
+  private renderIndividualResult() {
+    Router.navigate("/player/result");
+    const myEntry =
+      this.rankings.find((p) => p.sessionId === this.mySessionId) ||
+      this.rankings[0];
+    if (!myEntry) return;
 
-        const formatTime = (ms: number) => {
-            const s = Math.floor(ms / 1000);
-            return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-        };
+    const formatTime = (ms: number) => {
+      const s = Math.floor(ms / 1000);
+      return `${Math.floor(s / 60)
+        .toString()
+        .padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+    };
 
-        const hairKey = myEntry.hairId ? ['bowlhair', 'curlyhair', 'longhair', 'mophair', 'shorthair', 'spikeyhair'][myEntry.hairId - 1] : null;
+    const hairKey = myEntry.hairId
+      ? [
+          "bowlhair",
+          "curlyhair",
+          "longhair",
+          "mophair",
+          "shorthair",
+          "spikeyhair",
+        ][myEntry.hairId - 1]
+      : null;
 
-        this.container.innerHTML = `
+    this.container.innerHTML = `
             <img src="/logo/Zigma-logo-fix.webp" class="logo-left" />
             <img src="/logo/gameforsmart-logo-fix.webp" class="logo-right" />
             <div class="result-card">
                 <div class="result-avatar-container">
                     <div class="char-anim" style="background-image:url('/assets/base_idle_strip9.png')"></div>
-                    ${hairKey ? `<div class="char-anim" style="background-image:url('/assets/${hairKey}_idle_strip9.png')"></div>` : ''}
+                    ${hairKey ? `<div class="char-anim" style="background-image:url('/assets/${hairKey}_idle_strip9.png')"></div>` : ""}
                 </div>
                 <div class="result-name">${myEntry.name}</div>
                 <div class="result-stats-row">
@@ -137,23 +152,38 @@ export class ResultScene extends Phaser.Scene {
             </div>
         `;
 
-        this.attachListeners();
-    }
+    this.attachListeners();
+  }
 
-    private attachListeners() {
-        const homeBtn = document.getElementById('lb-home-btn');
-        const fullBtn = document.getElementById('lb-full-btn');
-        if (homeBtn) homeBtn.onclick = () => TransitionManager.transitionTo(() => {
-            this.cleanup(); const r = this.registry.get('room'); if (r) r.leave();
-            window.location.href = '/';
+  private attachListeners() {
+    const homeBtn = document.getElementById("lb-home-btn");
+    const fullBtn = document.getElementById("lb-full-btn");
+    if (homeBtn)
+      homeBtn.onclick = () =>
+        TransitionManager.transitionTo(() => {
+          this.cleanup();
+          const r = this.registry.get("room");
+          if (r) {
+            try {
+              r.send("manualPlayerLeave");
+            } catch (e) {
+              console.warn("manualPlayerLeave failed:", e);
+            }
+            r.leave();
+          }
+          window.location.href = "/";
         });
-        if (fullBtn) fullBtn.onclick = () => TransitionManager.transitionTo(() => {
-            this.cleanup(); this.scene.start('LeaderboardScene');
+    if (fullBtn)
+      fullBtn.onclick = () =>
+        TransitionManager.transitionTo(() => {
+          this.cleanup();
+          this.scene.start("LeaderboardScene");
         });
-    }
+  }
 
-    cleanup() {
-        if (this.container) this.container.remove();
-        const s = document.getElementById('result-styles'); if (s) s.remove();
-    }
+  cleanup() {
+    if (this.container) this.container.remove();
+    const s = document.getElementById("result-styles");
+    if (s) s.remove();
+  }
 }
