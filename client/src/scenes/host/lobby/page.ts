@@ -2062,6 +2062,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     }
 
     updatePlayerGrid() {
+        console.log(`[UI] updatePlayerGrid triggered. State size: ${this.room?.state?.players?.size}`);
+        
         // Expose kick function globally so onclick works
         (window as any).confirmKick = (sessionId: string, playerName: string) => {
             this.showKickConfirm(sessionId, playerName);
@@ -2071,7 +2073,6 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (!gridEl) return;
 
         // Use Map to ensure deduplication by userId (if available) or sessionId
-        // This is a ROBUST deduplication failsafe for the UI.
         const playerMap = new Map<string, any>();
         this.room.state.players.forEach((p: any, sessionId: string) => {
             if (p.isHost) return;
@@ -2098,6 +2099,9 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             }
         });
         const players = Array.from(playerMap.values());
+        
+        // --- FORCE UI CLEAR (STOPS GHOST CARDS) ---
+        gridEl.innerHTML = '';
 
         // Update Header dynamically
         this.updateHostStatus();
