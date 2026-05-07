@@ -159,20 +159,34 @@ export class ResultScene extends Phaser.Scene {
     const homeBtn = document.getElementById("lb-home-btn");
     const fullBtn = document.getElementById("lb-full-btn");
     if (homeBtn)
-      homeBtn.onclick = () =>
-        TransitionManager.transitionTo(() => {
-          this.cleanup();
-          const r = this.registry.get("room");
-          if (r) {
-            try {
-              r.send("manualPlayerLeave");
-            } catch (e) {
-              console.warn("manualPlayerLeave failed:", e);
-            }
-            r.leave();
+      homeBtn.onclick = () => {
+        const r = this.registry.get("room");
+        if (r) {
+          try {
+            r.send("manualPlayerLeave");
+          } catch (e) {
+            console.warn("manualPlayerLeave failed:", e);
           }
-          window.location.href = "/";
-        });
+          const roomRef = r;
+          this.registry.set("room", null);
+          setTimeout(() => {
+            try {
+              if (roomRef.connection && (roomRef.connection as any).isOpen) {
+                roomRef.leave(true);
+              }
+            } catch (_) { }
+            TransitionManager.transitionTo(() => {
+              this.cleanup();
+              window.location.href = "/";
+            });
+          }, 100);
+        } else {
+          TransitionManager.transitionTo(() => {
+            this.cleanup();
+            window.location.href = "/";
+          });
+        }
+      };
     if (fullBtn)
       fullBtn.onclick = () =>
         TransitionManager.transitionTo(() => {

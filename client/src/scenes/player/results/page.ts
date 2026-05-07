@@ -478,35 +478,61 @@ export class ResultManager {
 
       if (homeBtn)
         homeBtn.onclick = () => {
-          TransitionManager.transitionTo(() => {
-            this.cleanup();
-            if (this.room) {
-              try {
-                this.room.send("manualPlayerLeave");
-              } catch (e) {
-                console.warn("manualPlayerLeave failed:", e);
-              }
-              this.room.leave();
+          if (this.room) {
+            try {
+              this.room.send("manualPlayerLeave");
+            } catch (e) {
+              console.warn("manualPlayerLeave failed:", e);
             }
-            window.location.href = "/";
-          });
+            const roomRef = this.room;
+            this.room = null as any;
+            setTimeout(() => {
+              try {
+                if (roomRef.connection && (roomRef.connection as any).isOpen) {
+                  roomRef.leave(true);
+                }
+              } catch (_) { }
+              TransitionManager.transitionTo(() => {
+                this.cleanup();
+                window.location.href = "/";
+              });
+            }, 100);
+          } else {
+            TransitionManager.transitionTo(() => {
+              this.cleanup();
+              window.location.href = "/";
+            });
+          }
         };
 
       const homeBtnMobile = document.getElementById("lb-home-btn-mobile");
       if (homeBtnMobile)
         homeBtnMobile.onclick = () => {
-          TransitionManager.transitionTo(() => {
-            this.cleanup();
-            if (this.room) {
-              try {
-                this.room.send("manualPlayerLeave");
-              } catch (e) {
-                console.warn("manualPlayerLeave failed:", e);
-              }
-              this.room.leave();
+          if (this.room) {
+            try {
+              this.room.send("manualPlayerLeave");
+            } catch (e) {
+              console.warn("manualPlayerLeave failed:", e);
             }
-            window.location.href = "/";
-          });
+            const roomRef = this.room;
+            this.room = null as any;
+            setTimeout(() => {
+              try {
+                if (roomRef.connection && (roomRef.connection as any).isOpen) {
+                  roomRef.leave(true);
+                }
+              } catch (_) { }
+              TransitionManager.transitionTo(() => {
+                this.cleanup();
+                window.location.href = "/";
+              });
+            }, 100);
+          } else {
+            TransitionManager.transitionTo(() => {
+              this.cleanup();
+              window.location.href = "/";
+            });
+          }
         };
 
       if (statsBtn) {

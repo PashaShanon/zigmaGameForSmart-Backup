@@ -310,39 +310,13 @@ export class GameRoom extends Room<GameState> {
         });
 
         this.onMessage("manualPlayerLeave", (client) => {
+            console.log(`[GameRoom] 🚩 manualPlayerLeave from ${client.sessionId}`);
             const player = this.state.players.get(client.sessionId);
-            if (player) {
-                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) SELF-KICK/EXIT. Cleaning up.`);
-                
-                // --- AGGRESSIVE CLEANUP ---
-                if (player.spawnIndex !== -1) {
-                    this.usedSpawnIndices.delete(player.spawnIndex);
-                }
-                const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
-                if (subRoom) {
-                    const idx = subRoom.playerIds.indexOf(client.sessionId);
-                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
-                }
-
-                if (!this.state.isGameStarted && player.userId) {
-                    this.removeParticipantFromSupabaseB(player.userId);
-                }
-
-                // Remove from state immediately
-                this.state.players.delete(client.sessionId);
-                this.playerAnswers.delete(client.sessionId);
-                
-                // Broadcast to update UI on all clients
-                this.broadcast("playerLeft", { sessionId: client.sessionId });
-                
-                (client as any).kicked = true;
-                (client as any).manualLeave = true;
-                
-                // Force close the connection from server side too
-                client.leave();
-                
-                console.log(`[GameRoom] Self-kick cleanup complete for ${player.name}.`);
-            }
+            this.handlePlayerLeave(client.sessionId, player);
+            
+            (client as any).kicked = true;
+            (client as any).manualLeave = true;
+            client.leave();
         });
 
         this.onMessage("engageEnemy", (client, data) => {
@@ -1116,7 +1090,6 @@ export class GameRoom extends Room<GameState> {
                 // LOBBY PHASE: Langsung cleanup tanpa allowReconnection.
                 // Di lobby, player bisa join ulang kapan saja via joinById.
                 // allowReconnection di lobby menyebabkan ghost player (duplikasi) karena
-                // entry lama tetap ada di state saat player join kembali dengan session baru.
                 console.log(`[GameRoom] Player ${client.sessionId} disconnected during LOBBY. Cleaning up immediately (no reconnection wait).`);
             }
         } else {
@@ -1124,38 +1097,53 @@ export class GameRoom extends Room<GameState> {
             console.log(`[GameRoom] Player ${client.sessionId} left intentionally (consented=${consented}, kicked=${isKicked}, manual=${isManualLeave}). Cleaning up immediately.`);
         }
 
-        // Hapus player dari state (timeout, di-kick, atau keluar sengaja)
-        // Host tidak ada di state.players, jadi hanya delete untuk non-host
-        if (player) {
-            if (player.spawnIndex !== -1) {
-                this.usedSpawnIndices.delete(player.spawnIndex);
-                console.log(`[Spawn] Freed spawn point ${player.spawnIndex} for player ${player.name}`);
-            }
-            const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
-            if (subRoom) {
-                const idx = subRoom.playerIds.indexOf(client.sessionId);
-                if (idx > -1) subRoom.playerIds.splice(idx, 1);
-            }
-
-            // --- DATABASE CLEANUP ---
-            // Remove from Supabase B if game hasn't started yet (Lobby only)
-            // DO NOT remove if the player was purged (another session is already active)
-            const isPurged = (client as any).purged === true;
-            if (!this.state.isGameStarted && player.userId && !isPurged) {
-                this.removeParticipantFromSupabaseB(player.userId);
-            }
-        }
-        
-        // Hapus SESSION SPESIFIK
-        const userId = player?.userId || "";
-        this.state.players.delete(client.sessionId);
-        this.broadcast("playerLeft", { sessionId: client.sessionId, userId: userId });
-        
-        console.log(`[onLeave] 🚪 Session ${client.sessionId} (User: ${userId}) removed. State size: ${this.state.players.size}`);
+        // Gunakan helper terpusat
+        this.handlePlayerLeave(client.sessionId, player, isPurged);
 
         if (this.state.isGameStarted && !this.state.isGameOver) {
             this.checkGameEnd();
         }
+    }
+
+    /**
+     * Helper terpusat untuk membersihkan data player dari state dan sub-room.
+     * Dipanggil dari onLeave dan manualPlayerLeave.
+     */
+    private handlePlayerLeave(sessionId: string, player?: Player, isPurged: boolean = false) {
+        console.log(`[handlePlayerLeave] Cleaning up session: ${sessionId}`);
+
+        // 1. Bersihkan dari state.players
+        if (this.state.players.has(sessionId)) {
+            this.state.players.delete(sessionId);
+        }
+        this.playerAnswers.delete(sessionId);
+
+        // 2. Bersihkan dari SEMUA sub-room (Deep Search)
+        // Kadang player.subRoomId bisa null/salah, jadi kita cek semua
+        this.state.subRooms.forEach(room => {
+            const idx = room.playerIds.indexOf(sessionId);
+            if (idx > -1) {
+                console.log(`[handlePlayerLeave] Found and removed ${sessionId} from sub-room: ${room.id}`);
+                room.playerIds.splice(idx, 1);
+            }
+        });
+
+        // 3. Bersihkan data spesifik player
+        if (player) {
+            if (player.spawnIndex !== -1) {
+                this.usedSpawnIndices.delete(player.spawnIndex);
+                console.log(`[handlePlayerLeave] Freed spawn point ${player.spawnIndex}`);
+            }
+
+            // 4. Bersihkan database jika di lobby
+            if (!this.state.isGameStarted && player.userId && !isPurged) {
+                this.removeParticipantFromSupabaseB(player.userId);
+            }
+        }
+
+        // 5. Broadcast perubahan ke semua klien
+        this.broadcast("playerLeft", { sessionId: sessionId });
+        console.log(`[handlePlayerLeave] Cleanup complete. New state size: ${this.state.players.size}`);
     }
 
     onDispose() {
