@@ -927,8 +927,11 @@ export class GameRoom extends Room<GameState> {
 
                 // Kick client lama jika masih terkoneksi
                 const oldClient = this.clients.find(c => c.sessionId === oldSid);
+
+                // Mark as purged to avoid database cleanup in onLeave
                 if (oldClient) {
                     (oldClient as any).kicked = true;
+                    (oldClient as any).purged = true;
                     oldClient.send("kicked", { message: "Another session started." });
                     oldClient.leave();
                 }
@@ -1109,7 +1112,9 @@ export class GameRoom extends Room<GameState> {
 
             // --- DATABASE CLEANUP ---
             // Remove from Supabase B if game hasn't started yet (Lobby only)
-            if (!this.state.isGameStarted && player.userId) {
+            // DO NOT remove if the player was purged (another session is already active)
+            const isPurged = (client as any).purged === true;
+            if (!this.state.isGameStarted && player.userId && !isPurged) {
                 this.removeParticipantFromSupabaseB(player.userId);
             }
         }

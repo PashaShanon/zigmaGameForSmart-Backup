@@ -92,31 +92,35 @@ export class LobbyManager {
         const autoJoinTriggered = this.initializeAutoJoin();
         if (autoJoinTriggered) return;
 
-        window.addEventListener('popstate', () => this.handleRouting());
+        // SINGLETON-LIKE BEHAVIOR FOR GLOBAL LISTENERS
+        if (!(window as any).lobbyListenersAttached) {
+            window.addEventListener('popstate', () => this.handleRouting());
 
-        window.addEventListener('lobbyUIReRendered', () => {
-            const oldNickname = (document.getElementById('lobby-nickname-input') as HTMLInputElement)?.value;
-            const oldCode = (document.getElementById('room-code-input') as HTMLInputElement)?.value;
+            window.addEventListener('lobbyUIReRendered', () => {
+                const oldNickname = (document.getElementById('lobby-nickname-input') as HTMLInputElement)?.value;
+                const oldCode = (document.getElementById('room-code-input') as HTMLInputElement)?.value;
 
-            this.lobbyUI = document.getElementById('lobby-ui');
-            this.setupEventListeners();
-            this.populateUserProfile();
+                this.lobbyUI = document.getElementById('lobby-ui');
+                this.setupEventListeners();
+                this.populateUserProfile();
 
-            // Re-apply values if they were user-entered, or fallback to profile
-            const nicknameInput = document.getElementById('lobby-nickname-input') as HTMLInputElement;
-            const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
-            
-            if (nicknameInput && oldNickname) {
-                nicknameInput.value = oldNickname;
-            } else if (nicknameInput) {
-                const profile = authService.getStoredProfile();
-                if (profile) {
-                    nicknameInput.value = profile.nickname || profile.fullname || profile.username || '';
+                // Re-apply values if they were user-entered, or fallback to profile
+                const nicknameInput = document.getElementById('lobby-nickname-input') as HTMLInputElement;
+                const codeInput = document.getElementById('room-code-input') as HTMLInputElement;
+                
+                if (nicknameInput && oldNickname) {
+                    nicknameInput.value = oldNickname;
+                } else if (nicknameInput) {
+                    const profile = authService.getStoredProfile();
+                    if (profile) {
+                        nicknameInput.value = profile.nickname || profile.fullname || profile.username || '';
+                    }
                 }
-            }
 
-            if (codeInput && oldCode) codeInput.value = oldCode;
-        });
+                if (codeInput && oldCode) codeInput.value = oldCode;
+            });
+            (window as any).lobbyListenersAttached = true;
+        }
 
         this.handleRouting();
     }
@@ -713,122 +717,93 @@ export class LobbyManager {
         }
     }
 
-    private async handleJoinRoom(code?: string, nicknameInput?: string) {
+    private isJoining: boolean = false;
+
+    private setBtnLoading(loading: boolean) {
+        const joinBtn = document.getElementById('join-room-btn') as HTMLButtonElement;
+        if (!joinBtn) return;
+        if (loading) {
+            joinBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-xl font-bold">refresh</span> ${i18n.t('lobby.join_card.joining_btn')}`;
+            joinBtn.disabled = true;
+            joinBtn.classList.add('opacity-80', 'cursor-not-allowed');
+            joinBtn.classList.remove('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
+        } else {
+            joinBtn.innerHTML = i18n.t('lobby.join_card.btn');
+            joinBtn.disabled = false;
+            joinBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+            joinBtn.classList.add('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
+        }
+    }
+
+    private async handleJoinRoom(code: string | undefined, nameOverride?: string) {
+        if (this.isJoining) {
+            console.log("[LobbyManager] 🛡️ Join already in progress, skipping.");
+            return;
+        }
+
+        const roomCode = code?.trim().toUpperCase();
+        if (!roomCode || roomCode.length !== 6) {
+            this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.invalid_code'));
+            return;
+        }
+
+        this.isJoining = true;
+        this.setBtnLoading(true);
         this.clearJoinErrors();
 
-        const cleanCode = code ? code.trim() : "";
-        
-        // Use provided nickname (autoJoin) OR fetch from stored profile
-        let nickname = (nicknameInput || "").trim();
-        if (!nickname) {
-            const profile = authService.getStoredProfile();
-            nickname = profile?.nickname || profile?.fullname || profile?.username || profile?.email?.split('@')[0] || 'Player';
-        }
-
-        let hasError = false;
-
-        if (!cleanCode || cleanCode.length !== 6) {
-            this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.invalid_code'));
-            hasError = true;
-        }
-        if (hasError) return;
-
-        const joinBtn = document.getElementById('join-room-btn') as HTMLButtonElement;
-        const setBtnLoading = (loading: boolean) => {
-            if (!joinBtn) return;
-            if (loading) {
-                joinBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-xl font-bold">refresh</span> ${i18n.t('lobby.join_card.joining_btn')}`;
-                joinBtn.disabled = true;
-                joinBtn.classList.add('opacity-80', 'cursor-not-allowed');
-                joinBtn.classList.remove('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
-            } else {
-                joinBtn.innerHTML = i18n.t('lobby.join_card.btn');
-                joinBtn.disabled = false;
-                joinBtn.classList.remove('opacity-80', 'cursor-not-allowed');
-                joinBtn.classList.add('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
-            }
-        };
-
         try {
-            setBtnLoading(true);
-            const { data: sessionData, error: sessionError } = await supabaseB
-                .from(SESSION_TABLE)
-                .select('*')
-                .eq('game_pin', cleanCode)
-                .single();
-
-            if (sessionError || !sessionData) {
-                this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.room_not_found'));
-                setBtnLoading(false);
-                return;
-            }
-
-            if (sessionData.status !== 'waiting') {
-                this.showJoinError(i18n.t('lobby.join_errors.game_started'));
-                setBtnLoading(false);
-                return;
-            }
-
+            // 1. Check if user already in a room (Supabase)
             const profile = authService.getStoredProfile();
             if (!profile) {
                 this.showJoinError(i18n.t('lobby.join_errors.login_first'));
+                this.isJoining = false;
+                this.setBtnLoading(false);
                 return;
             }
 
             const userId = profile.id;
-            const { data: existingByUserId } = await supabaseB.from(PARTICIPANT_TABLE).select('id').eq('session_id', sessionData.id).eq('user_id', userId).maybeSingle();
-            const { data: existingByNickname } = await supabaseB.from(PARTICIPANT_TABLE).select('id').eq('session_id', sessionData.id).ilike('nickname', nickname).maybeSingle();
-            const existingParticipant = existingByUserId || existingByNickname;
+            const nickname = (nameOverride || profile.nickname || profile.fullname || profile.username || 'Player').trim();
 
-            if (!existingParticipant) {
-                const { error: partError } = await supabaseB.from(PARTICIPANT_TABLE).insert({
-                    session_id: sessionData.id,
-                    nickname: nickname,
-                    user_id: userId,
-                    joined_at: new Date().toISOString(),
-                    score: 0,
-                    char: 'none'
-                });
-
-                if (partError && partError.code !== '23505') {
-                    this.showJoinError(i18n.t('lobby.join_errors.join_failed'));
-                    return;
-                }
-            } else {
-                await supabaseB.from(PARTICIPANT_TABLE).update({ nickname: nickname, user_id: userId, joined_at: new Date().toISOString() }).eq('id', existingParticipant.id);
-            }
-
+            // 2. Search for room in Colyseus
+            console.log("Searching for room with code:", roomCode);
             const rooms = await this.client.getAvailableRooms("game_room");
-            const targetRoom = rooms.find((r: any) => r.metadata?.roomCode === cleanCode);
+            const targetRoom = rooms.find(r => r.metadata && r.metadata.roomCode === roomCode);
 
-            if (targetRoom) {
-                const joinOptions = {
-                    name: nickname,
-                    userId: userId,
-                    avatarUrl: profile.avatar_url,
-                    sessionId: sessionData.id
-                };
-                console.log(`[JOIN-DEBUG] Joining room with options:`, JSON.stringify({ name: joinOptions.name, userId: joinOptions.userId, roomId: targetRoom.roomId }));
-                const room = await this.client.joinById(targetRoom.roomId, joinOptions);
-
-                localStorage.setItem('currentRoomId', room.id);
-                localStorage.setItem('currentSessionId', room.sessionId);
-                localStorage.setItem('currentReconnectionToken', room.reconnectionToken);
-                localStorage.setItem('supabaseSessionId', sessionData.id);
-
-                this.lobbyUI?.classList.add('hidden');
-
-                TransitionManager.transitionTo(() => {
-                    Router.navigate('/player/lobby');
-                    this.startManager('PlayerWaitingRoomManager', { room, isHost: false });
-                });
-            } else {
-                this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.room_closed'));
-                setBtnLoading(false);
+            if (!targetRoom) {
+                this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.room_not_found'));
+                this.isJoining = false;
+                this.setBtnLoading(false);
+                return;
             }
-        } catch (e) {
-            setBtnLoading(false);
-            this.showJoinError(i18n.t('lobby.join_errors.conn_error'));
+
+            // 3. Join the room
+            const joinOptions = {
+                name: nickname,
+                userId: userId,
+                avatarUrl: profile.avatar_url || "",
+                sessionId: "" // Fresh join
+            };
+
+            console.log("[JOIN-DEBUG] Joining room with options:", JSON.stringify(joinOptions));
+            const room = await this.client.joinById(targetRoom.roomId, joinOptions);
+
+            localStorage.setItem('currentRoomId', room.id);
+            localStorage.setItem('currentSessionId', room.sessionId);
+            localStorage.setItem('currentReconnectionToken', room.reconnectionToken);
+
+            this.lobbyUI?.classList.add('hidden');
+
+            TransitionManager.transitionTo(() => {
+                Router.navigate('/player/lobby');
+                this.startManager('PlayerWaitingRoomManager', { room, isHost: false });
+                this.isJoining = false;
+            });
+
+        } catch (e: any) {
+            console.error("Join failed:", e);
+            this.showJoinError(i18n.t('lobby.join_errors.conn_error') + (e.message ? ": " + e.message : ""));
+            this.isJoining = false;
+            this.setBtnLoading(false);
         }
     }
 

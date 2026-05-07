@@ -2061,18 +2061,28 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         const gridEl = this.isHost ? document.getElementById('host-player-grid') : document.getElementById('player-grid');
         if (!gridEl) return;
 
-        // Hanya tampilkan player biasa — host adalah spectator murni, tidak masuk grid
-        // Use Map to ensure deduplication by sessionId
+        // Use Map to ensure deduplication by userId (if available) or sessionId
+        // This is a ROBUST deduplication failsafe for the UI.
         const playerMap = new Map<string, any>();
         this.room.state.players.forEach((p: any, sessionId: string) => {
-            if (!p.isHost && !playerMap.has(sessionId)) {
-                playerMap.set(sessionId, {
-                    sessionId,
-                    name: p.name,
-                    hairId: p.hairId,
-                    isHost: p.isHost,
-                });
+            if (p.isHost) return;
+
+            const dedupeKey = p.userId || sessionId;
+            
+            // If already exists, prefer the one with matching sessionId (current player)
+            if (playerMap.has(dedupeKey)) {
+                if (sessionId === this.mySessionId) {
+                    playerMap.set(dedupeKey, { sessionId, name: p.name, hairId: p.hairId, subRoomId: p.subRoomId });
+                }
+                return;
             }
+
+            playerMap.set(dedupeKey, {
+                sessionId,
+                name: p.name,
+                hairId: p.hairId,
+                subRoomId: p.subRoomId
+            });
         });
         const players = Array.from(playerMap.values());
 
