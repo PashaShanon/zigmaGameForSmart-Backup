@@ -257,35 +257,28 @@ export class GameRoom extends Room<GameState> {
             if (player) {
                 console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) manual leave. Cleanup starting.`);
                 
-                // 1. Cleanup spawn point
+                // Cleanup specific session data
                 if (player.spawnIndex !== -1) {
                     this.usedSpawnIndices.delete(player.spawnIndex);
                 }
-                
-                // 2. Cleanup sub-room
                 const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
                 if (subRoom) {
                     const idx = subRoom.playerIds.indexOf(client.sessionId);
                     if (idx > -1) subRoom.playerIds.splice(idx, 1);
                 }
 
-                // 3. Remove from Supabase B if in lobby
                 if (!this.state.isGameStarted && player.userId) {
                     this.removeParticipantFromSupabaseB(player.userId);
                 }
 
-                // 4. Delete from state IMMEDIATELY
+                // Delete ONLY this specific session
                 this.state.players.delete(client.sessionId);
                 this.playerAnswers.delete(client.sessionId);
-                
-                // 5. Mark client as intentionally leaving
-                (client as any).kicked = true;
-                (client as any).manualLeave = true;
-
-                // 6. Broadcast to all to refresh grids
                 this.broadcast("playerLeft", { sessionId: client.sessionId });
                 
-                console.log(`[GameRoom] Player ${player.name} cleanup complete.`);
+                (client as any).kicked = true;
+                (client as any).manualLeave = true;
+                console.log(`[GameRoom] Player ${player.name} manual leave cleanup complete.`);
             }
         });
 
@@ -1089,6 +1082,8 @@ export class GameRoom extends Room<GameState> {
                 this.removeParticipantFromSupabaseB(player.userId);
             }
         }
+        
+        // Hapus SESSION SPESIFIK saja agar tidak sengaja menghapus session baru player yang sama
         this.state.players.delete(client.sessionId);
         this.broadcast("playerLeft", { sessionId: client.sessionId });
 
