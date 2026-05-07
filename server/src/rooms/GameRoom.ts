@@ -1106,9 +1106,12 @@ export class GameRoom extends Room<GameState> {
             }
         }
         
-        // Hapus SESSION SPESIFIK saja agar tidak sengaja menghapus session baru player yang sama
+        // Hapus SESSION SPESIFIK
+        const userId = player?.userId || "";
         this.state.players.delete(client.sessionId);
-        this.broadcast("playerLeft", { sessionId: client.sessionId });
+        this.broadcast("playerLeft", { sessionId: client.sessionId, userId: userId });
+        
+        console.log(`[onLeave] 🚪 Session ${client.sessionId} (User: ${userId}) removed. State size: ${this.state.players.size}`);
 
         if (this.state.isGameStarted && !this.state.isGameOver) {
             this.checkGameEnd();
