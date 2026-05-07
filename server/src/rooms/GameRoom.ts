@@ -949,6 +949,9 @@ export class GameRoom extends Room<GameState> {
         player.avatarUrl = options.avatarUrl || "";
         player.name = options.name || "Player " + (this.state.players.size + 1);
         player.hairId = Math.floor(Math.random() * 7); // Randomize hair (0-6) on join
+
+        // 🛡️ REGISTER IMMEDIATELY to prevent race conditions during parallel joins
+        this.state.players.set(client.sessionId, player);
  
         // Assign spawn position from Map Data
         const mapData = MapParser.loadMapData(this.state.difficulty);
@@ -988,7 +991,6 @@ export class GameRoom extends Room<GameState> {
             player.y = 300;
         }
 
-        this.state.players.set(client.sessionId, player);
 
         // Auto-assign to first available sub-room (non-host players only)
         let assignedRoom = this.state.subRooms.find(r => r.playerIds.length < r.capacity);

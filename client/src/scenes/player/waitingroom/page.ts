@@ -1063,10 +1063,16 @@ export class PlayerWaitingRoomManager {
 
 
     updateUILayout() {
-        let totalPlayers = 0;
-        this.room.state.players.forEach((p: any) => {
-            if (!p.isHost) totalPlayers++;
+        // Use Map to deduplicate by userId for an accurate count
+        const playerMap = new Map<string, any>();
+        this.room.state.players.forEach((p: any, sessionId: string) => {
+            if (p.isHost) return;
+            const dedupeKey = p.userId || sessionId;
+            if (!playerMap.has(dedupeKey)) {
+                playerMap.set(dedupeKey, p);
+            }
         });
+        const totalPlayers = playerMap.size;
 
         if (this.playerCountEl) {
             this.playerCountEl.innerText = totalPlayers.toString();
