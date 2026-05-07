@@ -275,12 +275,41 @@ export class GameRoom extends Room<GameState> {
             console.log(`[GameRoom] Client ${client.sessionId} manual leave signaled.`);
         });
 
+        this.onMessage("kickPlayer", (client, data) => {
+            // Only host can kick players
+            if (client.sessionId !== this.state.hostId) return;
+            
+            const targetSid = data.sessionId;
+            console.log(`[GameRoom] Host is kicking player: ${targetSid}`);
+            
+            const targetClient = this.clients.find(c => c.sessionId === targetSid);
+            if (targetClient) {
+                (targetClient as any).kicked = true;
+                targetClient.send("kicked", { message: "You have been kicked by the host." });
+                targetClient.leave();
+            }
+
+            // Aggressive Cleanup from state
+            const player = this.state.players.get(targetSid);
+            if (player) {
+                if (player.spawnIndex !== -1) this.usedSpawnIndices.delete(player.spawnIndex);
+                const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
+                if (subRoom) {
+                    const idx = subRoom.playerIds.indexOf(targetSid);
+                    if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                }
+                this.state.players.delete(targetSid);
+                this.playerAnswers.delete(targetSid);
+                this.broadcast("playerLeft", { sessionId: targetSid });
+            }
+        });
+
         this.onMessage("manualPlayerLeave", (client) => {
             const player = this.state.players.get(client.sessionId);
             if (player) {
-                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) manual leave. Cleanup starting.`);
+                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) SELF-KICK/EXIT. Cleaning up.`);
                 
-                // Cleanup specific session data
+                // --- AGGRESSIVE CLEANUP ---
                 if (player.spawnIndex !== -1) {
                     this.usedSpawnIndices.delete(player.spawnIndex);
                 }
@@ -294,14 +323,20 @@ export class GameRoom extends Room<GameState> {
                     this.removeParticipantFromSupabaseB(player.userId);
                 }
 
-                // Delete ONLY this specific session
+                // Remove from state immediately
                 this.state.players.delete(client.sessionId);
                 this.playerAnswers.delete(client.sessionId);
+                
+                // Broadcast to update UI on all clients
                 this.broadcast("playerLeft", { sessionId: client.sessionId });
                 
                 (client as any).kicked = true;
                 (client as any).manualLeave = true;
-                console.log(`[GameRoom] Player ${player.name} manual leave cleanup complete.`);
+                
+                // Force close the connection from server side too
+                client.leave();
+                
+                console.log(`[GameRoom] Self-kick cleanup complete for ${player.name}.`);
             }
         });
 

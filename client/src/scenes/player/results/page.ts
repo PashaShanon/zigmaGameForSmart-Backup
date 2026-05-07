@@ -1,121 +1,133 @@
-import { Client } from 'colyseus.js';
-import { TransitionManager } from '../../../utils/TransitionManager';
-import { Router } from '../../../utils/Router';
-import { LobbyManager } from '../../lobby/page';
-import { OrientationManager } from '../../../utils/OrientationManager';
-import { GlobalBackground } from '../../../ui/shared/GlobalBackground';
-import { i18n } from '../../../utils/i18n';
+import { Client } from "colyseus.js";
+import { TransitionManager } from "../../../utils/TransitionManager";
+import { Router } from "../../../utils/Router";
+import { LobbyManager } from "../../lobby/page";
+import { OrientationManager } from "../../../utils/OrientationManager";
+import { GlobalBackground } from "../../../ui/shared/GlobalBackground";
+import { i18n } from "../../../utils/i18n";
 
 interface RankingEntry {
-    rank: number;
-    sessionId: string;
-    name: string;
-    hairId?: number;
-    avatarUrl?: string; // Added avatarUrl
-    score: number;
-    finishTime: number;
-    duration: number;
-    correctAnswers: number;
-    wrongAnswers: number;
+  rank: number;
+  sessionId: string;
+  name: string;
+  hairId?: number;
+  avatarUrl?: string; // Added avatarUrl
+  score: number;
+  finishTime: number;
+  duration: number;
+  correctAnswers: number;
+  wrongAnswers: number;
 }
 
 export class ResultManager {
-    private container!: HTMLDivElement;
-    private rankings: RankingEntry[] = [];
-    private mySessionId: string = "";
-    private roomId: string = "";
-    private supabaseSessionId: string = "";
-    private room: any;
+  private container!: HTMLDivElement;
+  private rankings: RankingEntry[] = [];
+  private mySessionId: string = "";
+  private roomId: string = "";
+  private supabaseSessionId: string = "";
+  private room: any;
 
-    constructor() {}
+  constructor() {}
 
-    start(data?: { room?: any, leaderboardData?: any[] }) {
-        TransitionManager.ensureClosed();
-        OrientationManager.requirePortrait(i18n.t('player_result.portrait_req_title'), i18n.t('player_result.portrait_req_desc'));
+  start(data?: { room?: any; leaderboardData?: any[] }) {
+    TransitionManager.ensureClosed();
+    OrientationManager.requirePortrait(
+      i18n.t("player_result.portrait_req_title"),
+      i18n.t("player_result.portrait_req_desc"),
+    );
 
-        // Listen for language changes
-        window.addEventListener('languageChanged', this.handleLangChange);
+    // Listen for language changes
+    window.addEventListener("languageChanged", this.handleLangChange);
 
-        let registryRankings = data?.leaderboardData || [];
-        this.room = data?.room;
-        let registrySessionId = this.room ? this.room.sessionId : "";
-        let registryRoomId = this.room ? this.room.id : "";
+    let registryRankings = data?.leaderboardData || [];
+    this.room = data?.room;
+    let registrySessionId = this.room ? this.room.sessionId : "";
+    let registryRoomId = this.room ? this.room.id : "";
 
-        this.supabaseSessionId = localStorage.getItem('supabaseSessionId') || this.room?.metadata?.sessionId || "";
+    this.supabaseSessionId =
+      localStorage.getItem("supabaseSessionId") ||
+      this.room?.metadata?.sessionId ||
+      "";
 
-        if (registryRankings.length > 0 && registrySessionId && registryRoomId) {
-            this.rankings = registryRankings;
-            this.mySessionId = registrySessionId;
-            this.roomId = registryRoomId;
-            
-            // Get dynamic question total
-            const qLimit = this.room?.state?.questionLimit || "5";
-            const qCount = this.room?.state?.questions?.length || 5;
-            const finalTotal = (qLimit === 'all') ? qCount : parseInt(qLimit);
+    if (registryRankings.length > 0 && registrySessionId && registryRoomId) {
+      this.rankings = registryRankings;
+      this.mySessionId = registrySessionId;
+      this.roomId = registryRoomId;
 
-            sessionStorage.setItem('playerResultState', JSON.stringify({
-                rankings: this.rankings,
-                mySessionId: this.mySessionId,
-                roomId: this.roomId,
-                supabaseSessionId: this.supabaseSessionId,
-                questionTotal: finalTotal
-            }));
-        } else {
-            const savedState = sessionStorage.getItem('playerResultState');
-            if (savedState) {
-                const parsed = JSON.parse(savedState);
-                this.rankings = parsed.rankings;
-                this.mySessionId = parsed.mySessionId;
-                this.roomId = parsed.roomId;
-                if (parsed.supabaseSessionId) {
-                    this.supabaseSessionId = parsed.supabaseSessionId;
-                }
-            }
+      // Get dynamic question total
+      const qLimit = this.room?.state?.questionLimit || "5";
+      const qCount = this.room?.state?.questions?.length || 5;
+      const finalTotal = qLimit === "all" ? qCount : parseInt(qLimit);
+
+      sessionStorage.setItem(
+        "playerResultState",
+        JSON.stringify({
+          rankings: this.rankings,
+          mySessionId: this.mySessionId,
+          roomId: this.roomId,
+          supabaseSessionId: this.supabaseSessionId,
+          questionTotal: finalTotal,
+        }),
+      );
+    } else {
+      const savedState = sessionStorage.getItem("playerResultState");
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        this.rankings = parsed.rankings;
+        this.mySessionId = parsed.mySessionId;
+        this.roomId = parsed.roomId;
+        if (parsed.supabaseSessionId) {
+          this.supabaseSessionId = parsed.supabaseSessionId;
         }
-
-        const existingUI = document.getElementById('result-ui');
-        if (existingUI) existingUI.remove();
-
-        this.container = document.createElement('div');
-        this.container.id = 'result-ui';
-        this.container.style.position = 'absolute';
-        this.container.style.top = '0';
-        this.container.style.left = '0';
-        this.container.style.width = '100%';
-        this.container.style.height = '100%';
-        this.container.style.zIndex = '1000';
-        this.container.style.pointerEvents = 'none'; // Background can be clicked through empty areas
-        document.body.appendChild(this.container);
-
-        if (!document.getElementById('result-styles')) {
-            const style = document.createElement('style');
-            style.id = 'result-styles';
-            style.innerHTML = this.getStyles();
-            document.head.appendChild(style);
-        }
-
-        this.renderIndividualResult();
-
-        if (this.room) {
-            this.room.onMessage('gameEnded', (msgData: { rankings: any[] }) => {
-                this.rankings = msgData.rankings;
-                sessionStorage.setItem('playerResultState', JSON.stringify({
-                    rankings: this.rankings,
-                    mySessionId: this.mySessionId,
-                    roomId: this.roomId,
-                    supabaseSessionId: this.supabaseSessionId
-                }));
-                this.renderIndividualResult();
-            });
-        }
-
-        setTimeout(() => {
-            TransitionManager.open();
-        }, 100);
+      }
     }
 
-    private getStyles(): string {
-        return `
+    const existingUI = document.getElementById("result-ui");
+    if (existingUI) existingUI.remove();
+
+    this.container = document.createElement("div");
+    this.container.id = "result-ui";
+    this.container.style.position = "absolute";
+    this.container.style.top = "0";
+    this.container.style.left = "0";
+    this.container.style.width = "100%";
+    this.container.style.height = "100%";
+    this.container.style.zIndex = "1000";
+    this.container.style.pointerEvents = "none"; // Background can be clicked through empty areas
+    document.body.appendChild(this.container);
+
+    if (!document.getElementById("result-styles")) {
+      const style = document.createElement("style");
+      style.id = "result-styles";
+      style.innerHTML = this.getStyles();
+      document.head.appendChild(style);
+    }
+
+    this.renderIndividualResult();
+
+    if (this.room) {
+      this.room.onMessage("gameEnded", (msgData: { rankings: any[] }) => {
+        this.rankings = msgData.rankings;
+        sessionStorage.setItem(
+          "playerResultState",
+          JSON.stringify({
+            rankings: this.rankings,
+            mySessionId: this.mySessionId,
+            roomId: this.roomId,
+            supabaseSessionId: this.supabaseSessionId,
+          }),
+        );
+        this.renderIndividualResult();
+      });
+    }
+
+    setTimeout(() => {
+      TransitionManager.open();
+    }, 100);
+  }
+
+  private getStyles(): string {
+    return `
             @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
             #result-ui {
@@ -285,7 +297,7 @@ export class ResultManager {
                 .stat-box .material-symbols-outlined { font-size: 22px; margin-bottom: 6px; color: #478D47; }
                 .stat-value { font-size: 14px; margin-bottom: 2px; color: #478D47; }
                 .stat-label { 
-                    font-size: ${i18n.getLanguage() === 'ar' ? '10px' : '8px'}; 
+                    font-size: ${i18n.getLanguage() === "ar" ? "10px" : "8px"}; 
                     color: #6CC452; 
                     font-weight: 800;
                 }
@@ -326,45 +338,52 @@ export class ResultManager {
                 .nav-btn-wide { display: none; }
             }
         `;
-    }
+  }
 
-    private renderIndividualResult() {
-        Router.navigate('/player/result');
-        this.container.innerHTML = '';
+  private renderIndividualResult() {
+    Router.navigate("/player/result");
+    this.container.innerHTML = "";
 
-        const myEntry = this.rankings.find(p => p.sessionId === this.mySessionId) || this.rankings[0];
-        if (!myEntry) return;
+    const myEntry =
+      this.rankings.find((p) => p.sessionId === this.mySessionId) ||
+      this.rankings[0];
+    if (!myEntry) return;
 
-        const formatTime = (ms: number) => {
-            const totalSeconds = Math.floor(ms / 1000);
-            const mins = Math.floor(totalSeconds / 60);
-            const secs = totalSeconds % 60;
-            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        };
+    const formatTime = (ms: number) => {
+      const totalSeconds = Math.floor(ms / 1000);
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    };
 
-        const upscaleAvatarUrl = (url?: string) => {
-            if (!url) return url;
-            if (url.includes('googleusercontent.com')) {
-                return url.replace(/=s\d+(-c)?/, '=s384-c');
-            }
-            return url;
-        };
+    const upscaleAvatarUrl = (url?: string) => {
+      if (!url) return url;
+      if (url.includes("googleusercontent.com")) {
+        return url.replace(/=s\d+(-c)?/, "=s384-c");
+      }
+      return url;
+    };
 
-        const getInitials = (name: string) => {
-            if (!name) return '?';
-            const cleanName = name.trim();
-            if (cleanName.length <= 1) return cleanName.toUpperCase();
-            // Ambil 2 karakter pertama, contoh: "Pasha" -> "Pa"
-            return cleanName.substring(0, 1).toUpperCase() + cleanName.substring(1, 2).toLowerCase();
-        };
+    const getInitials = (name: string) => {
+      if (!name) return "?";
+      const cleanName = name.trim();
+      if (cleanName.length <= 1) return cleanName.toUpperCase();
+      // Ambil 2 karakter pertama, contoh: "Pasha" -> "Pa"
+      return (
+        cleanName.substring(0, 1).toUpperCase() +
+        cleanName.substring(1, 2).toLowerCase()
+      );
+    };
 
-        const savedState = sessionStorage.getItem('playerResultState');
-        const questionTotal = savedState ? (JSON.parse(savedState).questionTotal || 5) : 5;
+    const savedState = sessionStorage.getItem("playerResultState");
+    const questionTotal = savedState
+      ? JSON.parse(savedState).questionTotal || 5
+      : 5;
 
-        const characterVisuals = this.getCharacterVisuals(myEntry);
+    const characterVisuals = this.getCharacterVisuals(myEntry);
 
-        this.container.innerHTML = `
-            ${GlobalBackground.getHTML('result')}
+    this.container.innerHTML = `
+            ${GlobalBackground.getHTML("result")}
 
             <img src="/logo/Zigma-logo-fix.webp" class="logo-center" />
             <img src="/logo/Zigma-logo-fix.webp" class="logo-left" />
@@ -372,10 +391,11 @@ export class ResultManager {
 
             <div class="result-card pointer-events-auto">
                 <div class="result-avatar-container" style="background: #336B23; color: white;">
-                    ${myEntry.avatarUrl ? 
-                        `<img src="${upscaleAvatarUrl(myEntry.avatarUrl)}" class="result-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                         <div class="initial-fallback text-6xl" style="display:none; width: 100%; height: 100%; align-items: center; justify-content: center; text-shadow: 2px 2px 0 #000;">${getInitials(myEntry.name)}</div>` :
-                        `<div class="initial-fallback text-6xl" style="display:flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-shadow: 2px 2px 0 #000;">${getInitials(myEntry.name)}</div>`
+                    ${
+                      myEntry.avatarUrl
+                        ? `<img src="${upscaleAvatarUrl(myEntry.avatarUrl)}" class="result-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                         <div class="initial-fallback text-6xl" style="display:none; width: 100%; height: 100%; align-items: center; justify-content: center; text-shadow: 2px 2px 0 #000;">${getInitials(myEntry.name)}</div>`
+                        : `<div class="initial-fallback text-6xl" style="display:flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-shadow: 2px 2px 0 #000;">${getInitials(myEntry.name)}</div>`
                     }
                 </div>
                 <div class="result-name">${myEntry.name}</div>
@@ -383,137 +403,160 @@ export class ResultManager {
                 <div class="result-stats-row">
                     <div class="stat-box">
                         <span class="material-symbols-outlined stat-icon">military_tech</span>
-                        <div class="stat-value">${myEntry.rank === -1 ? (this.room?.state?.players?.size === 1 ? '#1' : '#?') : '#' + myEntry.rank}</div>
-                        <div id="txt-pr-rank" class="stat-label">${i18n.t('player_result.rank')}</div>
+                        <div class="stat-value">${myEntry.rank === -1 ? (this.room?.state?.players?.size === 1 ? "#1" : "#?") : "#" + myEntry.rank}</div>
+                        <div id="txt-pr-rank" class="stat-label">${i18n.t("player_result.rank")}</div>
                     </div>
                     <div class="stat-box">
                         <span class="material-symbols-outlined stat-icon">workspace_premium</span>
                         <div class="stat-value">${Math.min(100, Math.round(myEntry.score))}</div>
-                        <div id="txt-pr-score" class="stat-label">${i18n.t('player_result.score')}</div>
+                        <div id="txt-pr-score" class="stat-label">${i18n.t("player_result.score")}</div>
                     </div>
                     <div class="stat-box">
                         <span class="material-symbols-outlined stat-icon">task_alt</span>
                         <div class="stat-value">${myEntry.correctAnswers}/${questionTotal}</div>
-                        <div id="txt-pr-correct" class="stat-label">${i18n.t('player_result.correct')}</div>
+                        <div id="txt-pr-correct" class="stat-label">${i18n.t("player_result.correct")}</div>
                     </div>
                     <div class="stat-box">
                         <span class="material-symbols-outlined stat-icon">schedule</span>
                         <div class="stat-value">${formatTime(myEntry.duration)}</div>
-                        <div id="txt-pr-time" class="stat-label">${i18n.t('player_result.time')}</div>
+                        <div id="txt-pr-time" class="stat-label">${i18n.t("player_result.time")}</div>
                     </div>
                 </div>
             </div>
 
             <div class="lb-footer">
-                <button id="lb-home-btn" class="nav-btn btn-left" title="${i18n.t('player_result.title_home')}">
+                <button id="lb-home-btn" class="nav-btn btn-left" title="${i18n.t("player_result.title_home")}">
                     <span class="material-symbols-outlined">home</span>
                 </button>
                 
                 <button id="lb-home-btn-mobile" class="nav-btn-wide">
                     <span class="material-symbols-outlined">home</span>
-                    <span id="txt-pr-home">${i18n.t('player_result.home')}</span>
+                    <span id="txt-pr-home">${i18n.t("player_result.home")}</span>
                 </button>
                 
                 <button id="lb-stats-btn-mobile" class="nav-btn-wide">
                     <span class="material-symbols-outlined">analytics</span>
-                    <span id="txt-pr-stats">${i18n.t('player_result.stats')}</span>
+                    <span id="txt-pr-stats">${i18n.t("player_result.stats")}</span>
                 </button>
 
-                <button id="lb-stats-btn" class="nav-btn btn-right" title="${i18n.t('player_result.title_stats')}">
+                <button id="lb-stats-btn" class="nav-btn btn-right" title="${i18n.t("player_result.title_stats")}">
                     <span class="material-symbols-outlined">analytics</span>
                 </button>
             </div>
         `;
 
-        GlobalBackground.startCharacterSpawner('result');
-        this.attachListeners();
-    }
+    GlobalBackground.startCharacterSpawner("result");
+    this.attachListeners();
+  }
 
-    private getCharacterVisuals(player: RankingEntry) {
-        const humanPath = '/assets/characters/Human/IDLE';
-        const base = `background-image: url('${humanPath}/base_idle_strip9.png'); background-size: 864px 64px;`;
-        const tools = `background-image: url('${humanPath}/tools_idle_strip9.png'); background-size: 864px 64px;`;
-        let hair = '';
-        if (player.hairId && player.hairId > 0) {
-            const hairFiles: Record<number, string> = {
-                1: 'bowlhair', 2: 'curlyhair', 3: 'longhair', 4: 'mophair', 5: 'shorthair', 6: 'spikeyhair'
-            };
-            const key = hairFiles[player.hairId];
-            if (key) {
-                hair = `background-image: url('${humanPath}/${key}_idle_strip9.png'); background-size: 864px 64px;`;
+  private getCharacterVisuals(player: RankingEntry) {
+    const humanPath = "/assets/characters/Human/IDLE";
+    const base = `background-image: url('${humanPath}/base_idle_strip9.png'); background-size: 864px 64px;`;
+    const tools = `background-image: url('${humanPath}/tools_idle_strip9.png'); background-size: 864px 64px;`;
+    let hair = "";
+    if (player.hairId && player.hairId > 0) {
+      const hairFiles: Record<number, string> = {
+        1: "bowlhair",
+        2: "curlyhair",
+        3: "longhair",
+        4: "mophair",
+        5: "shorthair",
+        6: "spikeyhair",
+      };
+      const key = hairFiles[player.hairId];
+      if (key) {
+        hair = `background-image: url('${humanPath}/${key}_idle_strip9.png'); background-size: 864px 64px;`;
+      }
+    }
+    return { base, tools, hair };
+  }
+
+  private attachListeners() {
+    setTimeout(() => {
+      const homeBtn = document.getElementById("lb-home-btn");
+      const statsBtn = document.getElementById("lb-stats-btn");
+
+      if (homeBtn)
+        homeBtn.onclick = () => {
+          TransitionManager.transitionTo(() => {
+            this.cleanup();
+            if (this.room) {
+              try {
+                this.room.send("manualPlayerLeave");
+              } catch (e) {
+                console.warn("manualPlayerLeave failed:", e);
+              }
+              this.room.leave();
             }
-        }
-        return { base, tools, hair };
-    }
+            window.location.href = "/";
+          });
+        };
 
-    private attachListeners() {
-        setTimeout(() => {
-            const homeBtn = document.getElementById('lb-home-btn');
-            const statsBtn = document.getElementById('lb-stats-btn');
-
-            if (homeBtn) homeBtn.onclick = () => {
-                TransitionManager.transitionTo(() => {
-                    this.cleanup();
-                    if (this.room) this.room.leave();
-                    window.location.href = '/';
-                });
-            };
-
-            const homeBtnMobile = document.getElementById('lb-home-btn-mobile');
-            if (homeBtnMobile) homeBtnMobile.onclick = () => {
-                TransitionManager.transitionTo(() => {
-                    this.cleanup();
-                    if (this.room) this.room.leave();
-                    window.location.href = '/';
-                });
-            };
-
-            if (statsBtn) {
-                statsBtn.onclick = () => this.openStats();
+      const homeBtnMobile = document.getElementById("lb-home-btn-mobile");
+      if (homeBtnMobile)
+        homeBtnMobile.onclick = () => {
+          TransitionManager.transitionTo(() => {
+            this.cleanup();
+            if (this.room) {
+              try {
+                this.room.send("manualPlayerLeave");
+              } catch (e) {
+                console.warn("manualPlayerLeave failed:", e);
+              }
+              this.room.leave();
             }
+            window.location.href = "/";
+          });
+        };
 
-            const statsBtnMobile = document.getElementById('lb-stats-btn-mobile');
-            if (statsBtnMobile) statsBtnMobile.onclick = () => this.openStats();
-        }, 50);
+      if (statsBtn) {
+        statsBtn.onclick = () => this.openStats();
+      }
+
+      const statsBtnMobile = document.getElementById("lb-stats-btn-mobile");
+      if (statsBtnMobile) statsBtnMobile.onclick = () => this.openStats();
+    }, 50);
+  }
+
+  private openStats() {
+    const sid =
+      this.supabaseSessionId ||
+      localStorage.getItem("supabaseSessionId") ||
+      this.room?.metadata?.sessionId;
+    if (sid) {
+      window.open(`https://app.gameforsmart.com/stat/${sid}`, "_blank");
+    } else {
+      alert(i18n.t("player_result.no_session"));
     }
+  }
 
-    private openStats() {
-        const sid = this.supabaseSessionId || localStorage.getItem('supabaseSessionId') || this.room?.metadata?.sessionId;
-        if (sid) {
-            window.open(`https://app.gameforsmart.com/stat/${sid}`, '_blank');
-        } else {
-            alert(i18n.t('player_result.no_session'));
-        }
-    }
+  cleanup() {
+    GlobalBackground.stopCharacterSpawner("result");
+    if (this.container) this.container.remove();
+    const style = document.getElementById("result-styles");
+    if (style) style.remove();
+    OrientationManager.disable();
+    window.removeEventListener("languageChanged", this.handleLangChange);
+  }
 
-    cleanup() {
-        GlobalBackground.stopCharacterSpawner('result');
-        if (this.container) this.container.remove();
-        const style = document.getElementById('result-styles');
-        if (style) style.remove();
-        OrientationManager.disable();
-        window.removeEventListener('languageChanged', this.handleLangChange);
-    }
-    
-    private handleLangChange = () => {
-        const hRank = document.getElementById('txt-pr-rank');
-        if (hRank) hRank.innerText = i18n.t('player_result.rank');
-        const hScore = document.getElementById('txt-pr-score');
-        if (hScore) hScore.innerText = i18n.t('player_result.score');
-        const hCorrect = document.getElementById('txt-pr-correct');
-        if (hCorrect) hCorrect.innerText = i18n.t('player_result.correct');
-        const hTime = document.getElementById('txt-pr-time');
-        if (hTime) hTime.innerText = i18n.t('player_result.time');
+  private handleLangChange = () => {
+    const hRank = document.getElementById("txt-pr-rank");
+    if (hRank) hRank.innerText = i18n.t("player_result.rank");
+    const hScore = document.getElementById("txt-pr-score");
+    if (hScore) hScore.innerText = i18n.t("player_result.score");
+    const hCorrect = document.getElementById("txt-pr-correct");
+    if (hCorrect) hCorrect.innerText = i18n.t("player_result.correct");
+    const hTime = document.getElementById("txt-pr-time");
+    if (hTime) hTime.innerText = i18n.t("player_result.time");
 
-        const btnHome = document.getElementById('lb-home-btn');
-        if (btnHome) btnHome.title = i18n.t('player_result.title_home');
-        const btnStats = document.getElementById('lb-stats-btn');
-        if (btnStats) btnStats.title = i18n.t('player_result.title_stats');
+    const btnHome = document.getElementById("lb-home-btn");
+    if (btnHome) btnHome.title = i18n.t("player_result.title_home");
+    const btnStats = document.getElementById("lb-stats-btn");
+    if (btnStats) btnStats.title = i18n.t("player_result.title_stats");
 
-        const txtHome = document.getElementById('txt-pr-home');
-        if (txtHome) txtHome.innerText = i18n.t('player_result.home');
-        const txtStats = document.getElementById('txt-pr-stats');
-        if (txtStats) txtStats.innerText = i18n.t('player_result.stats');
-    };
-
+    const txtHome = document.getElementById("txt-pr-home");
+    if (txtHome) txtHome.innerText = i18n.t("player_result.home");
+    const txtStats = document.getElementById("txt-pr-stats");
+    if (txtStats) txtStats.innerText = i18n.t("player_result.stats");
+  };
 }
