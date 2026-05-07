@@ -885,91 +885,60 @@ export class GameRoom extends Room<GameState> {
 
         // --- NON-HOST PLAYERS ONLY ---
         
-        // SESSION TAKEOVER: Jika userId atau Nama sudah ada di room (dari session sebelumnya),
-        // pindahkan data player lama ke session baru (takeover) agar tetap 1 player dan UI sync.
+        // RUTHLESS DEDUPLICATION: Sebelum membuat player baru, pastikan tidak ada player 
+        // dengan userId atau Nama yang sama. Jika ada, HAPUS PAKSA (Purge).
         const incomingUserId = options.userId;
         const incomingName = options.name;
 
         if (incomingUserId || incomingName) {
-            let existingSessionId: string | null = null;
             const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
-
-            // DEBUG: Log incoming player data
-            console.log(`[TAKEOVER-DEBUG] Incoming join: userId="${incomingUserId}", name="${incomingName}", normalized="${normalizedIncoming}"`);
-            console.log(`[TAKEOVER-DEBUG] Current players in room (${this.state.players.size}):`);
-
+            
+            // Cari semua session yang duplikat
+            const duplicates: string[] = [];
             this.state.players.forEach((p, sid) => {
+                if (sid === client.sessionId) return; // Abaikan diri sendiri
+
                 const isSameUser = incomingUserId && p.userId === incomingUserId;
                 const normalizedPName = p.name ? p.name.trim().toLowerCase() : "";
                 const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
 
-                console.log(`[TAKEOVER-DEBUG]   - sid=${sid}, userId="${p.userId}", name="${p.name}", normalized="${normalizedPName}" → isSameUser=${isSameUser}, isSameName=${isSameName}`);
-
                 if (isSameUser || isSameName) {
-                    existingSessionId = sid;
+                    duplicates.push(sid);
                 }
             });
 
-            console.log(`[TAKEOVER-DEBUG] Result: existingSessionId=${existingSessionId}, currentSessionId=${client.sessionId}`);
+            // HAPUS SEMUA DUPLIKAT (Jika ada)
+            for (const oldSid of duplicates) {
+                const oldPlayer = this.state.players.get(oldSid);
+                console.log(`[DEDUPE] 🛡️ Found ghost session for ${incomingName} (SID: ${oldSid}). Purging before join.`);
+                
+                if (oldPlayer) {
+                    // Bebaskan spawn point
+                    if (oldPlayer.spawnIndex !== -1) {
+                        this.usedSpawnIndices.delete(oldPlayer.spawnIndex);
+                    }
+                    // Hapus dari sub-room
+                    const subRoom = this.state.subRooms.find(r => r.id === oldPlayer.subRoomId);
+                    if (subRoom) {
+                        const idx = subRoom.playerIds.indexOf(oldSid);
+                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
+                    }
+                }
 
-            if (existingSessionId && existingSessionId !== client.sessionId) {
-                const existingPlayer = this.state.players.get(existingSessionId)!;
-                console.log(`[GameRoom] SESSION TAKEOVER: ${existingPlayer.name} (${existingSessionId}) → (${client.sessionId})`);
-
-                // 1. Kick old client connection if still alive
-                const oldClient = this.clients.find(c => c.sessionId === existingSessionId);
+                // Kick client lama jika masih terkoneksi
+                const oldClient = this.clients.find(c => c.sessionId === oldSid);
                 if (oldClient) {
                     (oldClient as any).kicked = true;
-                    oldClient.send("kicked", { message: "Joined from another device/tab." });
+                    oldClient.send("kicked", { message: "Another session started." });
                     oldClient.leave();
                 }
 
-                // 2. Create new player entry with data from old session (TAKEOVER)
-                const takenOverPlayer = new Player();
-                takenOverPlayer.sessionId = client.sessionId;
-                takenOverPlayer.userId = existingPlayer.userId;
-                takenOverPlayer.avatarUrl = options.avatarUrl || existingPlayer.avatarUrl;
-                takenOverPlayer.name = existingPlayer.name;
-                takenOverPlayer.hairId = existingPlayer.hairId;
-                takenOverPlayer.x = existingPlayer.x;
-                takenOverPlayer.y = existingPlayer.y;
-                takenOverPlayer.spawnIndex = existingPlayer.spawnIndex;
-                takenOverPlayer.subRoomId = existingPlayer.subRoomId;
-                // Preserve game progress if game is active
-                takenOverPlayer.score = existingPlayer.score;
-                takenOverPlayer.correctAnswers = existingPlayer.correctAnswers;
-                takenOverPlayer.wrongAnswers = existingPlayer.wrongAnswers;
-                takenOverPlayer.answeredQuestions = existingPlayer.answeredQuestions;
-                takenOverPlayer.isFinished = existingPlayer.isFinished;
-                takenOverPlayer.finishTime = existingPlayer.finishTime;
-                takenOverPlayer.hasWrongAnswer = existingPlayer.hasWrongAnswer;
-                takenOverPlayer.lastWrongQuestionId = existingPlayer.lastWrongQuestionId;
-
-                // 3. Update sub-room: replace old sessionId with new one
-                const subRoom = this.state.subRooms.find(r => r.id === existingPlayer.subRoomId);
-                if (subRoom) {
-                    const idx = subRoom.playerIds.indexOf(existingSessionId!);
-                    if (idx > -1) {
-                        subRoom.playerIds.splice(idx, 1);
-                    }
-                    subRoom.playerIds.push(client.sessionId);
-                }
-
-                // 4. Transfer answer history
-                const oldAnswers = this.playerAnswers.get(existingSessionId!);
-                if (oldAnswers) {
-                    this.playerAnswers.set(client.sessionId, oldAnswers);
-                    this.playerAnswers.delete(existingSessionId!);
-                }
-
-                // 5. Remove old entry, set new entry (atomic swap)
-                this.state.players.delete(existingSessionId!);
-                this.state.players.set(client.sessionId, takenOverPlayer);
-
-                console.log(`[GameRoom] Takeover complete. Player ${takenOverPlayer.name} is now on session ${client.sessionId}. Total players: ${this.state.players.size}`);
-                return; // Skip creating a new player — takeover is done
+                // Hapus total dari state
+                this.state.players.delete(oldSid);
+                this.playerAnswers.delete(oldSid);
             }
         }
+
 
         const player = new Player();
         player.sessionId = client.sessionId;
