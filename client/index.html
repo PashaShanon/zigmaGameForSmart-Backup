@@ -5,12 +5,17 @@
   <meta charset="UTF-8" />
   <link rel="manifest" href="/manifest.json" />
   <script>
-    // Capture beforeinstallprompt as early as possible
+    // Capture beforeinstallprompt as early as possible for PWA
     window.zigmaDeferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      // Stash the event so it can be triggered later.
       window.zigmaDeferredPrompt = e;
-      console.log('[PWA] 📥 beforeinstallprompt captured at HTML level');
+      console.log('[PWA] 📥 beforeinstallprompt captured successfully');
+      
+      // Notify the app that the prompt is ready
+      window.dispatchEvent(new CustomEvent('zigmaPromptReady'));
     });
 
     if ('serviceWorker' in navigator) {

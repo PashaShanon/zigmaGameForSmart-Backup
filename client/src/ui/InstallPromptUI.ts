@@ -1,78 +1,60 @@
 import { i18n } from '../utils/i18n';
 
-// We now rely on the inline script in index.html to capture the event early
-// into (window as any).zigmaDeferredPrompt.
-let _pendingAutoShow = false;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    (window as any).zigmaDeferredPrompt = e;
-    console.log('[PWA] 📥 beforeinstallprompt captured at module level (fallback)');
-
-    // Show the dedicated install buttons if they exist
-    const lobbyBtn = document.getElementById('lobby-install-btn');
-    if (lobbyBtn) lobbyBtn.classList.remove('hidden');
-    const hostBtn = document.getElementById('host-install-btn');
-    if (hostBtn) hostBtn.classList.remove('hidden');
-
-    const dismissed = sessionStorage.getItem(InstallPromptUI.STORAGE_KEY);
-    if (!dismissed) {
-        _pendingAutoShow = true;
-        setTimeout(() => {
-            if (_pendingAutoShow) {
-                _pendingAutoShow = false;
-                InstallPromptUI.show();
-            }
-        }, 300);
-    }
-});
-
-window.addEventListener('appinstalled', () => {
-    console.log('[PWA] 🎉 App installed successfully');
-    (window as any).zigmaDeferredPrompt = null;
-    _pendingAutoShow = false;
-    InstallPromptUI.hide();
-    sessionStorage.setItem(InstallPromptUI.STORAGE_KEY, 'true');
-
-    // Hide the dedicated install buttons
-    const lobbyBtn = document.getElementById('lobby-install-btn');
-    if (lobbyBtn) lobbyBtn.classList.add('hidden');
-    const hostBtn = document.getElementById('host-install-btn');
-    if (hostBtn) hostBtn.classList.add('hidden');
-});
-// ─────────────────────────────────────────────────────────────────────────────
-
+/**
+ * Premium PWA Install Prompt System
+ * Handles the beforeinstallprompt event and provides a high-fidelity UI.
+ */
 export class InstallPromptUI {
-    static readonly STORAGE_KEY = 'zigma_pwa_dismissed';
+    static readonly STORAGE_KEY = 'zigma_pwa_dismissed_v2';
     private static initDone = false;
+    private static isVisible = false;
 
     static init() {
         if (this.initDone) return;
         this.initDone = true;
 
-        // Re-render the modal content when language changes (if visible)
-        window.addEventListener('languageChanged', () => {
-            const el = document.getElementById('install-prompt-ui');
-            if (el && !el.classList.contains('hidden')) {
-                this.render();
-            }
+        // Listen for the prompt ready event from index.html
+        window.addEventListener('zigmaPromptReady', () => {
+            console.log('[PWA] 🚀 Prompt is ready, checking if we should show UI');
+            this.checkAndShowAuto();
         });
 
-        // Check if event was already captured by index.html before module loaded
-        if ((window as any).zigmaDeferredPrompt) {
-            // Show the dedicated install buttons if they exist
-            const lobbyBtn = document.getElementById('lobby-install-btn');
-            if (lobbyBtn) lobbyBtn.classList.remove('hidden');
-            const hostBtn = document.getElementById('host-install-btn');
-            if (hostBtn) hostBtn.classList.remove('hidden');
+        // Fallback for module-level capture
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            (window as any).zigmaDeferredPrompt = e;
+            this.checkAndShowAuto();
+        });
 
-            const dismissed = sessionStorage.getItem(InstallPromptUI.STORAGE_KEY);
-            if (!dismissed) {
-                setTimeout(() => {
-                    InstallPromptUI.show();
-                }, 1000);
-            }
+        // Handle successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] 🎉 App installed successfully!');
+            (window as any).zigmaDeferredPrompt = null;
+            this.hide();
+            localStorage.setItem(this.STORAGE_KEY, 'installed');
+        });
+
+        // Re-render on language change
+        window.addEventListener('languageChanged', () => {
+            if (this.isVisible) this.render();
+        });
+
+        // Initial check if prompt already stashed
+        if ((window as any).zigmaDeferredPrompt) {
+            this.checkAndShowAuto();
         }
+    }
+
+    private static checkAndShowAuto() {
+        const status = localStorage.getItem(this.STORAGE_KEY);
+        if (status === 'dismissed' || status === 'installed') return;
+
+        // Show automatically after a short delay to not overwhelm the user
+        setTimeout(() => {
+            if ((window as any).zigmaDeferredPrompt && !this.isVisible) {
+                this.show();
+            }
+        }, 2000);
     }
 
     static render() {
@@ -81,112 +63,129 @@ export class InstallPromptUI {
         if (!container) {
             container = document.createElement('div');
             container.id = 'install-prompt-ui';
-            container.className = 'fixed bottom-4 left-4 w-[calc(100vw-2rem)] max-w-[320px] z-[9999] hidden pointer-events-auto transform transition-all duration-500 ease-out translate-y-10 opacity-0';
+            // Premium positioning and glass effect container
+            container.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-[9999] hidden pointer-events-auto transform transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1)';
             document.body.appendChild(container);
         }
 
-        // Always refresh innerHTML so translations follow the current locale
-        container.innerHTML = `
-            <div class="relative bg-white/95 backdrop-blur-md border-2 border-[#6CC452] rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.15)] overflow-hidden group">
-                <div class="absolute -top-8 -right-8 w-24 h-24 bg-[#6CC452]/10 rounded-full blur-2xl pointer-events-none"></div>
-                <div class="absolute -bottom-8 -left-8 w-24 h-24 bg-[#478D47]/10 rounded-full blur-2xl pointer-events-none"></div>
+        const isArabic = i18n.getLanguage() === 'ar';
 
-                <button id="install-close-btn" class="absolute z-20 top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full text-[#478D47]/40 hover:text-[#478D47] hover:bg-[#F1F8E9] transition-all">
-                    <span class="material-symbols-outlined text-base">close</span>
+        container.innerHTML = `
+            <div class="relative overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group" ${isArabic ? 'dir="rtl"' : ''}>
+                <!-- Animated Background Accents -->
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#72BF78]/20 rounded-full blur-3xl animate-pulse"></div>
+                <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-[#FEFF9F]/10 rounded-full blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
+                
+                <!-- Close Button -->
+                <button id="install-close-btn" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 text-white/60 hover:text-white hover:bg-black/40 transition-all z-20">
+                    <span class="material-symbols-outlined text-lg">close</span>
                 </button>
 
-                <div class="relative z-10 flex flex-col gap-3">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 bg-[#F1F8E9] border-2 border-[#6CC452] rounded-xl flex items-center justify-center shrink-0 shadow group-hover:scale-110 transition-transform duration-300">
-                            <span class="material-symbols-outlined text-[#478D47] text-xl" style="font-variation-settings: 'FILL' 1;">download_for_offline</span>
+                <div class="relative z-10 flex flex-col gap-5">
+                    <div class="flex items-center gap-4">
+                        <!-- Icon with glow -->
+                        <div class="relative">
+                            <div class="absolute inset-0 bg-[#72BF78] blur-lg opacity-40 group-hover:opacity-60 transition-opacity"></div>
+                            <div class="relative w-14 h-14 bg-gradient-to-br from-[#72BF78] to-[#478D47] rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform duration-500">
+                                <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">install_desktop</span>
+                            </div>
                         </div>
-                        <div class="flex flex-col gap-0.5 pr-6">
-                            <h3 class="text-[#478D47] font-['Retro_Gaming'] text-[11px] uppercase tracking-wider leading-tight">
+                        
+                        <div class="flex flex-col gap-1">
+                            <h3 class="text-white font-['Retro_Gaming'] text-sm tracking-wide leading-tight drop-shadow-md">
                                 ${i18n.t('lobby.install_modal.title')}
                             </h3>
-                            <p class="text-[#478D47]/70 font-['Space_Grotesk'] text-[10px] leading-relaxed">
+                            <p class="text-white/70 font-['Retro_Gaming'] text-[10px] leading-relaxed">
                                 ${i18n.t('lobby.install_modal.desc')}
                             </p>
                         </div>
                     </div>
 
-                    <div class="flex gap-2">
-                        <button id="install-confirm-btn" class="flex-[2] py-2.5 bg-[#336B23] text-white font-['Retro_Gaming'] text-[10px] uppercase rounded-xl border-b-4 border-[#1F4514] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all shadow-md flex items-center justify-center gap-1.5">
+                    <div class="flex gap-3 mt-1">
+                        <!-- Confirm Button -->
+                        <button id="install-confirm-btn" class="flex-[2] py-3.5 bg-gradient-to-r from-[#72BF78] to-[#478D47] text-white font-['Retro_Gaming'] text-[10px] uppercase rounded-xl shadow-[0_4px_15px_rgba(71,141,71,0.4)] hover:shadow-[0_6px_20px_rgba(71,141,71,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-sm">download</span>
                             <span>${i18n.t('lobby.install_modal.confirm')}</span>
                         </button>
-                        <button id="install-later-btn" class="flex-1 py-2.5 bg-[#F1F8E9] text-[#478D47] font-['Retro_Gaming'] text-[10px] uppercase rounded-xl border-b-4 border-[#6CC452]/30 hover:bg-[#E8F5E9] active:border-b-0 active:translate-y-1 transition-all">
+                        
+                        <!-- Later Button -->
+                        <button id="install-later-btn" class="flex-1 py-3.5 bg-white/10 text-white font-['Retro_Gaming'] text-[10px] uppercase rounded-xl border border-white/10 hover:bg-white/20 active:scale-[0.98] transition-all">
                             ${i18n.t('lobby.install_modal.cancel')}
                         </button>
                     </div>
                 </div>
+                
+                <!-- Bottom Decoration -->
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#72BF78] to-transparent opacity-50"></div>
             </div>
         `;
 
-        document.getElementById('install-close-btn')!.onclick = () => this.hide(true);
-        document.getElementById('install-later-btn')!.onclick = () => this.hide(true);
-        document.getElementById('install-confirm-btn')!.onclick = () => this.handleInstall();
+        const closeBtn = document.getElementById('install-close-btn');
+        const laterBtn = document.getElementById('install-later-btn');
+        const confirmBtn = document.getElementById('install-confirm-btn');
+
+        if (closeBtn) closeBtn.onclick = () => this.hide(true);
+        if (laterBtn) laterBtn.onclick = () => this.hide(true);
+        if (confirmBtn) confirmBtn.onclick = () => this.handleInstall();
     }
 
     private static async handleInstall() {
         const deferredPrompt = (window as any).zigmaDeferredPrompt;
         if (!deferredPrompt) {
-            console.warn('[PWA] No deferred prompt — browser may not support install or app is already installed.');
+            console.warn('[PWA] No prompt found');
+            this.hide();
             return;
         }
+
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         console.log(`[PWA] User response: ${outcome}`);
+        
         if (outcome === 'accepted') {
-            sessionStorage.setItem(this.STORAGE_KEY, 'true');
+            localStorage.setItem(this.STORAGE_KEY, 'installed');
+            this.hide();
         }
+        
         (window as any).zigmaDeferredPrompt = null;
-        this.hide();
     }
 
-    /**
-     * Called from "Install App" menu button.
-     * Fires native browser prompt if available, otherwise shows custom modal.
-     */
     static async triggerPrompt() {
         const deferredPrompt = (window as any).zigmaDeferredPrompt;
         if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`[PWA] Direct prompt response: ${outcome}`);
-            if (outcome === 'accepted') {
-                sessionStorage.setItem(this.STORAGE_KEY, 'true');
-            }
-            (window as any).zigmaDeferredPrompt = null;
-            this.hide();
+            this.handleInstall();
         } else {
-            // Fallback: show custom modal (dev/localhost or already installed)
-            console.log('[PWA] No deferred prompt found, showing custom modal instead.');
+            // If already installed or not supported, show the UI as fallback
+            // to explain how to install or just show the "Wow" design.
             this.show();
         }
     }
 
     static show() {
-        this.render(); // Always re-render with current locale
+        this.render();
+        this.isVisible = true;
         const el = document.getElementById('install-prompt-ui');
         if (el) {
             el.classList.remove('hidden');
+            // Animate in
             requestAnimationFrame(() => {
-                el.classList.remove('translate-y-10', 'opacity-0');
-                el.classList.add('translate-y-0', 'opacity-100');
+                el.style.transform = 'translate(-50%, 0)';
+                el.style.opacity = '1';
+                el.classList.add('translate-y-0');
             });
         }
     }
 
     static hide(dismiss: boolean = false) {
+        this.isVisible = false;
         const el = document.getElementById('install-prompt-ui');
         if (el) {
-            el.classList.add('translate-y-10', 'opacity-0');
-            el.classList.remove('translate-y-0', 'opacity-100');
+            el.style.transform = 'translate(-50%, 50px)';
+            el.style.opacity = '0';
             setTimeout(() => el.classList.add('hidden'), 500);
         }
         if (dismiss) {
-            sessionStorage.setItem(this.STORAGE_KEY, 'true');
+            localStorage.setItem(this.STORAGE_KEY, 'dismissed');
         }
     }
 }
+
