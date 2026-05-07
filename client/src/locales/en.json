@@ -99,7 +99,7 @@
     "login_required_my_quiz": "Please login to view your quizzes.",
     "login_required_favorite": "Please login to save favorites.",
     "no_quiz_found": "No Quiz Found",
-    "no_favorite_found": "No favorites yet",
+    "no_favorite_found": "No quizzes favorited yet",
     "reset_filter": "Reset Filter",
     "going_back": "Going back...",
     "likes": "Likes",

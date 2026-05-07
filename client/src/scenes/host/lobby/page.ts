@@ -803,9 +803,6 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                                 <button id="host-install-btn" class="hidden w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg group">
                                     <span class="material-symbols-outlined text-xl md:text-2xl group-hover:scale-110 transition-transform">download</span>
                                 </button>
-                                <button id="host-sound-btn" class="w-10 h-10 md:w-12 md:h-12 bg-[#336B23] border-2 border-[#1F4514] text-white flex items-center justify-center rounded-xl hover:brightness-110 transition-all shadow-lg">
-                                    <span class="material-symbols-outlined text-xl md:text-2xl" id="host-sound-icon">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
-                                </button>
                             </div>
                         </div>
 
@@ -837,6 +834,11 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 </section>
                 </div>
             </div>
+
+            <!-- FIXED SOUND BUTTON (Moved next to fullscreen) -->
+            <button id="host-sound-btn" class="fixed bottom-4 right-20 z-[9999] w-12 h-12 md:w-14 md:h-14 bg-white border-2 border-[#6CC452] rounded-full flex items-center justify-center hover:bg-[#F1F8E9] shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer pointer-events-auto">
+                <span id="host-sound-icon" class="material-symbols-outlined text-[#478D47] text-2xl md:text-3xl">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
+            </button>
 
             <!-- MANAGE GROUPS MODAL (NEW DESIGN) -->
             <div id="host-manage-users-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm z-[60]">
@@ -1744,48 +1746,62 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
     async leaveRoom() {
         if (this.room) {
-            // IF HOST: Delete from Supabase
+            console.log("[HostLobby] 🚪 Host leaving and deleting session...");
+            
+            // 1. SIGNAL MANUAL LEAVE TO SERVER
+            // We use the unified 'manualPlayerLeave' message
+            try {
+                if (this.room.connection && (this.room.connection as any).isOpen) {
+                    this.room.send("manualPlayerLeave");
+                    console.log("[HostLobby] ✅ manualPlayerLeave signal sent");
+                }
+            } catch (e) {
+                console.warn("[HostLobby] ⚠️ manualPlayerLeave signal failed:", e);
+            }
+
+            // 2. IF HOST: Delete from Supabase B (Sessions & Participants)
             if (this.isHost) {
                 const roomCode = this.room.state.roomCode;
                 if (roomCode) {
                     try {
-                        // Delete the session. 
-                        // Note: If you have ON DELETE CASCADE setup in SQL for participants, this deletes them too.
-                        // Otherwise, you might need to delete participants first.
-                        // Assuming CASCADE or deleting session is enough for now.
+                        // Deleting session will trigger cascade deletes for participants if configured,
+                        // otherwise we rely on server-side cleanup.
                         const { error } = await supabaseB
                             .from(SESSION_TABLE)
                             .delete()
                             .eq('game_pin', roomCode);
 
-                        if (error) {
-                            console.error("Error cleaning up Supabase session:", error);
-                        } else {
-                            console.log("Supabase session deleted for code:", roomCode);
-                        }
+                        if (error) console.error("[HostLobby] Supabase cleanup error:", error);
+                        else console.log("[HostLobby] Supabase session deleted:", roomCode);
                     } catch (err) {
-                        console.error("Cleanup error:", err);
+                        console.error("[HostLobby] Cleanup error:", err);
                     }
                 }
             }
 
-            if (this.room) {
-                this.room.send("manualLeave");
-                this.isManuallyLeaving = true;
-                this.room.leave();
-            }
-
-            // Clear local storage session
+            // 3. CLEAR LOCAL STORAGE IMMEDIATELY
             localStorage.removeItem('currentRoomId');
             localStorage.removeItem('currentSessionId');
-            localStorage.removeItem('currentReconnectionToken'); // v0.15 token
+            localStorage.removeItem('currentReconnectionToken');
+            localStorage.removeItem('pendingJoinRoomCode');
+            localStorage.removeItem('supabaseSessionId'); // Also clear DB session ID
+
+            // 4. LEAVE COLYSEUS ROOM
+            this.isManuallyLeaving = true;
+            try {
+                this.room.leave(true); // consented=true
+            } catch (_) {}
+            this.room = null as any;
 
             if (this.waitingUI) this.waitingUI.classList.add('hidden');
 
-            // Force reload to Lobby to ensure clean state and proper routing
+            // 5. NAVIGATION WITH SAFETY DELAY
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 100);
+        } else {
+            // No room, just go home
             window.location.href = '/';
-
-            // Global TransitionManager handles cleanup
         }
     }
 

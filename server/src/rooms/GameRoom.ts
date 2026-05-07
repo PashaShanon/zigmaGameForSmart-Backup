@@ -312,10 +312,12 @@ export class GameRoom extends Room<GameState> {
         this.onMessage("manualPlayerLeave", (client) => {
             console.log(`[GameRoom] 🚩 manualPlayerLeave from ${client.sessionId}`);
             const player = this.state.players.get(client.sessionId);
-            this.handlePlayerLeave(client.sessionId, player);
             
-            (client as any).kicked = true;
+            // Mark as manual leave BEFORE calling handlePlayerLeave
             (client as any).manualLeave = true;
+            (client as any).kicked = true; // Prevents allowReconnection in onLeave
+
+            this.handlePlayerLeave(client.sessionId, player);
             client.leave();
         });
 
@@ -939,17 +941,8 @@ export class GameRoom extends Room<GameState> {
 
             for (const oldSid of duplicates) {
                 const oldPlayer = this.state.players.get(oldSid);
-                console.log(`[DEDUPE] 🛡️ Purging ghost session: ${oldSid}`);
+                console.log(`[DEDUPE] 🛡️ Purging ghost session for ${incomingName || incomingUserId}: ${oldSid}`);
                 
-                if (oldPlayer) {
-                    if (oldPlayer.spawnIndex !== -1) this.usedSpawnIndices.delete(oldPlayer.spawnIndex);
-                    const subRoom = this.state.subRooms.find(r => r.id === oldPlayer.subRoomId);
-                    if (subRoom) {
-                        const idx = subRoom.playerIds.indexOf(oldSid);
-                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
-                    }
-                }
-
                 const oldClient = this.clients.find(c => c.sessionId === oldSid);
                 if (oldClient) {
                     (oldClient as any).kicked = true;
@@ -957,9 +950,8 @@ export class GameRoom extends Room<GameState> {
                     oldClient.leave();
                 }
 
-                this.state.players.delete(oldSid);
-                this.playerAnswers.delete(oldSid);
-                this.broadcast("playerLeft", { sessionId: oldSid });
+                // Use the unified helper for thorough cleanup
+                this.handlePlayerLeave(oldSid, oldPlayer, true);
             }
         }
 
@@ -1098,7 +1090,7 @@ export class GameRoom extends Room<GameState> {
         }
 
         // Gunakan helper terpusat
-        this.handlePlayerLeave(client.sessionId, player, isPurged);
+        this.handlePlayerLeave(client.sessionId, player, false);
 
         if (this.state.isGameStarted && !this.state.isGameOver) {
             this.checkGameEnd();
@@ -1110,40 +1102,46 @@ export class GameRoom extends Room<GameState> {
      * Dipanggil dari onLeave dan manualPlayerLeave.
      */
     private handlePlayerLeave(sessionId: string, player?: Player, isPurged: boolean = false) {
-        console.log(`[handlePlayerLeave] Cleaning up session: ${sessionId}`);
+        console.log(`[handlePlayerLeave] 🧹 Cleaning up session: ${sessionId} (isPurged: ${isPurged})`);
 
-        // 1. Bersihkan dari state.players
-        if (this.state.players.has(sessionId)) {
-            this.state.players.delete(sessionId);
-        }
+        // 1. Data Retrieval (if not provided)
+        const playerObj = player || this.state.players.get(sessionId);
+
+        // 2. Clear from state.players and other maps
+        this.state.players.delete(sessionId);
         this.playerAnswers.delete(sessionId);
 
-        // 2. Bersihkan dari SEMUA sub-room (Deep Search)
-        // Kadang player.subRoomId bisa null/salah, jadi kita cek semua
+        // 3. Clear from ALL sub-rooms (Deep Search)
         this.state.subRooms.forEach(room => {
             const idx = room.playerIds.indexOf(sessionId);
             if (idx > -1) {
-                console.log(`[handlePlayerLeave] Found and removed ${sessionId} from sub-room: ${room.id}`);
+                console.log(`[handlePlayerLeave] Removed ${sessionId} from sub-room: ${room.id}`);
                 room.playerIds.splice(idx, 1);
             }
         });
 
-        // 3. Bersihkan data spesifik player
-        if (player) {
-            if (player.spawnIndex !== -1) {
-                this.usedSpawnIndices.delete(player.spawnIndex);
-                console.log(`[handlePlayerLeave] Freed spawn point ${player.spawnIndex}`);
+        // 4. Clean up player-specific resources (Spawns, DB)
+        if (playerObj) {
+            // Free spawn point
+            if (playerObj.spawnIndex !== -1) {
+                this.usedSpawnIndices.delete(playerObj.spawnIndex);
+                console.log(`[handlePlayerLeave] Freed spawn point ${playerObj.spawnIndex}`);
             }
 
-            // 4. Bersihkan database jika di lobby
-            if (!this.state.isGameStarted && player.userId && !isPurged) {
-                this.removeParticipantFromSupabaseB(player.userId);
+            // Remove from Database if in LOBBY (not during game)
+            // If isPurged is true, it means we are replacing an old session with a new one, 
+            // so we don't necessarily want to delete the participant record if the new session will update it anyway,
+            // BUT for a clean state in the lobby, it's safer to remove and let the new onJoin re-add.
+            if (!this.state.isGameStarted && playerObj.userId) {
+                this.removeParticipantFromSupabaseB(playerObj.userId).catch(e => 
+                    console.error(`[handlePlayerLeave] DB Cleanup failed for ${playerObj.name}:`, e)
+                );
             }
         }
 
-        // 5. Broadcast perubahan ke semua klien
+        // 5. Notify all remaining clients
         this.broadcast("playerLeft", { sessionId: sessionId });
-        console.log(`[handlePlayerLeave] Cleanup complete. New state size: ${this.state.players.size}`);
+        console.log(`[handlePlayerLeave] ✅ Cleanup complete for ${sessionId}. Remaining: ${this.state.players.size}`);
     }
 
     onDispose() {
