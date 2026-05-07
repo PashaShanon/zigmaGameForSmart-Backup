@@ -802,12 +802,14 @@ export class LobbyManager {
             const targetRoom = rooms.find((r: any) => r.metadata?.roomCode === cleanCode);
 
             if (targetRoom) {
-                const room = await this.client.joinById(targetRoom.roomId, {
+                const joinOptions = {
                     name: nickname,
                     userId: userId,
                     avatarUrl: profile.avatar_url,
                     sessionId: sessionData.id
-                });
+                };
+                console.log(`[JOIN-DEBUG] Joining room with options:`, JSON.stringify({ name: joinOptions.name, userId: joinOptions.userId, roomId: targetRoom.roomId }));
+                const room = await this.client.joinById(targetRoom.roomId, joinOptions);
 
                 localStorage.setItem('currentRoomId', room.id);
                 localStorage.setItem('currentSessionId', room.sessionId);

@@ -1002,18 +1002,38 @@ export class PlayerWaitingRoomManager {
         localStorage.removeItem('pendingJoinRoomCode');
 
         if (this.room) {
-            // Signal server to remove player immediately without waiting for reconnection
-            try { this.room.send("manualPlayerLeave"); } catch (_) {}
+            // CRITICAL FIX: Send manualPlayerLeave, then leave, then navigate.
+            // Previously navigation happened BEFORE the message was sent, causing
+            // the WebSocket to close before the server received the message.
+            // This resulted in ghost players (duplicates) because the server
+            // kept the old player entry alive.
+            try { 
+                this.room.send("manualPlayerLeave"); 
+                console.log("[PlayerLobby] ✅ manualPlayerLeave sent successfully");
+            } catch (e) {
+                console.warn("[PlayerLobby] ⚠️ manualPlayerLeave failed to send:", e);
+            }
 
-            // CRITICAL: Delay room.leave() by 300ms to ensure the message
-            // reaches the server BEFORE the WebSocket connection closes.
-            // Without this delay, the message is lost and the server waits 60s for reconnection.
+            // Leave room and THEN navigate (with safety timeout)
             const roomRef = this.room;
-            setTimeout(() => {
-                try { roomRef.leave(); } catch (_) {}
-            }, 300);
-        }
+            this.room = null as any; // Prevent double-leave
 
+            // Wait for message delivery + room.leave() before navigating
+            setTimeout(() => {
+                try { roomRef.leave(true); } catch (_) {} // consented=true
+                
+                // Navigate to lobby after room is properly left
+                setTimeout(() => {
+                    this.navigateToLobby();
+                }, 100);
+            }, 200);
+        } else {
+            // No room connection, navigate immediately
+            this.navigateToLobby();
+        }
+    }
+
+    private navigateToLobby() {
         if (this.waitingUI) this.waitingUI.classList.add('hidden');
         OrientationManager.disable();
 
