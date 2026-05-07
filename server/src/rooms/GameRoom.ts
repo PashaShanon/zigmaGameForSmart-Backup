@@ -255,34 +255,37 @@ export class GameRoom extends Room<GameState> {
         this.onMessage("manualPlayerLeave", (client) => {
             const player = this.state.players.get(client.sessionId);
             if (player) {
-                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) manual leave signaled. Removing immediately.`);
+                console.log(`[GameRoom] Player ${player.name} (${client.sessionId}) manual leave. Cleanup starting.`);
                 
-                // Cleanup spawn point
+                // 1. Cleanup spawn point
                 if (player.spawnIndex !== -1) {
                     this.usedSpawnIndices.delete(player.spawnIndex);
                 }
                 
-                // Cleanup sub-room
+                // 2. Cleanup sub-room
                 const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
                 if (subRoom) {
                     const idx = subRoom.playerIds.indexOf(client.sessionId);
                     if (idx > -1) subRoom.playerIds.splice(idx, 1);
                 }
 
-                // Remove from Supabase B if in lobby
+                // 3. Remove from Supabase B if in lobby
                 if (!this.state.isGameStarted && player.userId) {
                     this.removeParticipantFromSupabaseB(player.userId);
                 }
 
-                // Delete from state
+                // 4. Delete from state IMMEDIATELY
                 this.state.players.delete(client.sessionId);
+                this.playerAnswers.delete(client.sessionId);
                 
-                // Mark client as intentionally leaving to avoid reconnection wait in onLeave
+                // 5. Mark client as intentionally leaving
                 (client as any).kicked = true;
                 (client as any).manualLeave = true;
 
-                // Broadcast to all clients to refresh their grids
+                // 6. Broadcast to all to refresh grids
                 this.broadcast("playerLeft", { sessionId: client.sessionId });
+                
+                console.log(`[GameRoom] Player ${player.name} cleanup complete.`);
             }
         });
 
@@ -888,43 +891,28 @@ export class GameRoom extends Room<GameState> {
 
         // --- NON-HOST PLAYERS ONLY ---
         
-        // RUTHLESS DEDUPLICATION: Sebelum membuat player baru, pastikan tidak ada player 
-        // dengan userId atau Nama yang sama. Jika ada, HAPUS PAKSA (Purge).
+        // --- DEDUPLICATION (RUTHLESS PURGE) ---
         const incomingUserId = options.userId;
         const incomingName = options.name;
 
         if (incomingUserId || incomingName) {
             const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
-            
-            console.log(`[DEDUPE] Checking for existing sessions for user: ${incomingName} (${incomingUserId})`);
-            console.log(`[DEDUPE] Current player count in state: ${this.state.players.size}`);
-
-            // Cari semua session yang duplikat
             const duplicates: string[] = [];
+            
             this.state.players.forEach((p, sid) => {
-                if (sid === client.sessionId) return; // Abaikan diri sendiri
-
+                if (sid === client.sessionId) return;
                 const isSameUser = incomingUserId && p.userId === incomingUserId;
                 const normalizedPName = p.name ? p.name.trim().toLowerCase() : "";
                 const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
-
-                if (isSameUser || isSameName) {
-                    console.log(`[DEDUPE] Found match! SID: ${sid}, Name: ${p.name}, UserID: ${p.userId}`);
-                    duplicates.push(sid);
-                }
+                if (isSameUser || isSameName) duplicates.push(sid);
             });
 
-            // HAPUS SEMUA DUPLIKAT (Jika ada)
             for (const oldSid of duplicates) {
                 const oldPlayer = this.state.players.get(oldSid);
-                console.log(`[DEDUPE] 🛡️ Found ghost session for ${incomingName} (SID: ${oldSid}). Purging before join.`);
+                console.log(`[DEDUPE] 🛡️ Purging ghost session: ${oldSid}`);
                 
                 if (oldPlayer) {
-                    // Bebaskan spawn point
-                    if (oldPlayer.spawnIndex !== -1) {
-                        this.usedSpawnIndices.delete(oldPlayer.spawnIndex);
-                    }
-                    // Hapus dari sub-room
+                    if (oldPlayer.spawnIndex !== -1) this.usedSpawnIndices.delete(oldPlayer.spawnIndex);
                     const subRoom = this.state.subRooms.find(r => r.id === oldPlayer.subRoomId);
                     if (subRoom) {
                         const idx = subRoom.playerIds.indexOf(oldSid);
@@ -932,80 +920,54 @@ export class GameRoom extends Room<GameState> {
                     }
                 }
 
-                // Kick client lama jika masih terkoneksi
                 const oldClient = this.clients.find(c => c.sessionId === oldSid);
-
-                // Mark as purged to avoid database cleanup in onLeave
                 if (oldClient) {
                     (oldClient as any).kicked = true;
                     (oldClient as any).purged = true;
-                    oldClient.send("kicked", { message: "Another session started." });
                     oldClient.leave();
                 }
 
-                // Hapus total dari state
                 this.state.players.delete(oldSid);
                 this.playerAnswers.delete(oldSid);
+                this.broadcast("playerLeft", { sessionId: oldSid });
             }
         }
 
-
+        // --- NEW PLAYER INITIALIZATION ---
         const player = new Player();
         player.sessionId = client.sessionId;
         player.userId = options.userId || "";
         player.avatarUrl = options.avatarUrl || "";
         player.name = options.name || "Player " + (this.state.players.size + 1);
-        player.hairId = Math.floor(Math.random() * 7); // Randomize hair (0-6) on join
+        player.hairId = Math.floor(Math.random() * 7);
 
-        // 🛡️ REGISTER IMMEDIATELY to prevent race conditions during parallel joins
-        this.state.players.set(client.sessionId, player);
- 
-        // Assign spawn position from Map Data
+        // Assign position
         const mapData = MapParser.loadMapData(this.state.difficulty);
-        console.log(`[MapDebug] Loaded map for difficulty: ${this.state.difficulty}`);
-        console.log(`[MapDebug] Player Spawns found: ${mapData?.playerSpawns?.length ?? 0}`);
-        console.log(`[MapDebug] Enemy Zones found: ${mapData?.enemySpawnZones?.length ?? 0}`);
-
         if (mapData && mapData.playerSpawns && mapData.playerSpawns.length > 0) {
-            // Find an unused spawn point
             let spawnIndex = -1;
-
-            // Try to find a strictly unused spawn point
             for (let i = 0; i < mapData.playerSpawns.length; i++) {
                 if (!this.usedSpawnIndices.has(i)) {
                     spawnIndex = i;
                     break;
                 }
             }
-
-            // DO NOT reset usedSpawnIndices here. If we are full, we are full.
-            if (spawnIndex === -1) {
-                // If all unique spawns are taken (more players than spawn points),
-                // randomly pick any spawn point so they spread evenly instead of piling up at index 0.
-                console.warn("[Spawn] No empty spawn points left! Randomly picking an occupied spawn point.");
-                spawnIndex = Math.floor(Math.random() * mapData.playerSpawns.length);
-            }
+            if (spawnIndex === -1) spawnIndex = Math.floor(Math.random() * mapData.playerSpawns.length);
 
             this.usedSpawnIndices.add(spawnIndex);
             const spawn = mapData.playerSpawns[spawnIndex];
             player.x = spawn.x;
             player.y = spawn.y;
             player.spawnIndex = spawnIndex;
-            console.log(`[Spawn] Player ${player.name} assigned spawn point ${spawnIndex} at (${spawn.x}, ${spawn.y}).`);
         } else {
-            console.error("[Spawn] No spawn points found in map data! Using fallback 400,300.");
-            player.x = 400;
-            player.y = 300;
+            player.x = 400; player.y = 300;
         }
 
+        // Finalize registration
+        this.state.players.set(client.sessionId, player);
 
-        // Auto-assign to first available sub-room (non-host players only)
+        // Sub-room assignment
         let assignedRoom = this.state.subRooms.find(r => r.playerIds.length < r.capacity);
-        if (!assignedRoom) {
-            // Should not happen if maxClients is correct, but fallback to first
-            assignedRoom = this.state.subRooms[0];
-        }
-
+        if (!assignedRoom) assignedRoom = this.state.subRooms[0];
         if (assignedRoom) {
             player.subRoomId = assignedRoom.id;
             assignedRoom.playerIds.push(client.sessionId);
