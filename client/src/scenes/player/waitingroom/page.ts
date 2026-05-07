@@ -160,6 +160,10 @@ export class PlayerWaitingRoomManager {
         this.room.onMessage("hostLeft", () => {
             this.showHostLeftModal();
         });
+
+        this.room.onMessage("playerLeft", () => {
+            this.updateAll();
+        });
     }
 
     private start() {
@@ -1162,9 +1166,12 @@ export class PlayerWaitingRoomManager {
 
             const dedupeKey = p.userId || sessionId;
             
-            // DEDUPLICATION FIX: Prefer current session or LATEST session found
+            // DEDUPLICATION FIX (RUTHLESS):
+            // 1. If I am the HOST, I always want the LATEST data, so I overwrite any existing entry.
+            // 2. If I am a PLAYER, I only want to overwrite if the new session is MY session.
+            // 3. If there is no existing entry, always set it.
             const existing = playerMap.get(dedupeKey);
-            if (!existing || sessionId === this.mySessionId) {
+            if (!existing || sessionId === this.mySessionId || this.isHost) {
                 playerMap.set(dedupeKey, { 
                     sessionId, 
                     name: p.name, 

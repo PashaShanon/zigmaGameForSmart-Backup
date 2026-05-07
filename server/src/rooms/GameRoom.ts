@@ -280,6 +280,9 @@ export class GameRoom extends Room<GameState> {
                 // Mark client as intentionally leaving to avoid reconnection wait in onLeave
                 (client as any).kicked = true;
                 (client as any).manualLeave = true;
+
+                // Broadcast to all clients to refresh their grids
+                this.broadcast("playerLeft", { sessionId: client.sessionId });
             }
         });
 
@@ -1125,6 +1128,7 @@ export class GameRoom extends Room<GameState> {
             }
         }
         this.state.players.delete(client.sessionId);
+        this.broadcast("playerLeft", { sessionId: client.sessionId });
 
         if (this.state.isGameStarted && !this.state.isGameOver) {
             this.checkGameEnd();
