@@ -12,6 +12,8 @@ import { AudioManager } from '../../systems/AudioManager';
 import { InstallPromptUI } from '../../ui/InstallPromptUI';
 
 export class LobbyManager {
+    private static activeManager: LobbyManager | null = null;
+    
     client!: Client;
     lobbyUI: HTMLElement | null = null;
     private pendingJoinCode: string | null = null;
@@ -21,6 +23,7 @@ export class LobbyManager {
     constructor() {}
 
     async init(data?: { autoJoinCode?: string, didExit?: boolean }) {
+        LobbyManager.activeManager = this; // Mark as current active manager
         this.pendingJoinCode = null;
         this.didExit = !!data?.didExit;
 
@@ -94,15 +97,22 @@ export class LobbyManager {
 
         // SINGLETON-LIKE BEHAVIOR FOR GLOBAL LISTENERS
         if (!(window as any).lobbyListenersAttached) {
-            window.addEventListener('popstate', () => this.handleRouting());
+            window.addEventListener('popstate', () => {
+                if (LobbyManager.activeManager) {
+                    LobbyManager.activeManager.handleRouting();
+                }
+            });
 
             window.addEventListener('lobbyUIReRendered', () => {
+                if (!LobbyManager.activeManager) return;
+                const self = LobbyManager.activeManager;
+
                 const oldNickname = (document.getElementById('lobby-nickname-input') as HTMLInputElement)?.value;
                 const oldCode = (document.getElementById('room-code-input') as HTMLInputElement)?.value;
 
-                this.lobbyUI = document.getElementById('lobby-ui');
-                this.setupEventListeners();
-                this.populateUserProfile();
+                self.lobbyUI = document.getElementById('lobby-ui');
+                self.setupEventListeners();
+                self.populateUserProfile();
 
                 // Re-apply values if they were user-entered, or fallback to profile
                 const nicknameInput = document.getElementById('lobby-nickname-input') as HTMLInputElement;
