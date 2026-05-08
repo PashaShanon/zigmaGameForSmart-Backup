@@ -931,13 +931,22 @@ export class GameRoom extends Room<GameState> {
             }
 
             // Update sessionId in player object so client knows who they are
+            const oldSid = player.sessionId;
             player.sessionId = client.sessionId;
 
-            // Important: also update sub-room sessionId list if needed
-            this.state.subRooms.forEach(room => {
-                const idx = room.playerIds.indexOf(userId);
-                // We keep userId in playerIds, so no change needed here actually
+            // Update ownerId of their enemies to the new sessionId
+            this.state.enemies.forEach(enemy => {
+                if (enemy.ownerId === oldSid) {
+                    enemy.ownerId = client.sessionId;
+                }
             });
+
+            // If game already started but player somehow had no enemies, spawn them now
+            const hasEnemies = Array.from(this.state.enemies.values()).some(e => e.ownerId === client.sessionId);
+            if (this.state.isGameStarted && !hasEnemies) {
+                console.log(`[GameRoom] 👾 Spawning missing enemies for reconnected player: ${player.name}`);
+                this.spawnEnemiesForPlayer(player);
+            }
 
             return;
         }
@@ -981,6 +990,110 @@ export class GameRoom extends Room<GameState> {
         if (assignedRoom) {
             player.subRoomId = assignedRoom.id;
             assignedRoom.playerIds.push(userId);
+        }
+
+        // If game is already in progress, spawn enemies for this late joiner immediately
+        if (this.state.isGameStarted) {
+            console.log(`[GameRoom] 👾 Late join: Spawning enemies for ${player.name}`);
+            this.spawnEnemiesForPlayer(player);
+        }
+    }
+
+    private spawnEnemiesForPlayer(player: Player) {
+        const qLimit = parseInt(this.questionLimit);
+        const enemiesPerPlayerToSpawn = !isNaN(qLimit) ? qLimit : (this.state.questions.length || 5);
+        const mapData = this.cachedMapData || MapParser.loadMapData(this.state.difficulty);
+
+        // SAFETY: Ensure questions exist
+        if (this.state.questions.length === 0) {
+            console.warn("[GameRoom] No questions found! Adding a fallback question.");
+            const fallbackQ = new Question();
+            fallbackQ.id = 0;
+            fallbackQ.text = "Mengapa game ini tidak memiliki soal?";
+            fallbackQ.options.push("Host Lupa Memilih");
+            fallbackQ.options.push("Koneksi Error");
+            fallbackQ.options.push("Bug Sistem");
+            fallbackQ.options.push("A & C Benar");
+            fallbackQ.correctAnswer = 3;
+            this.state.questions.push(fallbackQ);
+        }
+
+        // Generate Randomized Question Order for this player (Indices)
+        let questionIndices: number[] = [];
+        if (this.state.questions.length > 0) {
+            questionIndices = Array.from({ length: this.state.questions.length }, (_, k) => k);
+            for (let k = questionIndices.length - 1; k > 0; k--) {
+                const j = Math.floor(Math.random() * (k + 1));
+                [questionIndices[k], questionIndices[j]] = [questionIndices[j], questionIndices[k]];
+            }
+            // Clear old order if any and push new
+            while (player.questionOrder.length > 0) player.questionOrder.pop();
+            questionIndices.forEach(idx => player.questionOrder.push(idx));
+        }
+
+        const isValidSpawnPosition = (x: number, y: number, minDist: number = 96): boolean => {
+            for (const existingEnemy of this.state.enemies.values()) {
+                const dx = existingEnemy.x - x;
+                const dy = existingEnemy.y - y;
+                if (Math.sqrt(dx * dx + dy * dy) < minDist) return false;
+            }
+            for (const p of this.state.players.values()) {
+                const dx = p.x - x;
+                const dy = p.y - y;
+                if (Math.sqrt(dx * dx + dy * dy) < 100) return false;
+            }
+            return true;
+        };
+
+        for (let i = 0; i < enemiesPerPlayerToSpawn; i++) {
+            const enemy = new Enemy();
+            enemy.ownerId = player.sessionId;
+
+            if (questionIndices.length > 0) {
+                const orderIndex = i % questionIndices.length;
+                enemy.questionId = questionIndices[orderIndex];
+            } else {
+                enemy.questionId = 0;
+            }
+
+            enemy.type = Math.random() < 0.6 ? "skeleton" : "goblin";
+
+            let foundPosition = false;
+            const distanceTiers = [96, 64, 32];
+
+            for (const minDistance of distanceTiers) {
+                let attempts = 0;
+                while (attempts < 20 && !foundPosition) {
+                    let x = 0, y = 0;
+                    let zoneIndex = -1;
+
+                    if (mapData && mapData.enemySpawnZones && mapData.enemySpawnZones.length > 0) {
+                        zoneIndex = Math.floor(Math.random() * mapData.enemySpawnZones.length);
+                        const zone = mapData.enemySpawnZones[zoneIndex];
+                        x = zone.x + Math.random() * (zone.width || 200);
+                        y = zone.y + Math.random() * (zone.height || 200);
+                    } else {
+                        const maxX = mapData ? mapData.mapWidth : 800;
+                        const maxY = mapData ? mapData.mapHeight : 600;
+                        x = 50 + Math.random() * (maxX - 100);
+                        y = 50 + Math.random() * (maxY - 100);
+                    }
+
+                    if (isValidSpawnPosition(x, y, minDistance)) {
+                        enemy.x = x;
+                        enemy.y = y;
+                        enemy.spawnZoneIndex = zoneIndex;
+                        foundPosition = true;
+                    }
+                    attempts++;
+                }
+                if (foundPosition) break;
+            }
+
+            if (foundPosition) {
+                const uniqueEnemyId = `e_${player.sessionId}_${i}_${Math.random().toString(36).substr(2, 5)}`;
+                this.state.enemies.set(uniqueEnemyId, enemy);
+            }
         }
     }
 
@@ -1203,102 +1316,7 @@ export class GameRoom extends Room<GameState> {
         console.log(`[GameRoom] Spawning ${enemiesPerPlayerToSpawn} enemies per player (1:1 with questions)`);
 
         this.state.players.forEach(player => {
-
-            // SAFETY: Ensure questions exist
-            if (this.state.questions.length === 0) {
-                console.warn("[GameRoom] No questions found! Adding a fallback question.");
-                const fallbackQ = new Question();
-                fallbackQ.id = 0;
-                fallbackQ.text = "Mengapa game ini tidak memiliki soal?";
-                fallbackQ.options.push("Host Lupa Memilih");
-                fallbackQ.options.push("Koneksi Error");
-                fallbackQ.options.push("Bug Sistem");
-                fallbackQ.options.push("A & C Benar");
-                fallbackQ.correctAnswer = 3;
-                this.state.questions.push(fallbackQ);
-            }
-
-            // Generate Randomized Question Order for this player (Indices)
-            let questionIndices: number[] = [];
-            if (this.state.questions.length > 0) {
-                // Shuffle actual INDICES (0, 1, 2...), not IDs relative to something else
-                questionIndices = Array.from({ length: this.state.questions.length }, (_, k) => k);
-                // Fisher-Yates Shuffle
-                for (let k = questionIndices.length - 1; k > 0; k--) {
-                    const j = Math.floor(Math.random() * (k + 1));
-                    [questionIndices[k], questionIndices[j]] = [questionIndices[j], questionIndices[k]];
-                }
-                // Store in player state
-                questionIndices.forEach(idx => player.questionOrder.push(idx));
-            }
-
-            // Use decaying radius logic for enemy placement
-            // Consolidate enemy creation to try strict distance first -> then relax if needed
-            let enemiesSpawnedForPlayer = 0;
-
-            for (let i = 0; i < enemiesPerPlayerToSpawn; i++) {
-                const enemy = new Enemy();
-                enemy.ownerId = player.sessionId;
-
-                // Assign Question Index from shuffled order (Cyclic)
-                if (questionIndices.length > 0) {
-                    const orderIndex = i % questionIndices.length;
-                    enemy.questionId = questionIndices[orderIndex];
-                } else {
-                    enemy.questionId = 0;
-                }
-
-                enemy.type = Math.random() < 0.6 ? "skeleton" : "goblin";
-
-                let foundPosition = false;
-                // Tiers of distance: 96px (ideal) -> 64px -> 32px (crowded)
-                const distanceTiers = [96, 64, 32];
-
-                for (const minDistance of distanceTiers) {
-                    let attempts = 0;
-                    const maxAttemptsPerTier = 20;
-
-                    while (attempts < maxAttemptsPerTier && !foundPosition) {
-                        let x = 0, y = 0;
-                        let zoneIndex = -1;
-
-                        if (mapData && mapData.enemySpawnZones && mapData.enemySpawnZones.length > 0) {
-                            zoneIndex = Math.floor(Math.random() * mapData.enemySpawnZones.length);
-                            const zone = mapData.enemySpawnZones[zoneIndex];
-
-                            // Ensure zone has width/height
-                            const w = zone.width || 200;
-                            const h = zone.height || 200;
-
-                            x = zone.x + Math.random() * w;
-                            y = zone.y + Math.random() * h;
-                        } else {
-                            const maxX = mapData ? mapData.mapWidth : 800;
-                            const maxY = mapData ? mapData.mapHeight : 600;
-                            // Avoid spawning exactly at 0,0
-                            x = 50 + Math.random() * (maxX - 100);
-                            y = 50 + Math.random() * (maxY - 100);
-                        }
-
-                        if (isValidSpawnPosition(x, y, minDistance)) {
-                            enemy.x = x;
-                            enemy.y = y;
-                            enemy.spawnZoneIndex = zoneIndex; // Assign spawn zone
-                            foundPosition = true;
-                        }
-                        attempts++;
-                    }
-                    if (foundPosition) break;
-                }
-
-                if (foundPosition) {
-                    const uniqueEnemyId = `e_${player.sessionId}_${i}_${Math.random().toString(36).substr(2, 5)}`;
-                    this.state.enemies.set(uniqueEnemyId, enemy);
-                    enemiesSpawnedForPlayer++;
-                } else {
-                    console.warn(`[Spawn] Could not find valid position for enemy belonging to ${player.name} even with relaxed rules.`);
-                }
-            }
+            this.spawnEnemiesForPlayer(player);
         });
 
         // Create Chests from Map Data
