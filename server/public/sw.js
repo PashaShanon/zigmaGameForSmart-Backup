@@ -1,10 +1,10 @@
-const CACHE_NAME = 'zigma-cache-v1.5'; // Force update
+const CACHE_NAME = 'zigma-cache-v2.0'; // Bust old cache
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/logo/Zigma-logo-fix.webp'
 ];
+
+// Do NOT cache index.html or '/' — SPA routing must always hit the server/index.html directly.
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -33,23 +33,35 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // STRATEGY: Only intercept GET requests from the same origin.
-  // This ensures Colyseus (port 2567) and POST requests are handled by the browser directly.
-  if (event.request.method === 'GET' && event.request.url.startsWith(self.location.origin)) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type === 'basic') {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request);
-        })
-    );
-  }
+  // Only intercept GET requests from same origin
+  if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
+  // NEVER intercept navigation requests (HTML pages) — let SPA router handle them
+  if (event.request.mode === 'navigate') return;
+
+  // NEVER intercept WebSocket upgrade or Colyseus API calls
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/colyseus')) return;
+
+  // Only cache static assets (images, fonts, manifest)
+  const isStaticAsset = /\.(png|jpg|jpeg|webp|gif|svg|ico|woff2?|ttf|eot|json)$/i.test(url.pathname);
+  if (!isStaticAsset) return;
+
+  // Network-first for static assets: try network, fall back to cache
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
+  );
 });

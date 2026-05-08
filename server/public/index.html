@@ -5,19 +5,33 @@
   <meta charset="UTF-8" />
   <link rel="manifest" href="/manifest.json" />
   <script>
-    // Capture beforeinstallprompt as early as possible
-    window.zigmaDeferredPrompt = null;
+    // --- PWA DIAGNOSTIC & CAPTURE ---
+    window.zigmaDeferredPrompt = window.zigmaDeferredPrompt || null;
+    console.log('[PWA-STATUS] 🛠️ Initialization started...');
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       window.zigmaDeferredPrompt = e;
-      console.log('[PWA] 📥 beforeinstallprompt captured at HTML level');
+      console.log('[PWA-STATUS] ✅ SUCCESS: erqa  WCAPTURED!');
+      window.dispatchEvent(new CustomEvent('zigmaPromptReady', { detail: e }));
     });
 
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
-      });
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+          console.log('[PWA-STATUS] ✅ ServiceWorker registered:', reg.scope);
+          reg.addEventListener('updatefound', () => console.log('[PWA-STATUS] 🔄 SW Update found!'));
+        })
+        .catch(err => console.error('[PWA-STATUS] ❌ ServiceWorker failed:', err));
+    } else {
+      console.warn('[PWA-STATUS] ⚠️ ServiceWorker NOT supported');
     }
+
+    // Check Manifest
+    fetch('/manifest.json')
+      .then(r => r.json())
+      .then(() => console.log('[PWA-STATUS] ✅ Manifest.json found and valid'))
+      .catch(e => console.error('[PWA-STATUS] ❌ Manifest.json error:', e));
   </script>
 
   <!-- QUIZ SELECTION styles -->
@@ -784,7 +798,7 @@
       backface-visibility: hidden;
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-DpPjCimF.js"></script>
+  <script type="module" crossorigin src="/assets/index-3EU9K8aJ.js"></script>
 </head>
 
 <body class="bg-background-light dark:bg-background-dark text-white">

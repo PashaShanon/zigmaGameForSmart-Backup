@@ -520,7 +520,7 @@ export class HostProgressScene extends Phaser.Scene {
                 ">${this.room.state.isGameStarted ? '--:--' : String(this.room.state.totalTimeMinutes || 5).padStart(2, '0') + ':00'}</span>
             </div>
 
-            <button id="spec-volume-btn" class="absolute bottom-4 md:bottom-10 left-4 md:left-10 bg-black/60 border-2 border-[#00ff88]/30 text-[#00ff88] w-12 h-12 md:w-16 md:h-16 rounded-full cursor-pointer flex items-center justify-center pointer-events-auto backdrop-blur-sm transition-all duration-200">
+            <button id="spec-volume-btn" class="absolute bottom-4 right-20 md:right-24 bg-black/60 border-2 border-[#00ff88]/30 text-[#00ff88] w-12 h-12 md:w-14 md:h-14 rounded-full cursor-pointer flex items-center justify-center pointer-events-auto backdrop-blur-sm transition-all duration-200">
                 <span id="volume-icon" class="material-symbols-outlined text-[24px] md:text-[32px]">volume_up</span>
             </button>
 

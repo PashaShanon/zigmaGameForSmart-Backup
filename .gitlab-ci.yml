@@ -9,28 +9,22 @@ deploy_multiplayer:
     - echo "🚀 Memulai Build Colyseus (Server) & Vite (Client)..."
 
     # 1. Build Client (Vite)
-    - cd client && npm install && npm run build && cd ..
+    - echo "📦 Building Client..."
+    - cd client && npm install && npm run build
+    - cd $CI_PROJECT_DIR
 
     # 2. Build Server (Colyseus)
-    - cd server && npm install && npm run build && cd ..
+    - echo "📦 Building Server..."
+    - cd server && npm install && npm run build
+    - cd $CI_PROJECT_DIR
 
-    # 3. Kirim hasil build ke aaPanel (EXCLUDE file yang tidak perlu)
-    - rsync -az --delete
-        ./server/build/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/build/
-
-    - rsync -az
-        ./server/public/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/public/
-
-    - rsync -az
-        ./server/package.json
-        root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
-
-    - rsync -az
-        ./server/ecosystem.config.js
-        root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
-
-    - rsync -az --delete
-        ./shared/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/shared/
+    # 3. Kirim hasil build ke aaPanel
+    - echo "🚚 Deploying files..."
+    - rsync -az --delete server/build/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/build/
+    - rsync -az server/public/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/public/
+    - rsync -az server/package.json root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
+    - rsync -az server/ecosystem.config.js root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/server/
+    - rsync -az --delete shared/ root@192.168.1.157:/www/wwwroot/MultiplayerGameQuiz/shared/
 
     # 4. Eksekusi di Server aaPanel
     - ssh -o StrictHostKeyChecking=no root@192.168.1.157 "
