@@ -480,22 +480,25 @@ export class LobbyManager {
             if (token) {
                 try {
                     console.log(`[LobbyManager] 🔄 Pre-loading session for ${startScene}...`);
-                    this.showJoinLoading(i18n.t('lobby.join_errors.restoring_session') || "Restoring session...");
-                    sceneData.room = await sceneData.client.reconnect(token);
-                    this.hideJoinLoading();
+                    this.showJoinLoading("Restoring session...");
+                    
+                    // Add timeout to reconnect to prevent hanging
+                    const reconnectPromise = sceneData.client.reconnect(token);
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Reconnection timed out")), 2000)
+                    );
+
+                    sceneData.room = await Promise.race([reconnectPromise, timeoutPromise]);
                     console.log(`[LobbyManager] ✅ Session restored for ${startScene}!`);
-                    localStorage.setItem('currentReconnectionToken', sceneData.room.reconnectionToken);
                 } catch (e) {
-                    console.error(`[LobbyManager] ❌ Pre-loading session failed:`, e);
+                    console.error(`[LobbyManager] ❌ Pre-loading session failed for ${startScene}:`, e);
                     
-                    // FALLBACK: Try fresh join if we have the roomId and it's a host scene
+                    // FALLBACK: Try fresh join if we have the roomId
                     const roomId = localStorage.getItem('currentRoomId');
-                    const isHostScene = startScene.toLowerCase().includes('host') || startScene.toLowerCase().includes('spectator');
-                    
                     if (roomId) {
                         try {
                             const isHostScene = startScene.toLowerCase().includes('host') || startScene.toLowerCase().includes('spectator');
-                            console.log(`[LobbyManager] 🔄 Re-joining ${isHostScene ? 'as Host' : 'as Player'} for ${startScene}...`);
+                            console.log(`[LobbyManager] 🔄 Re-joining as ${isHostScene ? 'Host' : 'Player'}...`);
                             
                             const opts = isHostScene ? JSON.parse(localStorage.getItem('lastGameOptions') || '{}') : {};
                             const profile = authService.getStoredProfile();
@@ -507,12 +510,19 @@ export class LobbyManager {
                                 userId: profile?.id,
                                 avatarUrl: profile?.avatar_url || ""
                             });
-                            
                             console.log(`[LobbyManager] ✅ Re-joined successfully!`);
-                            localStorage.setItem('currentReconnectionToken', sceneData.room.reconnectionToken);
-                        } catch (err2) {
-                            console.error(`[LobbyManager] ❌ Re-join failed:`, err2);
+                        } catch (joinErr) {
+                            console.error(`[LobbyManager] ❌ Re-join failed for ${startScene}:`, joinErr);
+                            this.cleanupSession();
                         }
+                    } else {
+                        this.cleanupSession();
+                    }
+                } finally {
+                    this.hideJoinLoading();
+                    if (sceneData.room) {
+                        localStorage.setItem('currentReconnectionToken', sceneData.room.reconnectionToken);
+                        localStorage.setItem('currentSessionId', sceneData.room.sessionId);
                     }
                 }
             }
