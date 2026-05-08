@@ -166,8 +166,9 @@ export class GameRoom extends Room<GameState> {
         this.saveInitialSessionToMainSupabase().catch(e => console.error("Initial Main Sync Error:", e));
         this.syncSessionToSupabaseB().catch(e => console.error("Initial Sync B Error:", e));
 
-        // --- GHOST PURGE FAILSAFE ---
-        // Periodically ensure state.players matches this.clients during lobby
+        // --- GHOST PURGE FAILSAFE DISABLED ---
+        // (Removing this because it interferes with allowReconnection during refreshes)
+        /*
         this.setSimulationInterval(() => {
             if (this.state.isGameStarted) return;
             
@@ -188,6 +189,7 @@ export class GameRoom extends Room<GameState> {
                 this.broadcast("playerLeft", { sessionId: "purge" });
             }
         }, 2000);
+        */
 
         // Set max clients for the entire lobby
         this.maxClients = LOBBY_MAX_PLAYERS;
@@ -1075,10 +1077,10 @@ export class GameRoom extends Room<GameState> {
                 // IMPORTANT: This prevents the player from being immediately kicked on page refresh.
                 // Our ruthless deduplication in onJoin will handle any duplicate ghosts if they join fresh instead of reconnecting.
                 await this.allowReconnection(client, reconnectTime);
-                console.log(`[GameRoom] Player ${client.sessionId} reconnected successfully!`);
+                console.log(`[GameRoom] ✅ Player ${client.sessionId} reconnected successfully within ${reconnectTime}s!`);
                 return; // Stop execution here, player is back!
             } catch (e) {
-                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after ${reconnectTime}s.`);
+                console.log(`[GameRoom] ❌ Player ${client.sessionId} reconnection timed out or failed after ${reconnectTime}s. Proceeding with cleanup.`);
                 // Continue to cleanup below
             }
         } else {

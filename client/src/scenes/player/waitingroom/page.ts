@@ -13,6 +13,7 @@ export class PlayerWaitingRoomManager {
     mySessionId: string = '';
     isGameStarting: boolean = false;
     isManuallyLeaving: boolean = false;
+    isPageUnloading: () => boolean = () => false;
 
     // UI Elements
     waitingUI: HTMLElement | null = null;
@@ -39,6 +40,13 @@ export class PlayerWaitingRoomManager {
             this.mySessionId = this.room.sessionId;
         }
         this.isHost = data.isHost !== undefined ? data.isHost : false;
+        
+        // Track page refresh/unload
+        let isPageUnloading = false;
+        window.addEventListener('beforeunload', () => {
+            isPageUnloading = true;
+        });
+        this.isPageUnloading = () => isPageUnloading;
 
         if (data.isRestore && !this.room && data.client) {
             await this.restoreRoom(data.client);
@@ -171,7 +179,8 @@ export class PlayerWaitingRoomManager {
         this.room.onLeave((code) => {
             console.log(`[PlayerLobby] Room connection lost (code: ${code}). isManuallyLeaving: ${this.isManuallyLeaving}`);
             // Only cleanup if this is NOT a manual exit (manual exit handles its own cleanup)
-            if (!this.isGameStarting && !this.isManuallyLeaving) {
+            // AND not a page refresh
+            if (!this.isGameStarting && !this.isManuallyLeaving && !this.isPageUnloading()) {
                 this.cleanupAndGoLobby();
             }
         });
