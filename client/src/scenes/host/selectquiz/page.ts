@@ -518,24 +518,19 @@ export class SelectQuizManager {
             const borderColor = isFav ? 'border-red-500/20' : 'border-white/20';
 
             grid.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-16 text-center animate-in fade-in zoom-in duration-300">
-                    <div class="w-24 h-24 ${bgColor} rounded-full flex items-center justify-center mb-6 border ${borderColor} shadow-inner relative group">
-                        <span class="material-symbols-outlined text-5xl ${iconColor} transition-transform group-hover:scale-110">${emptyIcon}</span>
-                        ${isFav ? '<span class="absolute -bottom-1 -right-1 material-symbols-outlined text-2xl text-red-500 bg-white rounded-full">add_circle</span>' : ''}
+                <div class="col-span-full flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-300">
+                    <div class="w-32 h-32 bg-[#478D47]/20 rounded-full flex items-center justify-center mb-8 border-4 border-[#6CC452]/30 relative group">
+                        <span class="material-symbols-outlined text-6xl text-[#6CC452] opacity-50 transition-transform group-hover:scale-110">favorite</span>
+                        <span class="absolute bottom-2 right-2 material-symbols-outlined text-3xl text-[#6CC452]">add</span>
                     </div>
-                    <h3 class="text-white font-['Retro_Gaming'] text-xl md:text-2xl uppercase mb-2 tracking-widest drop-shadow-lg px-4">
+                    <h3 class="text-white font-['Retro_Gaming'] text-xl md:text-2xl uppercase mb-3 tracking-widest drop-shadow-lg px-4">
                         ${emptyMessage}
                     </h3>
-                    <p class="text-white/60 font-['Retro_Gaming'] text-[10px] md:text-xs mb-8 max-w-xs mx-auto leading-relaxed">
+                    <p class="text-white/60 font-['Retro_Gaming'] text-[10px] md:text-xs max-w-xs mx-auto leading-relaxed px-6">
                         ${isFav ? 'Klik ikon hati pada kuis untuk menambahkannya ke daftar favorit Anda!' : 'Coba gunakan kata kunci lain atau hapus filter untuk melihat lebih banyak kuis.'}
                     </p>
-                    <button id="reset-filters-btn" class="px-8 py-4 bg-white border-4 border-[#6CC452] border-b-[6px] border-b-[#478D47] text-[#478D47] hover:bg-[#F1F8E9] hover:scale-105 active:translate-y-1 active:border-b-4 font-['Retro_Gaming'] text-xl uppercase rounded-2xl transition-all flex items-center gap-3 shadow-2xl cursor-pointer">
-                        <span class="material-symbols-outlined text-xl">refresh</span> ${i18n.t('select_quiz.reset_filter')}
-                    </button>
                 </div>
             `;
-            const btn = document.getElementById('reset-filters-btn');
-            if (btn) btn.onclick = () => this.resetFilters();
         }
 
         pageItems.forEach(quiz => {
