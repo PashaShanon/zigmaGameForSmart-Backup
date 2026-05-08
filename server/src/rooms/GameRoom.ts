@@ -931,7 +931,6 @@ export class GameRoom extends Room<GameState> {
             }
 
             // Update sessionId in player object so client knows who they are
-            const oldSid = player.sessionId;
             player.sessionId = client.sessionId;
 
             // Update ownerId of their enemies to the new sessionId
@@ -940,7 +939,6 @@ export class GameRoom extends Room<GameState> {
                     enemy.ownerId = client.sessionId;
                 }
             });
-
             // If game already started but player somehow had no enemies, spawn them now
             const hasEnemies = Array.from(this.state.enemies.values()).some(e => e.ownerId === client.sessionId);
             if (this.state.isGameStarted && !hasEnemies) {
