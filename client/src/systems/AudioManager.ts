@@ -49,8 +49,9 @@ export class AudioManager {
 
         // Resume AudioContext on first user gesture to comply with autoplay policy
         const resumeAudio = () => {
-            if (this.scene?.sound?.context?.state === 'suspended') {
-                this.scene.sound.context.resume().then(() => {
+            const soundManager = this.scene?.sound as any;
+            if (soundManager?.context?.state === 'suspended') {
+                soundManager.context.resume().then(() => {
                     console.log("[AudioManager] ✅ AudioContext resumed via user gesture.");
                 });
             }
