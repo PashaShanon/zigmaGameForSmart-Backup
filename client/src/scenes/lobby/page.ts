@@ -35,8 +35,11 @@ export class LobbyManager {
         }, 500);
 
         if (this.didExit) {
-            console.log("🚀 [LobbyManager] User exited deliberately. Auto-join disabled.");
+            console.log("🚀 [LobbyManager] User exited deliberately. Auto-join and Reconnection disabled.");
             localStorage.removeItem('pendingJoinRoomCode');
+            localStorage.removeItem('currentRoomId');
+            localStorage.removeItem('currentSessionId');
+            localStorage.removeItem('currentReconnectionToken');
         } else if (data?.autoJoinCode) {
             this.pendingJoinCode = data.autoJoinCode;
             console.log("[LobbyManager] Received auto-join code via arguments:", this.pendingJoinCode);
@@ -477,7 +480,9 @@ export class LobbyManager {
             if (token) {
                 try {
                     console.log(`[LobbyManager] 🔄 Pre-loading session for ${startScene}...`);
+                    this.showJoinLoading(i18n.t('lobby.join_errors.restoring_session') || "Restoring session...");
                     sceneData.room = await sceneData.client.reconnect(token);
+                    this.hideJoinLoading();
                     console.log(`[LobbyManager] ✅ Session restored for ${startScene}!`);
                     localStorage.setItem('currentReconnectionToken', sceneData.room.reconnectionToken);
                 } catch (e) {
@@ -528,7 +533,9 @@ export class LobbyManager {
             if (token) {
                 try {
                     console.log(`[LobbyManager] 🔄 Pre-loading session for ${managerName}...`);
+                    this.showJoinLoading(i18n.t('lobby.join_errors.restoring_session') || "Restoring session...");
                     data.room = await data.client.reconnect(token);
+                    this.hideJoinLoading();
                     console.log(`[LobbyManager] ✅ Session restored for ${managerName}!`);
                     localStorage.setItem('currentReconnectionToken', data.room.reconnectionToken);
                 } catch (e) {

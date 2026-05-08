@@ -1066,8 +1066,8 @@ export class GameRoom extends Room<GameState> {
 
         // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect
         if (!isKicked && !consented && !isManualLeave) {
-            const isGameActive = this.state.isGameStarted && !this.state.isGameOver;
-            const reconnectTime = isGameActive ? 60 : 15; // 60s during game, 15s in lobby (for refreshes)
+            // INCREASED: Berikan waktu 60 detik untuk reconnect di semua fase (termasuk lobby saat refresh)
+            const reconnectTime = 60; 
             
             console.log(`[GameRoom] Player ${client.sessionId} disconnected unexpectedly. Allowing ${reconnectTime}s reconnection...`);
             

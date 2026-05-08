@@ -47,6 +47,22 @@ export class AudioManager {
         this.scene = scene;
         console.log("[AudioManager] Initialized with scene context.");
 
+        // Resume AudioContext on first user gesture to comply with autoplay policy
+        const resumeAudio = () => {
+            if (this.scene?.sound?.context?.state === 'suspended') {
+                this.scene.sound.context.resume().then(() => {
+                    console.log("[AudioManager] ✅ AudioContext resumed via user gesture.");
+                });
+            }
+            // Remove listeners after first success
+            window.removeEventListener('click', resumeAudio);
+            window.removeEventListener('keydown', resumeAudio);
+            window.removeEventListener('touchstart', resumeAudio);
+        };
+        window.addEventListener('click', resumeAudio);
+        window.addEventListener('keydown', resumeAudio);
+        window.addEventListener('touchstart', resumeAudio);
+
         // If there was a pending BGM request before init, it will be handled when loading finishes
         // or if it's already loaded.
         if (this.pendingBgmKey && this.loadedKeys.has(this.pendingBgmKey)) {
