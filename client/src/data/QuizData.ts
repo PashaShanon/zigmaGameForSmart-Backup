@@ -183,8 +183,13 @@ export async function fetchQuizzesPaginated(options: PaginatedQuizOptions): Prom
         }
 
         // Apply favorite filter (only show quizzes in the favorite list)
-        if (favoriteIds && favoriteIds.length > 0) {
-            query = query.in('id', favoriteIds);
+        if (favoriteIds) {
+            if (favoriteIds.length > 0) {
+                query = query.in('id', favoriteIds);
+            } else {
+                // If favorites were requested but list is empty, force no results
+                query = query.eq('id', '00000000-0000-0000-0000-000000000000'); 
+            }
         }
 
         // Apply creator filter (my quizzes)
