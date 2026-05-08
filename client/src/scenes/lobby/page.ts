@@ -61,6 +61,8 @@ export class LobbyManager {
 
         const path = Router.getPath();
         const isRestoreRoute =
+            Router.match('/host/settings/:quizId') ||
+            Router.is('/host/settings') ||
             Router.match('/host/:roomCode/lobby') ||
             Router.match('/host/:roomCode/leaderboard') ||
             Router.is('/host/leaderboard') ||
@@ -651,13 +653,13 @@ export class LobbyManager {
         const settingsMatch = Router.match('/host/settings/:quizId');
         if (settingsMatch) {
             hidelobby();
-            this.startManager('QuizSettingManager', { client: this.client, quizId: settingsMatch.quizId });
+            this.startManager('QuizSettingManager', { client: this.client, quizId: settingsMatch.quizId, isRestore: true });
             return;
         }
         
         if (Router.is('/host/settings')) {
             hidelobby();
-            this.startManager('QuizSettingManager', { client: this.client });
+            this.startManager('QuizSettingManager', { client: this.client, isRestore: true });
             return;
         }
 
