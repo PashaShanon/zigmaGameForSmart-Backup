@@ -503,12 +503,14 @@ export class LobbyManager {
                             const opts = isHostScene ? JSON.parse(localStorage.getItem('lastGameOptions') || '{}') : {};
                             const profile = authService.getStoredProfile();
                             
+                            const savedHairId = localStorage.getItem('player_hair_id');
                             sceneData.room = await sceneData.client.joinById(roomId, { 
                                 ...opts, 
                                 isHost: isHostScene,
                                 name: profile?.nickname || profile?.fullname || profile?.username || 'Player',
                                 userId: profile?.id,
-                                avatarUrl: profile?.avatar_url || ""
+                                avatarUrl: profile?.avatar_url || "",
+                                hairId: savedHairId ? parseInt(savedHairId) : undefined
                             });
                             console.log(`[LobbyManager] ✅ Re-joined successfully!`);
                         } catch (joinErr) {
@@ -573,12 +575,14 @@ export class LobbyManager {
                             const opts = isHostManager ? JSON.parse(localStorage.getItem('lastGameOptions') || '{}') : {};
                             const profile = authService.getStoredProfile();
                             
+                            const savedHairId = localStorage.getItem('player_hair_id');
                             data.room = await data.client.joinById(roomId, { 
                                 ...opts, 
                                 isHost: isHostManager,
                                 name: profile?.nickname || profile?.fullname || profile?.username || 'Player',
                                 userId: profile?.id,
-                                avatarUrl: profile?.avatar_url || ""
+                                avatarUrl: profile?.avatar_url || "",
+                                hairId: savedHairId ? parseInt(savedHairId) : undefined
                             });
                             console.log(`[LobbyManager] ✅ Re-joined successfully!`);
                         } catch (joinErr) {
@@ -810,10 +814,12 @@ export class LobbyManager {
             }
 
             // 3. Join the room
+            const savedHairId = localStorage.getItem('player_hair_id');
             const joinOptions = {
                 name: nickname,
                 userId: userId,
                 avatarUrl: profile.avatar_url || "",
+                hairId: savedHairId ? parseInt(savedHairId) : undefined,
                 sessionId: "" // Fresh join
             };
 

@@ -93,10 +93,12 @@ export class PlayerWaitingRoomManager {
                     const profile = JSON.parse(localStorage.getItem('game_user_profile') || '{}');
                     const joinName = profile.nickname || profile.fullname || profile.username || 'Player';
                     
+                    const savedHairId = localStorage.getItem('player_hair_id');
                     this.room = await client.joinById(roomId, { 
                         name: joinName,
                         userId: profile.id,
-                        avatarUrl: profile.avatar_url || ""
+                        avatarUrl: profile.avatar_url || "",
+                        hairId: savedHairId ? parseInt(savedHairId) : undefined
                     });
                     
                     console.log("[PlayerLobby] ✅ Re-joined successfully via fallback!");
@@ -269,7 +271,10 @@ export class PlayerWaitingRoomManager {
         // Initialize Character Popup
         this.characterPopup = new CharacterSelectPopup(
             HAIR_OPTIONS,
-            (hairId) => { if (this.room) this.room.send("updateHair", { hairId }) },
+            (hairId) => { 
+                if (this.room) this.room.send("updateHair", { hairId });
+                localStorage.setItem('player_hair_id', hairId.toString());
+            },
             () => { }
         );
 
