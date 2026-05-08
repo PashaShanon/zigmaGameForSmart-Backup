@@ -487,11 +487,22 @@ export class LobbyManager {
                     const roomId = localStorage.getItem('currentRoomId');
                     const isHostScene = startScene.toLowerCase().includes('host') || startScene.toLowerCase().includes('spectator');
                     
-                    if (roomId && isHostScene) {
+                    if (roomId) {
                         try {
-                            console.log(`[LobbyManager] 🔄 Re-joining as Host for ${startScene}...`);
-                            const opts = JSON.parse(localStorage.getItem('lastGameOptions') || '{}');
-                            sceneData.room = await sceneData.client.joinById(roomId, { ...opts, isHost: true });
+                            const isHostScene = startScene.toLowerCase().includes('host') || startScene.toLowerCase().includes('spectator');
+                            console.log(`[LobbyManager] 🔄 Re-joining ${isHostScene ? 'as Host' : 'as Player'} for ${startScene}...`);
+                            
+                            const opts = isHostScene ? JSON.parse(localStorage.getItem('lastGameOptions') || '{}') : {};
+                            const profile = authService.getStoredProfile();
+                            
+                            sceneData.room = await sceneData.client.joinById(roomId, { 
+                                ...opts, 
+                                isHost: isHostScene,
+                                name: profile?.nickname || profile?.fullname || profile?.username || 'Player',
+                                userId: profile?.id,
+                                avatarUrl: profile?.avatar_url || ""
+                            });
+                            
                             console.log(`[LobbyManager] ✅ Re-joined successfully!`);
                             localStorage.setItem('currentReconnectionToken', sceneData.room.reconnectionToken);
                         } catch (err2) {
@@ -523,13 +534,24 @@ export class LobbyManager {
                 } catch (e) {
                     console.error(`[LobbyManager] ❌ Pre-loading session failed for ${managerName}:`, e);
 
-                    // FALLBACK: Try fresh join for host managers
+                    // FALLBACK: Try fresh join for both host and player managers
                     const roomId = localStorage.getItem('currentRoomId');
-                    if (roomId && managerName.toLowerCase().includes('host')) {
+                    if (roomId) {
                         try {
-                            console.log(`[LobbyManager] 🔄 Re-joining as Host for ${managerName}...`);
-                            const opts = JSON.parse(localStorage.getItem('lastGameOptions') || '{}');
-                            data.room = await data.client.joinById(roomId, { ...opts, isHost: true });
+                            const isHostManager = managerName.toLowerCase().includes('host');
+                            console.log(`[LobbyManager] 🔄 Re-joining ${isHostManager ? 'as Host' : 'as Player'} for ${managerName}...`);
+                            
+                            const opts = isHostManager ? JSON.parse(localStorage.getItem('lastGameOptions') || '{}') : {};
+                            const profile = authService.getStoredProfile();
+                            
+                            data.room = await data.client.joinById(roomId, { 
+                                ...opts, 
+                                isHost: isHostManager,
+                                name: profile?.nickname || profile?.fullname || profile?.username || 'Player',
+                                userId: profile?.id,
+                                avatarUrl: profile?.avatar_url || ""
+                            });
+                            
                             console.log(`[LobbyManager] ✅ Re-joined successfully!`);
                             localStorage.setItem('currentReconnectionToken', data.room.reconnectionToken);
                         } catch (err2) {

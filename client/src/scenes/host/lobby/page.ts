@@ -2078,7 +2078,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     }
 
     updatePlayerGrid() {
-        console.log(`[UI] updatePlayerGrid triggered. State size: ${this.room?.state?.players?.size}`);
+        if (!this.room?.state) return;
+        console.log(`[UI] updatePlayerGrid triggered. State size: ${this.room.state.players.size}`);
         
         // Expose kick function globally so onclick works
         (window as any).confirmKick = (sessionId: string, playerName: string) => {

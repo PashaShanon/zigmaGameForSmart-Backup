@@ -44,6 +44,12 @@ export class PlayerWaitingRoomManager {
             await this.restoreRoom(data.client);
         }
 
+        // --- CRITICAL FIX: STOP if restoration failed ---
+        if (!this.room) {
+            console.error("[PlayerWaitingRoomManager] Failed to initialize/restore room. Aborting start.");
+            return;
+        }
+
         this.start();
     }
 
@@ -69,7 +75,32 @@ export class PlayerWaitingRoomManager {
             this.setupRoomListeners();
 
         } catch (e) {
-            console.warn("Player reconnection failed:", e);
+            console.warn("Player reconnection failed, attempting fallback join:", e);
+            
+            // FALLBACK: Try a fresh join if we have the roomId
+            const roomId = localStorage.getItem('currentRoomId');
+            if (roomId) {
+                try {
+                    console.log(`[PlayerLobby] 🔄 Attempting fresh join to room: ${roomId}`);
+                    const profile = JSON.parse(localStorage.getItem('game_user_profile') || '{}');
+                    const joinName = profile.nickname || profile.fullname || profile.username || 'Player';
+                    
+                    this.room = await client.joinById(roomId, { 
+                        name: joinName,
+                        userId: profile.id,
+                        avatarUrl: profile.avatar_url || ""
+                    });
+                    
+                    console.log("[PlayerLobby] ✅ Re-joined successfully via fallback!");
+                    this.mySessionId = this.room.sessionId;
+                    localStorage.setItem('currentReconnectionToken', this.room.reconnectionToken);
+                    this.setupRoomListeners();
+                    return; // Success!
+                } catch (err2) {
+                    console.error("[PlayerLobby] ❌ Fallback join also failed:", err2);
+                }
+            }
+
             localStorage.removeItem('currentRoomId');
             localStorage.removeItem('currentSessionId');
             localStorage.removeItem('currentReconnectionToken');
@@ -1059,6 +1090,7 @@ export class PlayerWaitingRoomManager {
 
 
     updateAll() {
+        if (!this.room?.state) return;
         this.updatePlayerGrid();
 
         const myPlayer = this.room.state.players.get(this.mySessionId);
@@ -1070,6 +1102,7 @@ export class PlayerWaitingRoomManager {
 
 
     updateUILayout() {
+        if (!this.room?.state) return;
         // Use Map to deduplicate by userId for an accurate count
         const playerMap = new Map<string, any>();
         this.room.state.players.forEach((p: any, sessionId: string) => {
@@ -1116,7 +1149,7 @@ export class PlayerWaitingRoomManager {
             let playerListHTML = '';
             let count = 0;
             subRoom.playerIds.forEach((sessionId: string) => {
-                const player = this.room.state.players.get(sessionId);
+                const player = this.room?.state?.players?.get(sessionId);
                 if (player) {
                     const isMe = sessionId === this.mySessionId;
                     const nameColor = isMe ? 'text-primary' : 'text-white/70';
@@ -1159,7 +1192,7 @@ export class PlayerWaitingRoomManager {
     }
 
     updatePlayerGrid() {
-        if (!this.playerGridEl) return;
+        if (!this.playerGridEl || !this.room?.state) return;
 
         // Use Map to ensure deduplication by userId (if available) or sessionId
         // This is a ROBUST deduplication failsafe for the UI.
