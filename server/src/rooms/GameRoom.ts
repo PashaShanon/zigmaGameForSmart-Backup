@@ -41,6 +41,7 @@ export class GameRoom extends Room<GameState> {
     private usedSpawnIndices: Set<number> = new Set();
     private cachedMapData: any = null;
     private reallyReallyDisconnect: boolean = false;
+    private playerAnswers: Map<string, any[]> = new Map(); // sessionId -> answers
     // Base config properties for main database
     private originalQuizId: string = "";
     private originalHostId: string = "";
@@ -56,9 +57,7 @@ export class GameRoom extends Room<GameState> {
     private hostCityId: any = null;
     private hostCountryId: any = null;
 
-
-    // Local storage for detailed answers (not synced)
-    playerAnswers: Map<string, any[]> = new Map();
+    private sessionIdToUserId = new Map<string, string>(); // sessionId -> userId mapping (local)
 
     onCreate(options: any) {
         this.setState(new GameState());
@@ -166,31 +165,6 @@ export class GameRoom extends Room<GameState> {
         this.saveInitialSessionToMainSupabase().catch(e => console.error("Initial Main Sync Error:", e));
         this.syncSessionToSupabaseB().catch(e => console.error("Initial Sync B Error:", e));
 
-        // --- GHOST PURGE FAILSAFE DISABLED ---
-        // (Removing this because it interferes with allowReconnection during refreshes)
-        /*
-        this.setSimulationInterval(() => {
-            if (this.state.isGameStarted) return;
-            
-            let changed = false;
-            this.state.players.forEach((p, sid) => {
-                if (p.isHost) return;
-                const isConnected = this.clients.some(c => c.sessionId === sid);
-                if (!isConnected) {
-                    console.log(`[GhostPurge] 👻 Removing orphaned session: ${sid} (${p.name})`);
-                    this.state.players.delete(sid);
-                    this.playerAnswers.delete(sid);
-                    changed = true;
-                }
-            });
-
-            if (changed) {
-                console.log(`[GhostPurge] State cleaned. Current player count: ${this.state.players.size}`);
-                this.broadcast("playerLeft", { sessionId: "purge" });
-            }
-        }, 2000);
-        */
-
         // Set max clients for the entire lobby
         this.maxClients = LOBBY_MAX_PLAYERS;
 
@@ -207,9 +181,17 @@ export class GameRoom extends Room<GameState> {
             sub.capacity = subRoomCapacity;
             this.state.subRooms.push(sub);
         }
+    }
 
+    private getPlayerByClient(client: Client) {
+        const userId = this.sessionIdToUserId.get(client.sessionId);
+        if (!userId) return null;
+        return this.state.players.get(userId);
+    }
+
+    private setupMessages() {
         this.onMessage("movePlayer", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player) {
                 // Gunakan helper terpusat (radius player = 4px)
                 if (this.checkBarrierCollision(data.x, data.y, 4)) {
@@ -313,13 +295,13 @@ export class GameRoom extends Room<GameState> {
 
         this.onMessage("manualPlayerLeave", (client) => {
             console.log(`[GameRoom] 🚩 manualPlayerLeave from ${client.sessionId}`);
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             
             // Mark as manual leave BEFORE calling handlePlayerLeave
             (client as any).manualLeave = true;
             (client as any).kicked = true; // Prevents allowReconnection in onLeave
 
-            this.handlePlayerLeave(client.sessionId, player);
+            this.handlePlayerLeave(client.sessionId, player || undefined);
             client.leave();
         });
 
@@ -331,7 +313,7 @@ export class GameRoom extends Room<GameState> {
         });
 
         this.onMessage("correctAnswer", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player && !player.isFinished) {
                 player.correctAnswers++;
                 player.answeredQuestions++;
@@ -417,7 +399,7 @@ export class GameRoom extends Room<GameState> {
         });
 
         this.onMessage("wrongAnswer", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player && !player.isFinished) {
                 player.wrongAnswers++;
                 player.answeredQuestions++;
@@ -482,7 +464,7 @@ export class GameRoom extends Room<GameState> {
         // Redundant score handler removed (Moved to correctAnswer for authority)
 
         this.onMessage("addScoreFromChest", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player && !player.isFinished) {
                 // Calculate dynamic chest reward (50% of standard point)
                 const qLimit = parseInt(this.state.questionLimit);
@@ -527,7 +509,7 @@ export class GameRoom extends Room<GameState> {
         });
 
         this.onMessage("collectChest", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             const chestIndex = data.chestIndex;
             const chest = this.state.chests[chestIndex];
 
@@ -543,7 +525,7 @@ export class GameRoom extends Room<GameState> {
 
                 // Speed boost lasts 5 seconds
                 this.clock.setTimeout(() => {
-                    const p = this.state.players.get(client.sessionId);
+                    const p = this.getPlayerByClient(client);
                     if (p) {
                         p.hasSpeedBoost = false;
                         client.send("speedBoostDeactivated");
@@ -560,7 +542,7 @@ export class GameRoom extends Room<GameState> {
 
         // --- Name Update Handler ---
         this.onMessage("updateName", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player && data.name && typeof data.name === "string") {
                 player.name = data.name.substring(0, 20); // Limit to 20 chars
             }
@@ -568,7 +550,7 @@ export class GameRoom extends Room<GameState> {
 
         // --- Hair Update Handler ---
         this.onMessage("updateHair", (client, data) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player && data.hairId !== undefined) {
                 player.hairId = Number(data.hairId);
                 // Sync to Supabase B when character changes
@@ -625,7 +607,7 @@ export class GameRoom extends Room<GameState> {
         // --- Switch Room Handler ---
         this.onMessage("switchRoom", (client, message) => {
             const roomId = message.roomId;
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
 
             if (player && roomId && roomId !== player.subRoomId) {
                 const targetRoom = this.state.subRooms.find(r => r.id === roomId);
@@ -665,7 +647,7 @@ export class GameRoom extends Room<GameState> {
 
         // --- Attack Animation Sync ---
         this.onMessage("attack", (client) => {
-            const player = this.state.players.get(client.sessionId);
+            const player = this.getPlayerByClient(client);
             if (player) {
                 player.isAttacking = true;
                 // Auto-reset flag after typical animation duration
@@ -902,65 +884,54 @@ export class GameRoom extends Room<GameState> {
     }
 
     onJoin(client: Client, options: any) {
-        console.log(client.sessionId, "joined!");
+        console.log(`[GameRoom] ${client.sessionId} joined! (userId: ${options.userId}, isHost: ${options.isHost})`);
 
         const isRejoiningHost = options.isHost === true;
         const isFirstPlayer = !this.state.hostId;
 
         if (isFirstPlayer || isRejoiningHost) {
-            // Jika rejoining: update hostId ke session baru, hapus entry lama jika ada
+            // Host handling (remains mostly same, host is not in state.players)
             if (isRejoiningHost && this.state.hostId && this.state.hostId !== client.sessionId) {
-                console.log(`[Host] Removing old host session (${this.state.hostId}), replacing with (${client.sessionId}).`);
-                // Pastikan tidak ada sisa entry di players (safety)
-                this.state.players.delete(this.state.hostId);
+                console.log(`[Host] Replacing old host session (${this.state.hostId}) with (${client.sessionId}).`);
             }
-
-            // Host hanya disimpan di state.hostId — TIDAK masuk ke state.players
-            // Host adalah spectator murni, bukan player
             this.state.hostId = client.sessionId;
-
-            console.log(`[Host] ${options.nickname || options.name || 'Host'} registered as spectator/host (${client.sessionId}).`);
+            this.sessionIdToUserId.set(client.sessionId, "HOST");
+            console.log(`[Host] ${options.nickname || options.name || 'Host'} registered as host (${client.sessionId}).`);
             return;
         }
 
         // --- NON-HOST PLAYERS ONLY ---
-        
-        // --- DEDUPLICATION (RUTHLESS PURGE) ---
-        const incomingUserId = options.userId;
-        const incomingName = options.name;
+        const userId = options.userId || `anon_${client.sessionId}`;
+        this.sessionIdToUserId.set(client.sessionId, userId);
 
-        if (incomingUserId || incomingName) {
-            const normalizedIncoming = incomingName ? incomingName.trim().toLowerCase() : "";
-            const duplicates: string[] = [];
+        // --- PERSISTENCE & DEDUPLICATION ---
+        let player = this.state.players.get(userId);
+
+        if (player) {
+            // RE-USE EXISTING PLAYER (STAY IN ROOM)
+            console.log(`[GameRoom] ♻️ Re-using existing state for ${player.name} (${userId}). Old SID: ${player.sessionId}, New SID: ${client.sessionId}`);
             
-            this.state.players.forEach((p, sid) => {
-                if (sid === client.sessionId) return;
-                const isSameUser = incomingUserId && p.userId === incomingUserId;
-                const normalizedPName = p.name ? p.name.trim().toLowerCase() : "";
-                const isSameName = normalizedIncoming && normalizedPName === normalizedIncoming;
-                if (isSameUser || isSameName) duplicates.push(sid);
-            });
-
-            for (const oldSid of duplicates) {
-                const oldPlayer = this.state.players.get(oldSid);
-                console.log(`[DEDUPE] 🛡️ Purging ghost session for ${incomingName || incomingUserId}: ${oldSid}`);
-                
+            // Purge old connection if it exists
+            const oldSid = player.sessionId;
+            if (oldSid !== client.sessionId) {
                 const oldClient = this.clients.find(c => c.sessionId === oldSid);
                 if (oldClient) {
+                    console.log(`[GameRoom] 🛡️ Closing old redundant session: ${oldSid}`);
                     (oldClient as any).kicked = true;
-                    (oldClient as any).purged = true;
                     oldClient.leave();
                 }
-
-                // Use the unified helper for thorough cleanup
-                this.handlePlayerLeave(oldSid, oldPlayer, true);
             }
+
+            // Update sessionId in player object so client knows who they are
+            player.sessionId = client.sessionId;
+            return;
         }
 
         // --- NEW PLAYER INITIALIZATION ---
-        const player = new Player();
+        console.log(`[GameRoom] ✨ Initializing NEW state for ${options.name} (${userId})`);
+        player = new Player();
         player.sessionId = client.sessionId;
-        player.userId = options.userId || "";
+        player.userId = userId;
         player.avatarUrl = options.avatarUrl || "";
         player.name = options.name || "Player " + (this.state.players.size + 1);
         player.hairId = Math.floor(Math.random() * 7);
@@ -986,15 +957,15 @@ export class GameRoom extends Room<GameState> {
             player.x = 400; player.y = 300;
         }
 
-        // Finalize registration
-        this.state.players.set(client.sessionId, player);
+        // Finalize registration - KEY BY userId for persistence
+        this.state.players.set(userId, player);
 
         // Sub-room assignment
         let assignedRoom = this.state.subRooms.find(r => r.playerIds.length < r.capacity);
         if (!assignedRoom) assignedRoom = this.state.subRooms[0];
         if (assignedRoom) {
             player.subRoomId = assignedRoom.id;
-            assignedRoom.playerIds.push(client.sessionId);
+            assignedRoom.playerIds.push(userId);
         }
     }
 
@@ -1037,7 +1008,8 @@ export class GameRoom extends Room<GameState> {
         console.log(client.sessionId, "left! consented:", consented);
 
         const isHostLeave = this.state.hostId === client.sessionId;
-        const player = this.state.players.get(client.sessionId);
+        const userId = this.sessionIdToUserId.get(client.sessionId);
+        const player = userId ? this.state.players.get(userId) : null;
 
         // Cek jika di-kick secara paksa
         const isKicked = (client as any).kicked === true;
@@ -1089,7 +1061,7 @@ export class GameRoom extends Room<GameState> {
         }
 
         // Gunakan helper terpusat
-        this.handlePlayerLeave(client.sessionId, player, false);
+        this.handlePlayerLeave(client.sessionId, player || undefined, false);
 
         if (this.state.isGameStarted && !this.state.isGameOver) {
             this.checkGameEnd();
@@ -1104,20 +1076,29 @@ export class GameRoom extends Room<GameState> {
         console.log(`[handlePlayerLeave] 🧹 Cleaning up session: ${sessionId} (isPurged: ${isPurged})`);
 
         // 1. Data Retrieval (if not provided)
-        const playerObj = player || this.state.players.get(sessionId);
+        const userIdForObj = this.sessionIdToUserId.get(sessionId);
+        const playerObj = player || (userIdForObj ? this.state.players.get(userIdForObj) : null);
 
         // 2. Clear from state.players and other maps
-        this.state.players.delete(sessionId);
+        const userId = this.sessionIdToUserId.get(sessionId);
+        if (userId) {
+            this.state.players.delete(userId);
+        }
         this.playerAnswers.delete(sessionId);
+        
+        // Cleanup local mapping
+        this.sessionIdToUserId.delete(sessionId);
 
         // 3. Clear from ALL sub-rooms (Deep Search)
-        this.state.subRooms.forEach(room => {
-            const idx = room.playerIds.indexOf(sessionId);
-            if (idx > -1) {
-                console.log(`[handlePlayerLeave] Removed ${sessionId} from sub-room: ${room.id}`);
-                room.playerIds.splice(idx, 1);
-            }
-        });
+        if (userId) {
+            this.state.subRooms.forEach(room => {
+                const idx = room.playerIds.indexOf(userId);
+                if (idx > -1) {
+                    console.log(`[handlePlayerLeave] Removed ${userId} from sub-room: ${room.id}`);
+                    room.playerIds.splice(idx, 1);
+                }
+            });
+        }
 
         // 4. Clean up player-specific resources (Spawns, DB)
         if (playerObj) {
@@ -1643,7 +1624,7 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async syncParticipantToSupabaseB(client: Client) {
-        const player = this.state.players.get(client.sessionId);
+        const player = this.getPlayerByClient(client);
         console.log(`[Supabase B] syncParticipantToSupabaseB called for client: ${client.sessionId}. Player exists: ${!!player}. Session ID: ${this.sessionId}`);
 
         if (!player) {
