@@ -137,6 +137,7 @@ export class LobbyManager {
             (window as any).lobbyListenersAttached = true;
         }
 
+        this.preloadResources();
         this.handleRouting();
     }
 
@@ -153,6 +154,38 @@ export class LobbyManager {
 
         console.log("Connecting to Colyseus server:", host);
         this.client = new Client(host);
+    }
+
+    private preloadResources() {
+        if ((window as any).zigmaPreloadStarted) return;
+        (window as any).zigmaPreloadStarted = true;
+
+        console.log("[LobbyManager] 🚀 Starting background preload...");
+
+        // 1. Background Import Managers (Wait a bit for initial render to be smooth)
+        setTimeout(() => {
+            console.log("[LobbyManager] 📦 Pre-loading managers...");
+            import('../host/selectquiz/page');
+            import('../host/quizsetting/page');
+            import('../player/waitingroom/page');
+            import('../../ui/shared/CharacterSelectPopup');
+        }, 1500);
+
+        // 2. Pre-fetch Data if logged in
+        const profile = authService.getStoredProfile();
+        if (profile) {
+            import('../../data/QuizData').then(qd => {
+                console.log("[LobbyManager] 📊 Warming up quiz data cache...");
+                qd.fetchCategoriesWithRaw(); 
+                qd.fetchUserFavorites(profile.id);
+            });
+        }
+        
+        // 3. Preload Phaser Engine (Lower priority)
+        setTimeout(() => {
+            console.log("[LobbyManager] 🎮 Pre-loading game engine...");
+            import('../../game');
+        }, 3000);
     }
 
     private initializeUI() {

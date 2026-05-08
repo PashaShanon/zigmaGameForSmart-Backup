@@ -22,6 +22,11 @@ export interface Quiz {
     creator_avatar?: string | null;
 }
 
+// Caching
+let cachedCategories: { raw: string; display: string }[] | null = null;
+let categoryCacheTime: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 
 // --- SUPABASE FUNCTIONS ---
 
@@ -281,6 +286,11 @@ export async function fetchCategoriesFromSupabase(): Promise<string[]> {
  * Returns array of { raw: 'math', display: 'Matematika' }.
  */
 export async function fetchCategoriesWithRaw(): Promise<{ raw: string; display: string }[]> {
+    const now = Date.now();
+    if (cachedCategories && (now - categoryCacheTime < CACHE_DURATION)) {
+        return cachedCategories;
+    }
+
     try {
         const { data, error } = await supabase
             .from('quizzes')
@@ -299,9 +309,13 @@ export async function fetchCategoriesWithRaw(): Promise<{ raw: string; display: 
             data.map((row: any) => (row.category || 'general').toLowerCase())
         );
 
-        return Array.from(uniqueRaw)
+        const result = Array.from(uniqueRaw)
             .map(raw => ({ raw, display: formatCategory(raw) }))
             .sort((a, b) => a.display.localeCompare(b.display));
+
+        cachedCategories = result;
+        categoryCacheTime = now;
+        return result;
 
     } catch (err) {
         console.error('Unexpected error fetching categories:', err);
