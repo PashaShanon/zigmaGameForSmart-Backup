@@ -58,6 +58,7 @@ export class GameRoom extends Room<GameState> {
     private hostCountryId: any = null;
 
     private sessionIdToUserId = new Map<string, string>(); // sessionId -> userId mapping (local)
+    private playerCleanupTimers = new Map<string, any>(); // userId -> setTimeout handle
 
     onCreate(options: any) {
         this.setState(new GameState());
@@ -908,10 +909,17 @@ export class GameRoom extends Room<GameState> {
         let player = this.state.players.get(userId);
 
         if (player) {
+            // CANCEL CLEANUP TIMER IF IT EXISTS
+            if (this.playerCleanupTimers.has(userId)) {
+                console.log(`[GameRoom] ⏰ Cleanup cancelled for ${player.name} (${userId})`);
+                clearTimeout(this.playerCleanupTimers.get(userId));
+                this.playerCleanupTimers.delete(userId);
+            }
+
             // RE-USE EXISTING PLAYER (STAY IN ROOM)
             console.log(`[GameRoom] ♻️ Re-using existing state for ${player.name} (${userId}). Old SID: ${player.sessionId}, New SID: ${client.sessionId}`);
             
-            // Purge old connection if it exists
+            // Purge old connection reference if it's different
             const oldSid = player.sessionId;
             if (oldSid !== client.sessionId) {
                 const oldClient = this.clients.find(c => c.sessionId === oldSid);
@@ -924,6 +932,13 @@ export class GameRoom extends Room<GameState> {
 
             // Update sessionId in player object so client knows who they are
             player.sessionId = client.sessionId;
+
+            // Important: also update sub-room sessionId list if needed
+            this.state.subRooms.forEach(room => {
+                const idx = room.playerIds.indexOf(userId);
+                // We keep userId in playerIds, so no change needed here actually
+            });
+
             return;
         }
 
@@ -1038,23 +1053,27 @@ export class GameRoom extends Room<GameState> {
             }
         }
 
-        // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect
+        // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect (NON-BLOCKING)
         if (!isKicked && !consented && !isManualLeave) {
-            // INCREASED: Berikan waktu 60 detik untuk reconnect di semua fase (termasuk lobby saat refresh)
             const reconnectTime = 60; 
             
-            console.log(`[GameRoom] Player ${client.sessionId} disconnected unexpectedly. Allowing ${reconnectTime}s reconnection...`);
+            console.log(`[GameRoom] Player ${client.sessionId} (${userId}) disconnected unexpectedly. Holding state for ${reconnectTime}s...`);
             
-            try {
-                // IMPORTANT: This prevents the player from being immediately kicked on page refresh.
-                // Our ruthless deduplication in onJoin will handle any duplicate ghosts if they join fresh instead of reconnecting.
-                await this.allowReconnection(client, reconnectTime);
-                console.log(`[GameRoom] ✅ Player ${client.sessionId} reconnected successfully within ${reconnectTime}s!`);
-                return; // Stop execution here, player is back!
-            } catch (e) {
-                console.log(`[GameRoom] ❌ Player ${client.sessionId} reconnection timed out or failed after ${reconnectTime}s. Proceeding with cleanup.`);
-                // Continue to cleanup below
+            // Set a timer to clean up after 60 seconds if they don't return
+            if (userId) {
+                const timer = setTimeout(() => {
+                    console.log(`[GameRoom] ⏰ Reconnection window expired for ${userId}. Cleaning up now.`);
+                    this.playerCleanupTimers.delete(userId);
+                    const p = this.state.players.get(userId);
+                    this.handlePlayerLeave(client.sessionId, p || undefined, false, userId);
+                }, reconnectTime * 1000);
+                
+                this.playerCleanupTimers.set(userId, timer);
             }
+            
+            // Clean up session-specific mapping but keep userId -> player in state
+            this.sessionIdToUserId.delete(client.sessionId);
+            return;
         } else {
             // Jika di-kick, sengaja klik EXIT (consented/manualLeave), langsung hapus tanpa menunggu
             console.log(`[GameRoom] Player ${client.sessionId} left intentionally (consented=${consented}, kicked=${isKicked}, manual=${isManualLeave}). Cleaning up immediately.`);
@@ -1072,15 +1091,15 @@ export class GameRoom extends Room<GameState> {
      * Helper terpusat untuk membersihkan data player dari state dan sub-room.
      * Dipanggil dari onLeave dan manualPlayerLeave.
      */
-    private handlePlayerLeave(sessionId: string, player?: Player, isPurged: boolean = false) {
-        console.log(`[handlePlayerLeave] 🧹 Cleaning up session: ${sessionId} (isPurged: ${isPurged})`);
+    private handlePlayerLeave(sessionId: string, player?: Player, isPurged: boolean = false, userIdOverride?: string) {
+        console.log(`[handlePlayerLeave] 🧹 Cleaning up session: ${sessionId} (userIdOverride: ${userIdOverride}, isPurged: ${isPurged})`);
 
         // 1. Data Retrieval (if not provided)
-        const userIdForObj = this.sessionIdToUserId.get(sessionId);
+        const userIdForObj = userIdOverride || this.sessionIdToUserId.get(sessionId);
         const playerObj = player || (userIdForObj ? this.state.players.get(userIdForObj) : null);
 
         // 2. Clear from state.players and other maps
-        const userId = this.sessionIdToUserId.get(sessionId);
+        const userId = userIdOverride || this.sessionIdToUserId.get(sessionId);
         if (userId) {
             this.state.players.delete(userId);
         }

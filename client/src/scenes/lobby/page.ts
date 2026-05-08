@@ -526,6 +526,13 @@ export class LobbyManager {
         });
     }
 
+    private cleanupSession() {
+        localStorage.removeItem('currentRoomId');
+        localStorage.removeItem('currentSessionId');
+        localStorage.removeItem('currentReconnectionToken');
+        localStorage.removeItem('pendingJoinRoomCode');
+    }
+
     private async startManager(managerName: string, data?: any) {
         // --- PRE-RECONNECTION FOR MANAGERS ---
         if (data?.isRestore && !data.room && data.client) {
@@ -533,20 +540,25 @@ export class LobbyManager {
             if (token) {
                 try {
                     console.log(`[LobbyManager] 🔄 Pre-loading session for ${managerName}...`);
-                    this.showJoinLoading(i18n.t('lobby.join_errors.restoring_session') || "Restoring session...");
-                    data.room = await data.client.reconnect(token);
-                    this.hideJoinLoading();
-                    console.log(`[LobbyManager] ✅ Session restored for ${managerName}!`);
-                    localStorage.setItem('currentReconnectionToken', data.room.reconnectionToken);
-                } catch (e) {
-                    console.error(`[LobbyManager] ❌ Pre-loading session failed for ${managerName}:`, e);
+                    this.showJoinLoading("Restoring session...");
+                    
+                    // Try to reconnect with a timeout
+                    const reconnectPromise = data.client.reconnect(token);
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Reconnection timed out")), 2000)
+                    );
 
-                    // FALLBACK: Try fresh join for both host and player managers
+                    data.room = await Promise.race([reconnectPromise, timeoutPromise]);
+                    console.log(`[LobbyManager] ✅ Session restored for ${managerName}!`);
+                } catch (e) {
+                    console.error(`[LobbyManager] ❌ Session restoration failed, trying fresh join:`, e);
+
+                    // FALLBACK: Try fresh join
                     const roomId = localStorage.getItem('currentRoomId');
                     if (roomId) {
                         try {
                             const isHostManager = managerName.toLowerCase().includes('host');
-                            console.log(`[LobbyManager] 🔄 Re-joining ${isHostManager ? 'as Host' : 'as Player'} for ${managerName}...`);
+                            console.log(`[LobbyManager] 🔄 Re-joining as ${isHostManager ? 'Host' : 'Player'}...`);
                             
                             const opts = isHostManager ? JSON.parse(localStorage.getItem('lastGameOptions') || '{}') : {};
                             const profile = authService.getStoredProfile();
@@ -558,12 +570,19 @@ export class LobbyManager {
                                 userId: profile?.id,
                                 avatarUrl: profile?.avatar_url || ""
                             });
-                            
                             console.log(`[LobbyManager] ✅ Re-joined successfully!`);
-                            localStorage.setItem('currentReconnectionToken', data.room.reconnectionToken);
-                        } catch (err2) {
-                            console.error(`[LobbyManager] ❌ Re-join failed:`, err2);
+                        } catch (joinErr) {
+                            console.error(`[LobbyManager] ❌ Re-join failed:`, joinErr);
+                            this.cleanupSession();
                         }
+                    } else {
+                        this.cleanupSession();
+                    }
+                } finally {
+                    this.hideJoinLoading();
+                    if (data.room) {
+                        localStorage.setItem('currentReconnectionToken', data.room.reconnectionToken);
+                        localStorage.setItem('currentSessionId', data.room.sessionId);
                     }
                 }
             }
