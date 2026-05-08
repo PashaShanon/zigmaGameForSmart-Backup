@@ -351,42 +351,7 @@ export class LobbyManager {
                 };
             });
 
-            const soundContainer = document.getElementById('lobby-sound-container');
-            if (soundContainer) {
-                // Synchronize with AudioManager's key: 'audio_muted'
-                // Note: isMuted = true means Sound is OFF. So soundEnabled = !isMuted
-                const audioManager = AudioManager.getInstance();
-                let soundEnabled = !audioManager.getMuteStatus();
-                
-                const sBtn = document.getElementById('lobby-sound-btn');
-                const sKnob = document.getElementById('lobby-sound-knob');
-                
-                const updateToggleUI = (enabled: boolean) => {
-                    if (enabled) {
-                        if (sBtn) { sBtn.classList.remove('bg-white'); sBtn.classList.add('bg-[#478D47]'); }
-                        if (sKnob) sKnob.classList.add('translate-x-5');
-                    } else {
-                        if (sBtn) { sBtn.classList.remove('bg-[#478D47]'); sBtn.classList.add('bg-white'); }
-                        if (sKnob) sKnob.classList.remove('translate-x-5');
-                    }
-                };
 
-                // Initial UI state
-                updateToggleUI(soundEnabled);
-
-                soundContainer.onclick = (e) => {
-                    e.stopPropagation();
-                    const newMuteStatus = audioManager.toggleMute();
-                    soundEnabled = !newMuteStatus;
-                    updateToggleUI(soundEnabled);
-                    
-                    // Resume audio context on first interaction if suspended
-                    const game = (window as any).gameInstance;
-                    if (game && game.sound && game.sound.context && game.sound.context.state === 'suspended') {
-                        game.sound.context.resume();
-                    }
-                };
-            }
         }
 
         const logoutModal = document.getElementById('logout-modal');

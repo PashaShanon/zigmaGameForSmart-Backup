@@ -1065,24 +1065,21 @@ export class GameRoom extends Room<GameState> {
         }
 
         // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect
-        // Jika salah satu dari isKicked, consented, atau isManualLeave = true → langsung hapus
         if (!isKicked && !consented && !isManualLeave) {
-            if (this.state.isGameStarted && !this.state.isGameOver) {
-                // GAME PHASE: Izinkan reconnect 60 detik agar progress player tidak hilang
-                console.log(`[GameRoom] Player ${client.sessionId} disconnected during GAME. Allowing 60s reconnection...`);
-                try {
-                    await this.allowReconnection(client, 60);
-                    console.log(`[GameRoom] Player ${client.sessionId} reconnected!`);
-                    return;
-                } catch (e) {
-                    console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after 60s.`);
-                    // Continue to cleanup
-                }
-            } else {
-                // LOBBY PHASE: Langsung cleanup tanpa allowReconnection.
-                // Di lobby, player bisa join ulang kapan saja via joinById.
-                // allowReconnection di lobby menyebabkan ghost player (duplikasi) karena
-                console.log(`[GameRoom] Player ${client.sessionId} disconnected during LOBBY. Cleaning up immediately (no reconnection wait).`);
+            const isGameActive = this.state.isGameStarted && !this.state.isGameOver;
+            const reconnectTime = isGameActive ? 60 : 15; // 60s during game, 15s in lobby (for refreshes)
+            
+            console.log(`[GameRoom] Player ${client.sessionId} disconnected unexpectedly. Allowing ${reconnectTime}s reconnection...`);
+            
+            try {
+                // IMPORTANT: This prevents the player from being immediately kicked on page refresh.
+                // Our ruthless deduplication in onJoin will handle any duplicate ghosts if they join fresh instead of reconnecting.
+                await this.allowReconnection(client, reconnectTime);
+                console.log(`[GameRoom] Player ${client.sessionId} reconnected successfully!`);
+                return; // Stop execution here, player is back!
+            } catch (e) {
+                console.log(`[GameRoom] Player ${client.sessionId} reconnection timed out after ${reconnectTime}s.`);
+                // Continue to cleanup below
             }
         } else {
             // Jika di-kick, sengaja klik EXIT (consented/manualLeave), langsung hapus tanpa menunggu
