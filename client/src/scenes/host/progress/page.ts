@@ -520,11 +520,11 @@ export class HostProgressScene extends Phaser.Scene {
                 ">${this.room.state.isGameStarted ? '--:--' : String(this.room.state.totalTimeMinutes || 5).padStart(2, '0') + ':00'}</span>
             </div>
 
-            <button id="spec-volume-btn" class="absolute bottom-4 right-20 md:right-24 bg-black/60 border-2 border-[#00ff88]/30 text-[#00ff88] w-12 h-12 md:w-14 md:h-14 rounded-full cursor-pointer flex items-center justify-center pointer-events-auto backdrop-blur-sm transition-all duration-200">
+            <button id="spec-volume-btn" class="absolute bottom-4 left-4 bg-black/60 border-2 border-[#00ff88]/30 text-[#00ff88] w-12 h-12 md:w-14 md:h-14 rounded-full cursor-pointer flex items-center justify-center pointer-events-auto backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg">
                 <span id="volume-icon" class="material-symbols-outlined text-[24px] md:text-[32px]">volume_up</span>
             </button>
 
-            <button id="spec-end-btn" class="absolute bottom-4 md:bottom-10 right-20 md:right-28 bg-[#ff0055] border-none px-4 py-2 md:px-9 md:py-4 text-white cursor-pointer font-inherit text-xs md:text-sm uppercase rounded-xl pointer-events-auto transition-all duration-75 tracking-widest shadow-[0_4px_0_#990033] md:shadow-[0_6px_0_#990033] active:translate-y-1 active:shadow-none">
+            <button id="spec-end-btn" class="absolute bottom-4 right-4 md:bottom-10 md:right-10 bg-[#ff0055] border-none px-6 py-3 md:px-10 md:py-5 text-white cursor-pointer font-inherit text-xs md:text-sm uppercase rounded-xl pointer-events-auto transition-all duration-75 tracking-widest shadow-[0_4px_0_#990033] md:shadow-[0_6px_0_#990033] active:translate-y-1 active:shadow-none hover:brightness-110">
                 Akhiri Game
             </button>
         `;
