@@ -93,6 +93,32 @@ export class HostProgressScene extends Phaser.Scene {
             });
             // Initial set
             AudioManager.getInstance().setRoomMute(!this.room.state.isMusicEnabled);
+
+            // --- AUTO RECONNECT during gameplay ---
+            this.room.onLeave((code) => {
+                console.log(`[HostProgress] Room connection lost. code: ${code}`);
+                if (code !== 1000) {
+                    console.warn("[HostProgress] Connection lost unexpectedly during gameplay. Attempting to recover...");
+                    // We can try to use the same recovery logic as Lobby
+                    const savedRoomId = localStorage.getItem('currentRoomId');
+                    const token = localStorage.getItem('currentReconnectionToken');
+                    const client = (window as any).colyseusClient;
+
+                    if (token && client) {
+                        client.reconnect(token).then((newRoom: any) => {
+                            console.log("[HostProgress] ✅ Recovered connection during gameplay!");
+                            this.room = newRoom;
+                            this.registry.set('room', newRoom);
+                            // We might need to re-register listeners, but for now let's hope it works
+                        }).catch((e: any) => {
+                            console.error("[HostProgress] ❌ Recovery failed:", e);
+                            window.location.href = '/';
+                        });
+                    } else {
+                        window.location.href = '/';
+                    }
+                }
+            });
         }
 
         this.room.onMessage('gameEnded', (data: any) => {

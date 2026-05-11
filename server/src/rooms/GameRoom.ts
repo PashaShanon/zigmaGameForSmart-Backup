@@ -237,7 +237,7 @@ export class GameRoom extends Room<GameState> {
             // Start Countdown
             this.state.countdown = 10;
             this.countdownStartedAt = new Date().toISOString();
-            console.log("[GameRoom] Starting countdown: 10");
+            console.log(`[GameRoom] Starting countdown for room ${this.roomId}. Host: ${client.sessionId}`);
 
             // Update countdown_started_at in Supabase Utama immediately
             this.updateCountdownStartedAt().catch(e => console.error("[Supabase Utama] Countdown Sync Error:", e));
@@ -1131,7 +1131,7 @@ export class GameRoom extends Room<GameState> {
             } else {
                 // Host disconnect tak terduga (refresh browser, koneksi putus, dll).
                 try {
-                    console.log(`[Host] ${client.sessionId} disconnected unexpectedly. Waiting for reconnection...`);
+                    console.log(`[Host] ${client.sessionId} disconnected unexpectedly from room ${this.roomId}. consented: ${consented}. Waiting for reconnection...`);
                     // Use allowReconnection to prevent room disposal
                     await this.allowReconnection(client, 60);
                     console.log(`[Host] ${client.sessionId} RECONNECTED!`);
@@ -1229,6 +1229,8 @@ export class GameRoom extends Room<GameState> {
     }
 
     initializeGameElements() {
+        const startTime = Date.now();
+        console.log(`[GameRoom] initializeGameElements started for room ${this.roomId}...`);
         if (!this.state.difficulty || !ROOM_CONFIG[this.state.difficulty as keyof typeof ROOM_CONFIG]) {
             console.warn(`[GameRoom] Invalid difficulty: ${this.state.difficulty}. Defaulting to 'mudah'.`);
             this.state.difficulty = 'mudah';
@@ -1301,6 +1303,7 @@ export class GameRoom extends Room<GameState> {
             }
         }
         console.log(`[Debug] Total chests created: ${this.state.chests.length}`);
+        console.log(`[GameRoom] initializeGameElements finished in ${Date.now() - startTime}ms`);
     }
 
     private respawnChest(chest: Chest) {

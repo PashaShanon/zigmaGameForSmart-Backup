@@ -85,11 +85,14 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             });
 
             this.room.onLeave((code) => {
-                console.log(`[HostLobby] Room connection lost (code: ${code}). isPageUnloading: ${isPageUnloading}`);
+                console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}`);
                 // ONLY redirect to lobby if this is a genuine disconnect,
                 // NOT a page refresh or intentional navigation.
                 if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading) {
+                    console.log("[HostLobby][onLeave:init] Conditions met for redirect to /");
                     window.location.href = '/';
+                } else {
+                    console.log("[HostLobby][onLeave:init] Redirect skipped due to flags.");
                 }
             });
         }
@@ -304,17 +307,19 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
         // AUTO RECONNECT logic if connection is lost
         this.room.onLeave((code) => {
-            console.log(`[Host] Disconnected from room with code: ${code}`);
+            console.log(`[HostLobby][onLeave:setup] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}`);
             if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving) {
-                console.warn("[Host] Connection lost unexpectedly. Attempting to reconnect...");
+                console.warn("[HostLobby][onLeave:setup] Connection lost unexpectedly. Attempting to reconnect...");
                 // Null-kan this.room dulu agar restoreRoom() bisa mulai fresh
                 this.room = null as any;
                 const client = this.registry.get('client');
                 if (client) {
                     this.restoreRoom(client);
                 } else {
-                    console.error("[Host] Cannot auto-reconnect: Client not found in registry.");
+                    console.error("[HostLobby][onLeave:setup] Cannot auto-reconnect: Client not found in registry.");
                 }
+            } else {
+                console.log(`[HostLobby][onLeave:setup] Skip auto-reconnect. code: ${code}, isGameStarting: ${this.isGameStarting}`);
             }
         });
     }
@@ -1053,6 +1058,9 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (this.startBtn) {
             this.startBtn.classList.remove('hidden');
             this.startBtn.onclick = () => {
+                console.log("[Host] Start button clicked. Triggering handleGameStart immediately.");
+                // Immediately set flag and transition to prevent onLeave from redirecting
+                this.handleGameStart();
                 this.room.send("startGame");
             };
         }
