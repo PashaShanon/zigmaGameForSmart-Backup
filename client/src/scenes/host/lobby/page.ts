@@ -1895,8 +1895,13 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     }
 
     updateHostStatus() {
-        if (!this.room) return; // Guard: room belum siap (sedang restore)
+        if (!this.room) return;
+        // Skip updating status if we are already in the process of starting the game
+        // to prevent UI flickering or state loss during transition.
+        if (this.isGameStarting || (this as any).isTransitioning) return;
+
         const isCurrentHost = this.room.state.hostId === this.mySessionId;
+        this.isHost = isCurrentHost;
 
         // Count only non-host players, and deduplicate by userId for safety
         const playerMap = new Map<string, any>();
@@ -2340,7 +2345,10 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.waitingUI.classList.add('hidden');
         }
 
-        if (this.isHost) {
+        // Robust Host Detection: check both the local flag and the server state
+        const isActuallyHost = this.isHost || (this.room && this.room.sessionId === this.room.state.hostId);
+
+        if (isActuallyHost) {
             console.log("[Host] Navigating to /host/progress...");
             Router.navigate('/host/progress');
             this.scene.start('HostProgressScene', { room: this.room });
