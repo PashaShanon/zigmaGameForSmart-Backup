@@ -932,6 +932,7 @@ export class GameRoom extends Room<GameState> {
 
             // Update sessionId in player object so client knows who they are
             player.sessionId = client.sessionId;
+            player.isOnline = true;
 
             // Update ownerId of their enemies to the new sessionId
             this.state.enemies.forEach(enemy => {
@@ -954,6 +955,7 @@ export class GameRoom extends Room<GameState> {
         player = new Player();
         player.sessionId = client.sessionId;
         player.userId = userId;
+        player.isOnline = true;
         player.avatarUrl = options.avatarUrl || "";
         player.name = options.name || "Player " + (this.state.players.size + 1);
         player.hairId = options.hairId !== undefined ? options.hairId : Math.floor(Math.random() * 7);
@@ -1170,6 +1172,8 @@ export class GameRoom extends Room<GameState> {
             
             console.log(`[GameRoom] Player ${client.sessionId} (${userId}) disconnected unexpectedly. Holding state for ${reconnectTime}s...`);
             
+            if (player) player.isOnline = false;
+
             // Set a timer to clean up after 60 seconds if they don't return
             if (userId) {
                 const timer = setTimeout(() => {
@@ -1208,6 +1212,14 @@ export class GameRoom extends Room<GameState> {
         // 1. Data Retrieval (if not provided)
         const userIdForObj = userIdOverride || this.sessionIdToUserId.get(sessionId);
         const playerObj = player || (userIdForObj ? this.state.players.get(userIdForObj) : null);
+
+        // --- RECONNECTION PROTECTION ---
+        // If the player has already reconnected with a DIFFERENT session ID,
+        // we must NOT delete the player state from the map.
+        if (playerObj && playerObj.sessionId !== sessionId) {
+            console.log(`[handlePlayerLeave] 🛡️ Skipping cleanup: Player ${playerObj.name} (${userIdForObj}) already reconnected with session ${playerObj.sessionId}`);
+            return;
+        }
 
         // 2. Clear from state.players and other maps
         const userId = userIdOverride || this.sessionIdToUserId.get(sessionId);
