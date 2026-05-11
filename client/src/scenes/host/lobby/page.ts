@@ -367,6 +367,9 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         // Listen for Countdown
         this.room.state.listen("countdown", (val: number, previousVal: number) => {
             if (val > 0) {
+                // Tandai sebagai mulai agar onLeave tidak me-redirect ke home
+                this.isGameStarting = true;
+
                 // --- GLOBAL UNIFIED COUNTDOWN ---
                 TransitionManager.ensureClosed();
                 TransitionManager.setCountdownText(val.toString());
@@ -374,19 +377,17 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 // Stop lobby music as soon as countdown starts
                 AudioManager.getInstance().stopBGM();
 
-                // Play countdown sequence sound (guarded against doubles in AudioManager)
+                // Play countdown sequence sound
                 AudioManager.getInstance().playCountdownSFX();
 
-                // --- OPTIMIZATION: Start Game Transition Early ---
-                // Similar to player side, we start loading the scene in background during countdown
-                this.handleGameStart();
-
-                // Hide main UI
+                // Hide main UI partly
                 if (this.isHost && this.waitingUI) {
-                    this.waitingUI.classList.add('hidden');
+                    this.waitingUI.classList.add('opacity-50', 'pointer-events-none');
                 }
             } else if (val === 0 && (previousVal || 0) > 0) {
                 TransitionManager.setCountdownText("GO!");
+                console.log("[Host] Countdown finished. Transitioning to game arena...");
+                this.handleGameStart();
             }
         });
 
@@ -1058,10 +1059,15 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (this.startBtn) {
             this.startBtn.classList.remove('hidden');
             this.startBtn.onclick = () => {
-                console.log("[Host] Start button clicked. Triggering handleGameStart immediately.");
-                // Immediately set flag and transition to prevent onLeave from redirecting
-                this.handleGameStart();
+                console.log("[Host] Start button clicked. Sending startGame message...");
                 this.room.send("startGame");
+                
+                // Disable button to prevent double clicks
+                if (this.startBtn) {
+                    this.startBtn.classList.add('pointer-events-none', 'opacity-50');
+                    const text = this.startBtn.querySelector('span');
+                    if (text) text.innerText = 'Starting...';
+                }
             };
         }
 
