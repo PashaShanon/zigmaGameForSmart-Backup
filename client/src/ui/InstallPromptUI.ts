@@ -63,60 +63,53 @@ export class InstallPromptUI {
         if (!container) {
             container = document.createElement('div');
             container.id = 'install-prompt-ui';
-            // Premium positioning and glass effect container
-            container.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-[9999] hidden pointer-events-auto transform transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1)';
+            // Repositioned to BOTTOM LEFT and matched with Zigma aesthetic
+            container.className = 'fixed bottom-6 left-6 w-[90%] max-w-[320px] z-[9999] hidden pointer-events-auto transform transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1)';
             document.body.appendChild(container);
         }
 
         const isArabic = i18n.getLanguage() === 'ar';
 
         container.innerHTML = `
-            <div class="relative overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group" ${isArabic ? 'dir="rtl"' : ''}>
-                <!-- Animated Background Accents -->
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#72BF78]/20 rounded-full blur-3xl animate-pulse"></div>
-                <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-[#FEFF9F]/10 rounded-full blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
+            <div class="relative overflow-hidden bg-white border-4 border-[#6CC452] border-b-[10px] border-b-[#478D47] rounded-[28px] p-5 shadow-2xl group" ${isArabic ? 'dir="rtl"' : ''}>
+                <!-- Background Decoration -->
+                <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(#2d5a30 1px, transparent 1px); background-size: 16px 16px;"></div>
                 
                 <!-- Close Button -->
-                <button id="install-close-btn" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 text-white/60 hover:text-white hover:bg-black/40 transition-all z-20">
-                    <span class="material-symbols-outlined text-lg">close</span>
+                <button id="install-close-btn" class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-lg bg-[#F1F8E9] text-[#478D47] border border-[#6CC452]/20 hover:bg-[#E8F5E9] transition-all z-20">
+                    <span class="material-symbols-outlined text-sm">close</span>
                 </button>
 
-                <div class="relative z-10 flex flex-col gap-5">
+                <div class="relative z-10 flex flex-col gap-4">
                     <div class="flex items-center gap-4">
-                        <!-- Icon with glow -->
-                        <div class="relative">
-                            <div class="absolute inset-0 bg-[#72BF78] blur-lg opacity-40 group-hover:opacity-60 transition-opacity"></div>
-                            <div class="relative w-14 h-14 bg-gradient-to-br from-[#72BF78] to-[#478D47] rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform duration-500">
-                                <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">install_desktop</span>
-                            </div>
+                        <!-- Icon Box -->
+                        <div class="w-12 h-12 bg-[#F1F8E9] border-2 border-[#478D47] rounded-xl flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
+                            <span class="material-symbols-outlined text-[#478D47] text-2xl" style="font-variation-settings: 'FILL' 1;">install_desktop</span>
                         </div>
                         
-                        <div class="flex flex-col gap-1">
-                            <h3 class="text-white font-['Retro_Gaming'] text-sm tracking-wide leading-tight drop-shadow-md">
+                        <div class="flex flex-col gap-0.5">
+                            <h3 class="text-[#478D47] font-['Retro_Gaming'] text-[11px] uppercase tracking-wider leading-tight">
                                 ${i18n.t('lobby.install_modal.title')}
                             </h3>
-                            <p class="text-white/70 font-['Retro_Gaming'] text-[10px] leading-relaxed">
+                            <p class="text-[#478D47]/60 font-['Retro_Gaming'] text-[8px] leading-tight">
                                 ${i18n.t('lobby.install_modal.desc')}
                             </p>
                         </div>
                     </div>
 
-                    <div class="flex gap-3 mt-1">
+                    <div class="flex gap-2.5">
                         <!-- Confirm Button -->
-                        <button id="install-confirm-btn" class="flex-[2] py-3.5 bg-gradient-to-r from-[#72BF78] to-[#478D47] text-white font-['Retro_Gaming'] text-[10px] uppercase rounded-xl shadow-[0_4px_15px_rgba(71,141,71,0.4)] hover:shadow-[0_6px_20px_rgba(71,141,71,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-sm">download</span>
+                        <button id="install-confirm-btn" class="pixel-text-outline flex-[2] py-2 bg-[#336B23] text-white font-['Retro_Gaming'] text-[10px] uppercase rounded-lg border-b-4 border-[#1F4514] hover:brightness-110 active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[12px]">download</span>
                             <span>${i18n.t('lobby.install_modal.confirm')}</span>
                         </button>
                         
                         <!-- Later Button -->
-                        <button id="install-later-btn" class="flex-1 py-3.5 bg-white/10 text-white font-['Retro_Gaming'] text-[10px] uppercase rounded-xl border border-white/10 hover:bg-white/20 active:scale-[0.98] transition-all">
+                        <button id="install-later-btn" class="flex-1 py-2 bg-[#F1F8E9] text-[#478D47] font-['Retro_Gaming'] text-[10px] uppercase rounded-lg border-b-4 border-[#6CC452]/50 hover:bg-[#E8F5E9] active:border-b-0 active:translate-y-1 transition-all">
                             ${i18n.t('lobby.install_modal.cancel')}
                         </button>
                     </div>
                 </div>
-                
-                <!-- Bottom Decoration -->
-                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#72BF78] to-transparent opacity-50"></div>
             </div>
         `;
 
@@ -176,7 +169,7 @@ export class InstallPromptUI {
             el.classList.remove('hidden');
             // Animate in
             requestAnimationFrame(() => {
-                el.style.transform = 'translate(-50%, 0)';
+                el.style.transform = 'translate(0, 0)';
                 el.style.opacity = '1';
                 el.classList.add('translate-y-0');
             });
@@ -187,7 +180,7 @@ export class InstallPromptUI {
         this.isVisible = false;
         const el = document.getElementById('install-prompt-ui');
         if (el) {
-            el.style.transform = 'translate(-50%, 50px)';
+            el.style.transform = 'translate(0, 50px)';
             el.style.opacity = '0';
             setTimeout(() => el.classList.add('hidden'), 500);
         }

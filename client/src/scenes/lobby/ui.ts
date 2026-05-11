@@ -32,9 +32,6 @@ export class LobbyUI {
                         </div>
 
                         <div class="relative flex items-center gap-2">
-                            <button id="lobby-install-btn" class="hidden w-10 h-10 md:w-11 md:h-11 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all shadow-lg group">
-                                <span class="material-symbols-outlined text-[#6CC452] text-xl group-hover:scale-110 transition-transform">download</span>
-                            </button>
                             <button id="lobby-menu-btn" class="w-10 h-10 md:w-11 md:h-11 bg-white border-2 border-[#6CC452] rounded-xl flex items-center justify-center hover:bg-[#F1F8E9] transition-all shadow-lg">
                                 <span class="material-symbols-outlined text-[#6CC452] text-xl">menu</span>
                             </button>

@@ -806,9 +806,6 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                                 <button id="host-add-friends-btn" class="w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg">
                                     <span class="material-symbols-outlined text-xl md:text-2xl">person_add</span>
                                 </button>
-                                <button id="host-install-btn" class="hidden w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg group">
-                                    <span class="material-symbols-outlined text-xl md:text-2xl group-hover:scale-110 transition-transform">download</span>
-                                </button>
                             </div>
                         </div>
 
@@ -996,17 +993,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             };
         }
 
-        const hostInstallBtn = document.getElementById('host-install-btn');
-        if (hostInstallBtn) {
-            if ((window as any).zigmaDeferredPrompt) {
-                hostInstallBtn.classList.remove('hidden');
-            }
-            hostInstallBtn.onclick = () => {
-                import('../../../ui/InstallPromptUI').then(m => {
-                    m.InstallPromptUI.triggerPrompt();
-                });
-            };
-        }
+
         if (yesBtn) {
             yesBtn.onclick = () => {
                 if (modal) modal.classList.add('hidden');
@@ -2310,8 +2297,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     }
 
     handleGameStart() {
-        if (this.isGameStarting) return;
-        this.isGameStarting = true;
+        // Use a new flag to prevent double transition execution
+        if ((this as any).isTransitioning) {
+            console.log("[Host] Transition already in progress, skipping...");
+            return;
+        }
+        (this as any).isTransitioning = true;
 
         // CRITICAL FIX: Matikan semua listener dari scene lobby ini sebelum transisi.
         // Ini mencegah onLeave lama memicu redirect ke '/' saat kita sedang berpindah scene.
