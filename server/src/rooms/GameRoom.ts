@@ -1121,7 +1121,7 @@ export class GameRoom extends Room<GameState> {
         const isManualLeave = (client as any).manualLeave === true;
 
         if (isHostLeave) {
-            if (isManualLeave || consented) {
+            if (isManualLeave) {
                 console.log(`[GameRoom] Host left intentionally. Disposing room.`);
                 this.broadcast("hostLeft");
                 this.clock.setTimeout(() => {

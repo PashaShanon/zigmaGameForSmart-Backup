@@ -2301,20 +2301,22 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
         console.log("[Host] Game Starting... Transitioning to Spectator Mode.");
 
-        if (this.isHost && this.room && this.room.state && this.room.state.roomCode) {
-            supabaseB
-                .from(SESSION_TABLE)
-                .update({ status: 'active', started_at: new Date().toISOString() })
-                .eq('game_pin', this.room.state.roomCode)
-                .then(({ error }) => {
-                    if (error) console.error("Failed to set session active:", error);
-                    else console.log("Session ACTIVE in Supabase.");
-                });
+        try {
+            if (this.isHost && this.room && this.room.state && this.room.state.roomCode) {
+                supabaseB
+                    .from(SESSION_TABLE)
+                    .update({ status: 'active', started_at: new Date().toISOString() })
+                    .eq('game_pin', this.room.state.roomCode)
+                    .then(({ error }) => {
+                        if (error) console.error("Failed to set session active:", error);
+                        else console.log("Session ACTIVE in Supabase.");
+                    });
+            }
+        } catch (e) {
+            console.warn("[Host] Supabase session update error:", e);
         }
 
         // OPTIMIZATION: Instant Transition
-        // We use pure scene.start() so it won't trigger TransitionManager's auto-open after 600ms,
-        // allowing the countdown logic to maintain the closed status.
         if (this.waitingUI) this.waitingUI.classList.add('hidden');
 
         if (this.isHost) {
