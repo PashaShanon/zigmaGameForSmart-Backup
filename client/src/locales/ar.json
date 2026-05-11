@@ -197,7 +197,9 @@
     "kick_desc_2": " من الغرفة؟",
     "kick_btn": "طرد!",
     "invited_toast": "تمت دعوة ",
-    "failed_invite": "فشل في الدعوة: "
+    "failed_invite": "فشل في الدعوة: ",
+    "starting": "جاري البدء...",
+    "preparing": "جاري التحضير..."
   },
   "player_lobby": {
     "exit": "خروج",

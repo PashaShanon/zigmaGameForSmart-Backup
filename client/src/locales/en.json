@@ -202,7 +202,9 @@
     "kick_desc_2": " from the room?",
     "kick_btn": "KICK!",
     "invited_toast": "Invited ",
-    "failed_invite": "Failed to invite: "
+    "failed_invite": "Failed to invite: ",
+    "starting": "STARTING...",
+    "preparing": "PREPARING GAME..."
   },
   "player_lobby": {
     "exit": "EXIT",

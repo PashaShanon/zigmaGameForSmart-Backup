@@ -1495,7 +1495,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: this.countdownStartedAt,
                 started_at: new Date(this.state.gameStartTime).toISOString(),
                 ended_at: new Date().toISOString(),
-                : "zigma", // Reverted back to zigma as per user request
+                application: "zigma", // Reverted back to zigma as per user request
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };

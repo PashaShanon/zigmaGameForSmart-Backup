@@ -20,6 +20,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     isManuallyLeaving: boolean = false;
     isRestore: boolean = false;
     isReconnecting: boolean = false; // Guard: cegah multiple restoreRoom() berjalan bersamaan
+    isTransitioning: boolean = false;
 
     // UI Elements
     waitingUI: HTMLElement | null = null;
@@ -85,10 +86,10 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             });
 
             this.room.onLeave((code) => {
-                console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}, isTransitioning: ${(this as any).isTransitioning}`);
+                console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}, isTransitioning: ${this.isTransitioning}`);
                 // ONLY redirect to lobby if this is a genuine disconnect,
                 // NOT a page refresh, intentional navigation, or game transition.
-                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading && !(this as any).isTransitioning) {
+                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading && !this.isTransitioning) {
                     console.log("[HostLobby][onLeave:init] Conditions met for redirect to /");
                     window.location.href = '/';
                 } else {
@@ -307,8 +308,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
         // AUTO RECONNECT logic if connection is lost
         this.room.onLeave((code) => {
-            console.log(`[HostLobby][onLeave:setup] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isTransitioning: ${(this as any).isTransitioning}`);
-            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving && !(this as any).isTransitioning) {
+            console.log(`[HostLobby][onLeave:setup] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isTransitioning: ${this.isTransitioning}`);
+            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving && !this.isTransitioning) {
                 console.warn("[HostLobby][onLeave:setup] Connection lost unexpectedly. Attempting to reconnect...");
                 // Null-kan this.room dulu agar restoreRoom() bisa mulai fresh
                 this.room = null as any;
@@ -641,7 +642,15 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             if (mLeaveYes) mLeaveYes.innerText = i18n.t('host_lobby.yes_end_game');
 
             const mMngGrpTitle = document.getElementById('host-ui-invite-group-title');
-            if (mMngGrpTitle) mMngGrpTitle.innerHTML = `<span class="material-symbols-outlined text-primary text-3xl">group</span> ${i18n.t('host_lobby.invite_groups')}`;
+            if (mMngGrpTitle) mMngGrpTitle.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="19" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-plus text-black">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <path d="M16 3.128a4 4 0 0 1 0 7.744" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <circle cx="9" cy="7" r="4" />
+                    <line x1="24" y1="8" x2="24" y2="14" />
+                    <line x1="21" y1="11" x2="27" y2="11" />
+                </svg> ${i18n.t('host_lobby.invite_groups')}`;
 
             const mMngGrpSearch = document.getElementById('group-search-input') as HTMLInputElement;
             if (mMngGrpSearch) mMngGrpSearch.placeholder = i18n.t('host_lobby.search_group');
@@ -650,7 +659,13 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             if (mMngGrpClose) mMngGrpClose.innerText = i18n.t('host_lobby.close');
 
             const mInvFrndTitle = document.getElementById('host-ui-invite-friend-title');
-            if (mInvFrndTitle) mInvFrndTitle.innerHTML = `<span class="material-symbols-outlined text-secondary text-3xl">person_add</span> ${i18n.t('host_lobby.invite_friends')}`;
+            if (mInvFrndTitle) mInvFrndTitle.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="19" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus text-black">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <line x1="23" y1="8" x2="23" y2="14"></line>
+                    <line x1="20" y1="11" x2="26" y2="11"></line>
+                </svg> ${i18n.t('host_lobby.invite_friends')}`;
 
             const mInvFrndSearch = document.getElementById('friend-search-input') as HTMLInputElement;
             if (mInvFrndSearch) mInvFrndSearch.placeholder = i18n.t('host_lobby.search_friend');
@@ -802,10 +817,22 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                             <h2 id="host-player-count" class="text-xl md:text-2xl text-white font-['Retro_Gaming'] tracking-wide">0 Players</h2>
                             <div class="flex gap-2">
                                 <button id="host-manage-users-btn" class="w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg">
-                                    <span class="material-symbols-outlined text-xl md:text-2xl">group</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="19" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-plus text-black">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                    <path d="M16 3.128a4 4 0 0 1 0 7.744"></path>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <line x1="24" y1="8" x2="24" y2="14"></line>
+                                    <line x1="21" y1="11" x2="27" y2="11"></line>
+                                </svg>
                                 </button>
                                 <button id="host-add-friends-btn" class="w-10 h-10 md:w-12 md:h-12 bg-white border-2 border-white text-black flex items-center justify-center rounded-xl hover:bg-[#f0f0f0] transition-all shadow-lg">
-                                    <span class="material-symbols-outlined text-xl md:text-2xl">person_add</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="19" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus text-black">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <line x1="23" y1="8" x2="23" y2="14"></line>
+                                        <line x1="20" y1="11" x2="26" y2="11"></line>
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -851,7 +878,14 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                     
                     <div class="flex justify-between items-center -mt-4 mb-6 z-10 shrink-0">
                         <h3 id="host-ui-invite-group-title" class="text-lg md:text-xl text-white font-['Retro_Gaming'] drop-shadow-[0_0_10px_rgba(0,255,136,0.5)] flex items-center gap-3">
-                            <span class="material-symbols-outlined text-primary text-3xl">group</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="24" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-plus text-primary">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <path d="M16 3.128a4 4 0 0 1 0 7.744" />
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                <circle cx="9" cy="7" r="4" />
+                                <line x1="24" y1="8" x2="24" y2="14" />
+                                <line x1="21" y1="11" x2="27" y2="11" />
+                            </svg>
                             ${i18n.t('host_lobby.invite_groups')}
                         </h3>
                         <button id="close-manage-users-btn" class="login-mobile-only text-white/50 hover:text-white transition-colors cursor-pointer w-8 h-8 items-center justify-center rounded-lg bg-white/5 hover:bg-white/10">
@@ -1046,17 +1080,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         // Start Button Binding
         if (this.startBtn) {
             this.startBtn.classList.remove('hidden');
-            this.startBtn.onclick = () => {
-                console.log("[Host] Start button clicked. Sending startGame message...");
-                this.room.send("startGame");
-                
-                // Disable button to prevent double clicks
-                if (this.startBtn) {
-                    this.startBtn.classList.add('pointer-events-none', 'opacity-50');
-                    const text = this.startBtn.querySelector('span');
-                    if (text) text.innerText = 'Starting...';
-                }
-            };
+            this.startBtn.onclick = () => this.handleStartGame();
         }
 
         // Host manage users button binding
@@ -1746,6 +1770,34 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         }
     }
 
+    /**
+     * Handle the Host clicking the Start Game button.
+     * Sets critical guard flags immediately to prevent accidental redirects
+     * if the connection drops during the transition.
+     */
+    handleStartGame() {
+        if (this.isGameStarting || this.isTransitioning) return;
+
+        console.log("[Host] 🚀 Start Game clicked! Setting guard flag and sending message...");
+        
+        // CRITICAL: Set this BEFORE sending the message to prevent accidental onLeave redirects
+        this.isGameStarting = true;
+
+        if (this.room) {
+            this.room.send("startGame");
+        }
+
+        // UI Feedback
+        if (this.startBtn) {
+            this.startBtn.classList.add('pointer-events-none', 'opacity-50', 'grayscale');
+            const text = this.startBtn.querySelector('span') || this.startBtn;
+            if (text) text.innerText = i18n.t('host_lobby.starting') || 'Starting...';
+        }
+
+        // Show initial waiting transition
+        TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...');
+    }
+
     async leaveRoom() {
         if (this.room) {
             console.log("[HostLobby] 🚪 Host leaving and deleting session...");
@@ -2150,7 +2202,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 if (this.startBtn) {
                     this.startBtn.classList.remove('opacity-50', 'pointer-events-none', 'grayscale', 'cursor-not-allowed');
                     this.startBtn.classList.add('hover:brightness-110', 'active:border-b-0', 'active:translate-y-1', 'cursor-pointer');
-                    this.startBtn.onclick = () => this.room.send("startGame");
+                    this.startBtn.onclick = () => this.handleStartGame();
                 }
                 if (startHint) startHint.classList.add('hidden');
             }
@@ -2304,11 +2356,11 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
     handleGameStart() {
         // Use a new flag to prevent double transition execution
-        if ((this as any).isTransitioning) {
+        if (this.isTransitioning) {
             console.log("[Host] Transition already in progress, skipping...");
             return;
         }
-        (this as any).isTransitioning = true;
+        this.isTransitioning = true;
 
         // CRITICAL: Set ALL guard flags to prevent ANY onLeave handler from redirecting.
         // Do NOT call room.removeAllListeners() or room.onLeave.clear() — these destroy
@@ -2345,7 +2397,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         TransitionManager.setCountdownText("");
 
         // Robust Host Detection: check both the local flag and the server state
-        const isActuallyHost = (this as any).isHost || (this.room && this.room.sessionId === this.room.state.hostId);
+        const isActuallyHost = this.isHost || (this.room && this.room.sessionId === this.room.state.hostId);
 
         if (isActuallyHost) {
             console.log("[Host] Navigating to /host/progress...");
