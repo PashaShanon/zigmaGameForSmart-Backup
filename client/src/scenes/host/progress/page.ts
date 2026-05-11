@@ -458,17 +458,6 @@ export class HostProgressScene extends Phaser.Scene {
 
             this.disposers.push(player.listen("x", (val: number) => container.setData('targetX', val)));
             this.disposers.push(player.listen("y", (val: number) => container.setData('targetY', val)));
-            this.disposers.push(player.listen("isOnline", (isOnline: boolean) => {
-                const tag = container.getByName('nameTag') as Phaser.GameObjects.Text;
-                if (isOnline) {
-                    container.setAlpha(1);
-                    if (tag) tag.setText(player.name || 'Player');
-                } else {
-                    container.setAlpha(0.5);
-                    if (tag) tag.setText(`${player.name || 'Player'} (RECONNECTING...)`);
-                }
-            }));
-
             this.disposers.push(player.onChange(() => {
                 updateProgress();
             }));

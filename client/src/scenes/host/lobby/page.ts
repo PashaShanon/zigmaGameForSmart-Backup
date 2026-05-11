@@ -2111,8 +2111,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                     sessionId, 
                     name: p.name, 
                     hairId: p.hairId, 
-                    subRoomId: p.subRoomId,
-                    isOnline: p.isOnline
+                    subRoomId: p.subRoomId 
                 });
             }
         });
@@ -2170,20 +2169,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             }
 
             html += `
-                        <div class="group relative flex flex-col items-center justify-center p-3 gap-2.5 rounded-2xl w-full max-w-[140px] mx-auto aspect-[1/1.1] transition-all duration-300"
+                        <div class="group relative flex flex-col items-center justify-center p-3 gap-2.5 rounded-2xl w-full max-w-[140px] mx-auto aspect-[1/1.1] transition-transform duration-200"
                 style="
                 background: #6CC452; 
                     ${borderClass}
-                    ${player.isOnline === false ? 'opacity: 0.6; filter: grayscale(0.5);' : ''}
                 ">
                     ${kickButtonHTML}
-                    
-                    ${player.isOnline === false ? `
-                        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-2xl z-20 animate-pulse">
-                            <span class="material-symbols-outlined text-white text-xl mb-1">sync</span>
-                            <span class="text-[6px] md:text-[7px] text-white font-['Press_Start_2P'] uppercase text-center px-1">${i18n.t('host_lobby.reconnecting') || 'RECONNECTING...'}</span>
-                        </div>
-                    ` : ''}
 
                 <!-- Character(Middle) -->
                     <div style="width: 60px; height: 60px; background: transparent; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: none;">
