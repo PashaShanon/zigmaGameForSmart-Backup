@@ -85,10 +85,10 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             });
 
             this.room.onLeave((code) => {
-                console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}`);
+                console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}, isTransitioning: ${(this as any).isTransitioning}`);
                 // ONLY redirect to lobby if this is a genuine disconnect,
-                // NOT a page refresh or intentional navigation.
-                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading) {
+                // NOT a page refresh, intentional navigation, or game transition.
+                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading && !(this as any).isTransitioning) {
                     console.log("[HostLobby][onLeave:init] Conditions met for redirect to /");
                     window.location.href = '/';
                 } else {
@@ -307,8 +307,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
 
         // AUTO RECONNECT logic if connection is lost
         this.room.onLeave((code) => {
-            console.log(`[HostLobby][onLeave:setup] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}`);
-            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving) {
+            console.log(`[HostLobby][onLeave:setup] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isTransitioning: ${(this as any).isTransitioning}`);
+            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving && !(this as any).isTransitioning) {
                 console.warn("[HostLobby][onLeave:setup] Connection lost unexpectedly. Attempting to reconnect...");
                 // Null-kan this.room dulu agar restoreRoom() bisa mulai fresh
                 this.room = null as any;
@@ -428,6 +428,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     }
 
     create() {
+        document.title = "Lobby Host | Zigma";
         // Inject shared styles (play-idle)
         const styleId = 'waiting-room-common-styles';
         if (!document.getElementById(styleId)) {
@@ -2309,17 +2310,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         }
         (this as any).isTransitioning = true;
 
-        // CRITICAL FIX: Matikan semua listener dari scene lobby ini sebelum transisi.
-        // Ini mencegah onLeave lama memicu redirect ke '/' saat kita sedang berpindah scene.
-        if (this.room) {
-            console.log("[Host] 🛡️ Clearing lobby listeners before transition...");
-            try {
-                this.room.onLeave.clear();
-                this.room.removeAllListeners();
-            } catch (e) {
-                console.warn("[Host] Error clearing listeners:", e);
-            }
-        }
+        // CRITICAL: Set ALL guard flags to prevent ANY onLeave handler from redirecting.
+        // Do NOT call room.removeAllListeners() or room.onLeave.clear() — these destroy
+        // internal Colyseus listeners (state patches, serialization) and break the room
+        // connection, which is the actual cause of the redirect-to-home bug.
+        this.isGameStarting = true;
+        this.isManuallyLeaving = true; // Prevents onLeave handlers from redirecting or reconnecting
 
         console.log("[Host] 🚀 Game Starting Triggered! Transitioning...");
 

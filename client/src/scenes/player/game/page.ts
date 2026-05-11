@@ -296,6 +296,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     async create() {
+        document.title = "Game | Zigma";
         // Music will be started in revealGame() or when iris opens
         
         // DEBUG: Check if textures are loaded

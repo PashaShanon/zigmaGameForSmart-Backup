@@ -26,6 +26,7 @@ export class QuizSettingManager {
     }
 
     private async start() {
+        document.title = "Settings | Zigma";
         this.quizSettingsUI = document.getElementById('quiz-settings-ui');
 
         if (!this.selectedQuiz) {

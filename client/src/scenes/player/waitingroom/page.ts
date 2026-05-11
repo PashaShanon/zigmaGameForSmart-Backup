@@ -209,6 +209,7 @@ export class PlayerWaitingRoomManager {
     }
 
     private start() {
+        document.title = "Waiting Room | Zigma";
         // Multi-Language Support Event
         window.addEventListener('languageChanged', () => {
             if (this.backBtn) this.backBtn.innerText = i18n.t('player_lobby.exit');

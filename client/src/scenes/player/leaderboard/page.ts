@@ -22,6 +22,7 @@ export class PlayerLeaderboardManager {
   constructor() {}
 
   start(data?: { room?: any; leaderboardData?: any[]; mySessionId?: string }) {
+    document.title = "Leaderboard | Zigma";
     TransitionManager.ensureClosed();
     this.createTooltip();
     OrientationManager.requirePortrait();

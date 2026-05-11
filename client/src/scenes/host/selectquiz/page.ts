@@ -35,7 +35,8 @@ export class SelectQuizManager {
         this.start();
     }
 
-    private start() {
+    private async start() {
+        document.title = "Select Quiz | Zigma";
         this.quizSelectionUI = document.getElementById('quiz-selection-ui');
         this.hideAllUI();
 

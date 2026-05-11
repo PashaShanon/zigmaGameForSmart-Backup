@@ -228,6 +228,7 @@ export class HostProgressScene extends Phaser.Scene {
     }
 
     async create() {
+        document.title = "Monitor | Zigma";
         // Music will be started in revealGame() or when iris opens
         
         console.log(`[Spectator][Room:${this.room?.id}] Creating... SessionId: ${this.room?.sessionId}`);

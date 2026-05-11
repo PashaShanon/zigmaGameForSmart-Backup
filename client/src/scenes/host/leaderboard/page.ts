@@ -21,6 +21,7 @@ export class HostLeaderboardManager {
     private tooltip: HTMLElement | null = null;
 
     start(data?: { rankings?: any[], isHost?: boolean, lastGameOptions?: any, lastSelectedQuiz?: any, mySessionId?: string }) {
+        document.title = "Leaderboard | Zigma";
         this.initializeClient();
         TransitionManager.ensureClosed();
         this.createTooltip();

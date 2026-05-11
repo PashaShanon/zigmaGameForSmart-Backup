@@ -30,6 +30,7 @@ export class ResultManager {
   constructor() {}
 
   start(data?: { room?: any; leaderboardData?: any[] }) {
+    document.title = "Result | Zigma";
     TransitionManager.ensureClosed();
     OrientationManager.requirePortrait(
       i18n.t("player_result.portrait_req_title"),
