@@ -100,6 +100,9 @@ export class LobbyManager {
         const autoJoinTriggered = this.initializeAutoJoin();
         if (autoJoinTriggered) return;
 
+        // If no auto-join, show the lobby UI
+        this.showLobby();
+
         // SINGLETON-LIKE BEHAVIOR FOR GLOBAL LISTENERS
         if (!(window as any).lobbyListenersAttached) {
             window.addEventListener('popstate', () => {

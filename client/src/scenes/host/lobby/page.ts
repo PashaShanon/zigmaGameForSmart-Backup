@@ -2345,8 +2345,11 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.waitingUI.classList.add('hidden');
         }
 
+        // Ensure countdown overlay is cleared before switching
+        TransitionManager.setCountdownText("");
+
         // Robust Host Detection: check both the local flag and the server state
-        const isActuallyHost = this.isHost || (this.room && this.room.sessionId === this.room.state.hostId);
+        const isActuallyHost = (this as any).isHost || (this.room && this.room.sessionId === this.room.state.hostId);
 
         if (isActuallyHost) {
             console.log("[Host] Navigating to /host/progress...");
