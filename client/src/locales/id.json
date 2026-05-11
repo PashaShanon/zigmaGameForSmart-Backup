@@ -202,7 +202,8 @@
     "kick_desc_2": " dari ruangan?",
     "kick_btn": "KICK!",
     "invited_toast": "Berhasil mengundang ",
-    "failed_invite": "Gagal mengundang: "
+    "failed_invite": "Gagal mengundang: ",
+    "reconnecting": "MENGHUBUNGKAN..."
   },
   "player_lobby": {
     "exit": "KELUAR",

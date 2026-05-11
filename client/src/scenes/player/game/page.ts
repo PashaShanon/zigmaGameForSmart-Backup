@@ -655,6 +655,21 @@ export class GameScene extends Phaser.Scene {
                 updateHairVisuals();
                 this.updateNameTagText(sessionId, player.name);
 
+                player.listen("isOnline", (isOnline: boolean) => {
+                    const tagContainer = this.nameTagContainers[sessionId];
+                    if (!tagContainer) return;
+                    const tag = tagContainer.getByName('nameTag') as Phaser.GameObjects.Text;
+                    const entity = this.playerEntities[sessionId];
+                    
+                    if (isOnline) {
+                        if (entity) entity.setAlpha(1);
+                        if (tag) tag.setText(player.name || 'Player');
+                    } else {
+                        if (entity) entity.setAlpha(0.4);
+                        if (tag) tag.setText(`${player.name || 'Player'} (RECONNECTING...)`);
+                    }
+                });
+
                 if (sessionId === this.room.sessionId) {
                     const uiScene = this.scene.get('UIScene') as UIScene;
                     if (uiScene) uiScene.updateScore(player.score);

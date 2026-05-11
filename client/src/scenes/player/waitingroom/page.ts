@@ -1225,7 +1225,8 @@ export class PlayerWaitingRoomManager {
                 playerMap.set(dedupeKey, { 
                     sessionId, 
                     name: p.name, 
-                    hairId: p.hairId 
+                    hairId: p.hairId,
+                    isOnline: p.isOnline
                 });
             }
         });
@@ -1248,7 +1249,15 @@ export class PlayerWaitingRoomManager {
             const youPill = isMe ? `<div class="absolute -bottom-3 left-1/2 -translate-x-1/2 pill-you">${i18n.t('player_lobby.you')}</div>` : '';
 
             html += `
-                <div class="${cardClass} player-card-wrapper">
+                <div class="${cardClass} player-card-wrapper transition-all duration-300" style="${player.isOnline === false ? 'opacity: 0.6; filter: grayscale(0.5);' : ''}">
+                    <!-- Reconnecting Overlay -->
+                    ${player.isOnline === false ? `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl z-20 animate-pulse">
+                            <span class="material-symbols-outlined text-white text-xl mb-1">sync</span>
+                            <span class="text-[6px] text-white font-['Press_Start_2P'] uppercase text-center px-1">${i18n.t('host_lobby.reconnecting') || 'RECONNECTING...'}</span>
+                        </div>
+                    ` : ''}
+
                     <!-- Character (Middle) -->
                     <div style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; overflow: visible; margin-top: 5px;">
                          <div style="
