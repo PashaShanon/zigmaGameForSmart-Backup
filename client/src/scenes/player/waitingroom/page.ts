@@ -296,13 +296,15 @@ export class PlayerWaitingRoomManager {
                     // Stop lobby music as soon as countdown starts
                     AudioManager.getInstance().stopBGM();
                     
-                    // Play countdown sequence sound (guarded against doubles in AudioManager)
+                    // Play countdown sequence sound
                     AudioManager.getInstance().playCountdownSFX();
-
-                    // --- OPTIMIZATION: Start Game Transition Early ---
-                    this.handleGameStart();
                 } else if (val === 0 && (previousVal || 0) > 0) {
                     TransitionManager.setCountdownText("GO!");
+                    
+                    // Delay slightly to show "GO!" before switching
+                    setTimeout(() => {
+                        this.handleGameStart();
+                    }, 500);
                 }
             });
 

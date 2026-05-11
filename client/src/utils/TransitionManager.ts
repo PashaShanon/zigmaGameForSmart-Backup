@@ -56,6 +56,10 @@ export const TransitionManager = {
         overlay.classList.add('overlay-active');
         overlay.classList.add('iris-close');
         overlay.classList.remove('iris-open');
+        
+        // Force instant close by bypassing animation if needed
+        overlay.style.width = '0';
+        overlay.style.height = '0';
     },
 
     /**
@@ -64,6 +68,13 @@ export const TransitionManager = {
     setCountdownText(text: string) {
         const overlay = document.getElementById('transition-overlay');
         if (!overlay) return;
+
+        // Ensure background is black
+        this.ensureClosed();
+
+        // Clear waiting state if any
+        const waitEl = document.getElementById('transition-waiting');
+        if (waitEl) waitEl.remove();
 
         let el = document.getElementById('transition-countdown');
         if (!text) {
@@ -206,6 +217,9 @@ export const TransitionManager = {
     showWaiting(text: string) {
         const overlay = document.getElementById('transition-overlay');
         if (!overlay) return;
+
+        // Ensure background is black
+        this.ensureClosed();
 
         // Ensure countdown/text is cleared
         const countEl = document.getElementById('transition-countdown');

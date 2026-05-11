@@ -388,7 +388,11 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             } else if (val === 0 && (previousVal || 0) > 0) {
                 TransitionManager.setCountdownText("GO!");
                 console.log("[Host] Countdown finished. Transitioning to game arena...");
-                this.handleGameStart();
+                
+                // Delay slightly to show "GO!" before switching
+                setTimeout(() => {
+                    this.handleGameStart();
+                }, 500);
             }
         });
 
@@ -2393,8 +2397,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             this.waitingUI.classList.add('hidden');
         }
 
-        // Ensure countdown overlay is cleared before switching
-        TransitionManager.setCountdownText("");
+        // TransitionManager.setCountdownText(""); // Removed to allow "GO!" to persist until next scene
 
         // Robust Host Detection: check both the local flag and the server state
         const isActuallyHost = this.isHost || (this.room && this.room.sessionId === this.room.state.hostId);
