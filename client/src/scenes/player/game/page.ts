@@ -897,7 +897,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     tryAttack(pointer?: Phaser.Input.Pointer) {
-        if (this.isAttacking) return;
+        if (!this.currentPlayer || this.isAttacking) return;
         this.isAttacking = true;
         
         // Sync attack state to server for spectators and other players
@@ -976,7 +976,8 @@ export class GameScene extends Phaser.Scene {
         container.setDepth(150);
         container.setScale(0.9);
 
-        const nameText = this.add.text(0, 0, name.toUpperCase(), {
+        const upperName = (name || 'PLAYER').toUpperCase();
+        const nameText = this.add.text(0, 0, upperName, {
             fontFamily: '"Retro Gaming", monospace',
             fontSize: '6px',
             color: '#000000',
@@ -1019,8 +1020,9 @@ export class GameScene extends Phaser.Scene {
         if (!container) return;
 
         const nameText = container.getByName('nameText') as Phaser.GameObjects.Text;
-        if (nameText && nameText.text !== newName.toUpperCase()) {
-            nameText.setText(newName.toUpperCase());
+        const upperName = (newName || 'PLAYER').toUpperCase();
+        if (nameText && nameText.text !== upperName) {
+            nameText.setText(upperName);
             const textWidth = nameText.width;
             const padding = 4;
             const minMiddleWidth = Math.max(textWidth + padding, 12);
@@ -1097,7 +1099,8 @@ export class GameScene extends Phaser.Scene {
                 question: qData.text,
                 image: qData.imageUrl,
                 options: Array.from(qData.options),
-                correctAnswer: qData.correctAnswer
+                correctAnswer: qData.correctAnswer,
+                answerType: qData.answerType
             };
             this.activeQuestionId = questionId;
             this.isChestPopupVisible = true;
@@ -1331,7 +1334,8 @@ export class GameScene extends Phaser.Scene {
                     question: qData.text,
                     image: qData.imageUrl,
                     options: Array.from(qData.options),
-                    correctAnswer: qData.correctAnswer
+                    correctAnswer: qData.correctAnswer,
+                    answerType: qData.answerType
                 };
                 this.activeQuestionId = qIndex;
                 const name = (enemyState.type || 'ENEMY').toUpperCase();

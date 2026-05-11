@@ -97,8 +97,12 @@ export class GameRoom extends Room<GameState> {
                 newQ.id = i;
                 // Flexible mapping for various potential schemas
                 newQ.text = q.pertanyaan || q.question || q.text || "No Question Text";
-                newQ.imageUrl = q.image || q.image_url || "";
-                newQ.answerType = q.answerType || 'text';
+                newQ.imageUrl = q.image || q.image_url || q.imageUrl || q.pertanyaan_gambar || "";
+                
+                // answerType can be 'text' or 'image'
+                newQ.answerType = q.answerType || q.type || q.tipe_jawaban || 'text';
+                // If it's "multiple_choice", default to "text"
+                if (newQ.answerType === 'multiple_choice') newQ.answerType = 'text';
 
                 // Determine Correct Answer Index
                 if (typeof q.correctAnswer === 'number') {
@@ -118,8 +122,13 @@ export class GameRoom extends Room<GameState> {
                     rawOptions = q.options;
                 } else if (Array.isArray(q.answers)) {
                     // JSON format provided by user: array of objects { id, answer, ... }
-                    // Sort by ID to ensure order if necessary, but usually just map 'answer' property
-                    rawOptions = q.answers.map((ans: any) => ans.answer || "");
+                    // If answerType is image, we prefer ans.image
+                    rawOptions = q.answers.map((ans: any) => {
+                        if (newQ.answerType === 'image') {
+                            return ans.image || ans.answer || "";
+                        }
+                        return ans.answer || ans.image || "";
+                    });
 
                     // Re-evaluate correct answer if 'correct' is string index in this format
                     if (q.correct !== undefined) {
@@ -127,12 +136,21 @@ export class GameRoom extends Room<GameState> {
                     }
                 } else {
                     // Try multiple possible keys for options (Legacy/Other formats)
-                    rawOptions = [
-                        q.jawaban_a || q.option_a || q.pil_a || q.a || "",
-                        q.jawaban_b || q.option_b || q.pil_b || q.b || "",
-                        q.jawaban_c || q.option_c || q.pil_c || q.c || "",
-                        q.jawaban_d || q.option_d || q.pil_d || q.d || ""
-                    ];
+                    if (newQ.answerType === 'image') {
+                        rawOptions = [
+                            q.jawaban_gambar_a || q.jawaban_a || q.option_a || q.pil_a || q.a || "",
+                            q.jawaban_gambar_b || q.jawaban_b || q.option_b || q.pil_b || q.b || "",
+                            q.jawaban_gambar_c || q.jawaban_c || q.option_c || q.pil_c || q.c || "",
+                            q.jawaban_gambar_d || q.jawaban_d || q.option_d || q.pil_d || q.d || ""
+                        ];
+                    } else {
+                        rawOptions = [
+                            q.jawaban_a || q.option_a || q.pil_a || q.a || "",
+                            q.jawaban_b || q.option_b || q.pil_b || q.b || "",
+                            q.jawaban_c || q.option_c || q.pil_c || q.c || "",
+                            q.jawaban_d || q.option_d || q.pil_d || q.d || ""
+                        ];
+                    }
                 }
                 rawOptions.forEach(opt => newQ.options.push(String(opt || "")));
 
@@ -182,12 +200,13 @@ export class GameRoom extends Room<GameState> {
             sub.capacity = subRoomCapacity;
             this.state.subRooms.push(sub);
         }
+
+        // --- REGISTER MESSAGE HANDLERS ---
+        this.setupMessages();
     }
 
     private getPlayerByClient(client: Client) {
-        const userId = this.sessionIdToUserId.get(client.sessionId);
-        if (!userId) return null;
-        return this.state.players.get(userId);
+        return this.state.players.get(client.sessionId);
     }
 
     private setupMessages() {
@@ -207,6 +226,12 @@ export class GameRoom extends Room<GameState> {
         });
 
         this.onMessage("startGame", (client) => {
+            // Only host can start the game
+            if (client.sessionId !== this.state.hostId) {
+                console.log(`[GameRoom] Non-host ${client.sessionId} attempted to start game. Ignored.`);
+                return;
+            }
+
             if (this.state.isGameStarted || this.state.countdown > 0) return;
 
             // Start Countdown
@@ -265,7 +290,8 @@ export class GameRoom extends Room<GameState> {
             if (client.sessionId !== this.state.hostId) return;
             
             const targetSid = data.sessionId;
-            console.log(`[GameRoom] Host is kicking player: ${targetSid}`);
+            const targetUserId = data.userId; // If client sends userId
+            console.log(`[GameRoom] Host is kicking player: ${targetSid} (userId: ${targetUserId})`);
             
             const targetClient = this.clients.find(c => c.sessionId === targetSid);
             if (targetClient) {
@@ -278,7 +304,8 @@ export class GameRoom extends Room<GameState> {
             const player = this.state.players.get(targetSid);
             if (player) {
                 // Cleanup Supabase B
-                if (!this.state.isGameStarted && player.userId) {
+                const userId = player.userId;
+                if (!this.state.isGameStarted && userId) {
                     this.removeParticipantFromSupabaseB(player.userId);
                 }
 
@@ -560,50 +587,6 @@ export class GameRoom extends Room<GameState> {
         });
 
 
-        // --- Kick Player Handler ---
-        this.onMessage("kickPlayer", (client, payload) => {
-            // Hanya host (berdasarkan state.hostId) yang bisa kick
-            if (client.sessionId !== this.state.hostId) return;
-
-            const targetSessionId = payload.sessionId;
-            const targetClient = this.clients.find(c => c.sessionId === targetSessionId);
-
-            if (targetClient) {
-                console.log(`[GameRoom] Host kicked player ${targetSessionId}`);
-                targetClient.send("kicked", { message: "You have been kicked by the host." });
-
-                // Tandai client sebagai kicked agar onLeave tidak menunggu reconnect
-                (targetClient as any).kicked = true;
-
-                targetClient.leave(); // Force leave
-            } else {
-                // Handle ghost player (state ada tapi client putus)
-                const player = this.state.players.get(targetSessionId);
-                if (player) {
-                    console.log(`[GameRoom] Host kicked ghost player ${targetSessionId}`);
-                    
-                    // Cleanup spawn point
-                    if (player.spawnIndex !== -1) {
-                        this.usedSpawnIndices.delete(player.spawnIndex);
-                        console.log(`[Spawn] Freed spawn point ${player.spawnIndex} from ghost player ${player.name}`);
-                    }
-                    
-                    // Cleanup sub-room
-                    const subRoom = this.state.subRooms.find(r => r.id === player.subRoomId);
-                    if (subRoom) {
-                        const idx = subRoom.playerIds.indexOf(targetSessionId);
-                        if (idx > -1) subRoom.playerIds.splice(idx, 1);
-                    }
-
-                    // Cleanup Supabase B
-                    if (!this.state.isGameStarted && player.userId) {
-                        this.removeParticipantFromSupabaseB(player.userId);
-                    }
-                    
-                    this.state.players.delete(targetSessionId);
-                }
-            }
-        });
 
         // --- Switch Room Handler ---
         this.onMessage("switchRoom", (client, message) => {
@@ -901,57 +884,53 @@ export class GameRoom extends Room<GameState> {
             return;
         }
 
-        // --- NON-HOST PLAYERS ONLY ---
+        // --- DEDUPLICATION ---
         const userId = options.userId || `anon_${client.sessionId}`;
-        this.sessionIdToUserId.set(client.sessionId, userId);
-
-        // --- PERSISTENCE & DEDUPLICATION ---
-        let player = this.state.players.get(userId);
-
-        if (player) {
-            // CANCEL CLEANUP TIMER IF IT EXISTS
-            if (this.playerCleanupTimers.has(userId)) {
-                console.log(`[GameRoom] ⏰ Cleanup cancelled for ${player.name} (${userId})`);
-                clearTimeout(this.playerCleanupTimers.get(userId));
-                this.playerCleanupTimers.delete(userId);
+        
+        // Cek jika userId ini sudah ada di state.players (dari session lama yang terputus)
+        let existingSessionId: string | null = null;
+        this.state.players.forEach((p, sid) => {
+            if (p.userId === userId) {
+                existingSessionId = sid;
             }
+        });
 
-            // RE-USE EXISTING PLAYER (STAY IN ROOM)
-            console.log(`[GameRoom] ♻️ Re-using existing state for ${player.name} (${userId}). Old SID: ${player.sessionId}, New SID: ${client.sessionId}`);
-            
-            // Purge old connection reference if it's different
-            const oldSid = player.sessionId;
-            if (oldSid !== client.sessionId) {
-                const oldClient = this.clients.find(c => c.sessionId === oldSid);
-                if (oldClient) {
-                    console.log(`[GameRoom] 🛡️ Closing old redundant session: ${oldSid}`);
-                    (oldClient as any).kicked = true;
-                    oldClient.leave();
+        if (existingSessionId) {
+            console.log(`[GameRoom] 🔄 Player ${userId} re-joined with NEW sessionId. Replacing old session ${existingSessionId}.`);
+            const oldPlayer = this.state.players.get(existingSessionId);
+            if (oldPlayer) {
+                // Batalkan cleanup timer jika ada
+                if (this.playerCleanupTimers.has(userId)) {
+                    clearTimeout(this.playerCleanupTimers.get(userId));
+                    this.playerCleanupTimers.delete(userId);
                 }
+
+                // Transfer data ke session ID baru
+                oldPlayer.sessionId = client.sessionId;
+                this.state.players.set(client.sessionId, oldPlayer);
+                this.state.players.delete(existingSessionId);
+                
+                // Update mappings
+                this.sessionIdToUserId.delete(existingSessionId);
+                this.sessionIdToUserId.set(client.sessionId, userId);
+
+                // Update sub-room mapping
+                this.state.subRooms.forEach(room => {
+                    const idx = room.playerIds.indexOf(existingSessionId!);
+                    if (idx > -1) {
+                        room.playerIds[idx] = client.sessionId;
+                    }
+                });
+
+                return; // Selesai, tidak perlu inisialisasi ulang
             }
-
-            // Update sessionId in player object so client knows who they are
-            player.sessionId = client.sessionId;
-
-            // Update ownerId of their enemies to the new sessionId
-            this.state.enemies.forEach(enemy => {
-                if (enemy.ownerId === oldSid) {
-                    enemy.ownerId = client.sessionId;
-                }
-            });
-            // If game already started but player somehow had no enemies, spawn them now
-            const hasEnemies = Array.from(this.state.enemies.values()).some(e => e.ownerId === client.sessionId);
-            if (this.state.isGameStarted && !hasEnemies) {
-                console.log(`[GameRoom] 👾 Spawning missing enemies for reconnected player: ${player.name}`);
-                this.spawnEnemiesForPlayer(player);
-            }
-
-            return;
         }
 
+        this.sessionIdToUserId.set(client.sessionId, userId);
+
         // --- NEW PLAYER INITIALIZATION ---
-        console.log(`[GameRoom] ✨ Initializing NEW state for ${options.name} (${userId})`);
-        player = new Player();
+        console.log(`[GameRoom] ✨ Initializing NEW player for ${options.name} (${client.sessionId})`);
+        const player = new Player();
         player.sessionId = client.sessionId;
         player.userId = userId;
         player.avatarUrl = options.avatarUrl || "";
@@ -979,15 +958,15 @@ export class GameRoom extends Room<GameState> {
             player.x = 400; player.y = 300;
         }
 
-        // Finalize registration - KEY BY userId for persistence
-        this.state.players.set(userId, player);
+        // Finalize registration
+        this.state.players.set(client.sessionId, player);
 
         // Sub-room assignment
         let assignedRoom = this.state.subRooms.find(r => r.playerIds.length < r.capacity);
         if (!assignedRoom) assignedRoom = this.state.subRooms[0];
         if (assignedRoom) {
             player.subRoomId = assignedRoom.id;
-            assignedRoom.playerIds.push(userId);
+            assignedRoom.playerIds.push(client.sessionId);
         }
 
         // If game is already in progress, spawn enemies for this late joiner immediately
@@ -1131,66 +1110,54 @@ export class GameRoom extends Room<GameState> {
     }
 
     async onLeave(client: Client, consented: boolean) {
-        console.log(client.sessionId, "left! consented:", consented);
+        console.log(`[GameRoom] ${client.sessionId} left! consented: ${consented}`);
 
         const isHostLeave = this.state.hostId === client.sessionId;
-        const userId = this.sessionIdToUserId.get(client.sessionId);
-        const player = userId ? this.state.players.get(userId) : null;
-
+        const player = this.state.players.get(client.sessionId);
+        
         // Cek jika di-kick secara paksa
         const isKicked = (client as any).kicked === true;
         // manualLeave = true jika player/host eksplisit klik tombol EXIT
         const isManualLeave = (client as any).manualLeave === true;
 
         if (isHostLeave) {
-            if (isManualLeave) {
-                console.log(`[GameRoom] Host clicked EXIT. Disposing room.`);
-                // Notify all remaining players that the host has left
+            if (isManualLeave || consented) {
+                console.log(`[GameRoom] Host left intentionally. Disposing room.`);
                 this.broadcast("hostLeft");
-                
-                // Berikan jeda sebentar agar broadcast terkirim sebelum room ditutup total
                 this.clock.setTimeout(() => {
-                    console.log(`[GameRoom] Delay finished. Disposing room now.`);
-                    this.reallyReallyDisconnect = true;
                     this.disconnect();
-                }, 1500); 
+                }, 1000); 
                 return;
             } else {
                 // Host disconnect tak terduga (refresh browser, koneksi putus, dll).
-                // Tidak perlu menunggu — client akan langsung joinById kembali.
-                // onJoin() sudah handle host rejoin via isHost:true.
-                console.log(`[Host] ${client.sessionId} disconnected. Waiting for rejoin via joinById...`);
-                return;
+                try {
+                    console.log(`[Host] ${client.sessionId} disconnected unexpectedly. Waiting for reconnection...`);
+                    // Use allowReconnection to prevent room disposal
+                    await this.allowReconnection(client, 60);
+                    console.log(`[Host] ${client.sessionId} RECONNECTED!`);
+                    return;
+                } catch (e) {
+                    console.log(`[Host] ${client.sessionId} failed to reconnect within 60s. Disposing room.`);
+                    this.broadcast("hostLeft");
+                    this.disconnect();
+                    return;
+                }
             }
         }
 
-        // Jika TIDAK di-kick DAN TIDAK sengaja keluar DAN BUKAN manual leave → berikan waktu reconnect (NON-BLOCKING)
+        // Jika TIDAK di-kick DAN TIDAK sengaja keluar (consented=false) DAN BUKAN manual leave → berikan waktu reconnect
         if (!isKicked && !consented && !isManualLeave) {
-            const reconnectTime = 60; 
-            
-            console.log(`[GameRoom] Player ${client.sessionId} (${userId}) disconnected unexpectedly. Holding state for ${reconnectTime}s...`);
-            
-            // Set a timer to clean up after 60 seconds if they don't return
-            if (userId) {
-                const timer = setTimeout(() => {
-                    console.log(`[GameRoom] ⏰ Reconnection window expired for ${userId}. Cleaning up now.`);
-                    this.playerCleanupTimers.delete(userId);
-                    const p = this.state.players.get(userId);
-                    this.handlePlayerLeave(client.sessionId, p || undefined, false, userId);
-                }, reconnectTime * 1000);
-                
-                this.playerCleanupTimers.set(userId, timer);
+            try {
+                console.log(`[GameRoom] Player ${client.sessionId} disconnected unexpectedly. Waiting for reconnection...`);
+                await this.allowReconnection(client, 60);
+                console.log(`[GameRoom] Player ${client.sessionId} RECONNECTED!`);
+                return;
+            } catch (e) {
+                console.log(`[GameRoom] Player ${client.sessionId} failed to reconnect within 60s. Cleaning up.`);
             }
-            
-            // Clean up session-specific mapping but keep userId -> player in state
-            this.sessionIdToUserId.delete(client.sessionId);
-            return;
-        } else {
-            // Jika di-kick, sengaja klik EXIT (consented/manualLeave), langsung hapus tanpa menunggu
-            console.log(`[GameRoom] Player ${client.sessionId} left intentionally (consented=${consented}, kicked=${isKicked}, manual=${isManualLeave}). Cleaning up immediately.`);
         }
 
-        // Gunakan helper terpusat
+        // Gunakan helper terpusat untuk membersihkan
         this.handlePlayerLeave(client.sessionId, player || undefined, false);
 
         if (this.state.isGameStarted && !this.state.isGameOver) {
@@ -1210,25 +1177,18 @@ export class GameRoom extends Room<GameState> {
         const playerObj = player || (userIdForObj ? this.state.players.get(userIdForObj) : null);
 
         // 2. Clear from state.players and other maps
-        const userId = userIdOverride || this.sessionIdToUserId.get(sessionId);
-        if (userId) {
-            this.state.players.delete(userId);
-        }
+        this.state.players.delete(sessionId);
         this.playerAnswers.delete(sessionId);
-        
-        // Cleanup local mapping
         this.sessionIdToUserId.delete(sessionId);
 
         // 3. Clear from ALL sub-rooms (Deep Search)
-        if (userId) {
-            this.state.subRooms.forEach(room => {
-                const idx = room.playerIds.indexOf(userId);
-                if (idx > -1) {
-                    console.log(`[handlePlayerLeave] Removed ${userId} from sub-room: ${room.id}`);
-                    room.playerIds.splice(idx, 1);
-                }
-            });
-        }
+        this.state.subRooms.forEach(room => {
+            const idx = room.playerIds.indexOf(sessionId);
+            if (idx > -1) {
+                console.log(`[handlePlayerLeave] Removed ${sessionId} from sub-room: ${room.id}`);
+                room.playerIds.splice(idx, 1);
+            }
+        });
 
         // 4. Clean up player-specific resources (Spawns, DB)
         if (playerObj) {
@@ -1490,12 +1450,12 @@ export class GameRoom extends Room<GameState> {
             const questionsDataArray = this.state.questions.map((q) => {
                 return {
                     id: q.id.toString(),
-                    type: q.answerType || "multiple_choice",
+                    type: q.answerType || "text",
                     image: q.imageUrl || null,
                     answers: q.options.map((opt, idx) => ({
                         id: idx.toString(),
-                        image: null,
-                        answer: opt
+                        image: q.answerType === 'image' ? opt : null,
+                        answer: q.answerType === 'image' ? null : opt
                     })),
                     correct: q.correctAnswer.toString(),
                     question: q.text
@@ -1572,12 +1532,12 @@ export class GameRoom extends Room<GameState> {
             const questionsDataArray = this.state.questions.map((q: any) => {
                 return {
                     id: q.id.toString(),
-                    type: q.answerType || "multiple_choice",
+                    type: q.answerType || "text",
                     image: q.imageUrl || null,
                     answers: q.options.map((opt: any, idx: number) => ({
                         id: idx.toString(),
-                        image: null,
-                        answer: opt
+                        image: q.answerType === 'image' ? opt : null,
+                        answer: q.answerType === 'image' ? null : opt
                     })),
                     correct: q.correctAnswer.toString(),
                     question: q.text

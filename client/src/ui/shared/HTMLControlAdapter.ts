@@ -55,13 +55,15 @@ export class HTMLControlAdapter {
     private initKeyboardSync() {
         // Light up keys when pressing physical keyboard
         window.addEventListener('keydown', (e) => {
-            const key = e.key.toUpperCase();
+            const key = e.key?.toUpperCase();
+            if (!key) return;
             const btn = document.querySelector(`.dpad-btn[data-key="${key}"]`);
             if (btn) btn.classList.add('active');
         });
 
         window.addEventListener('keyup', (e) => {
-            const key = e.key.toUpperCase();
+            const key = e.key?.toUpperCase();
+            if (!key) return;
             const btn = document.querySelector(`.dpad-btn[data-key="${key}"]`);
             if (btn) btn.classList.remove('active');
         });
