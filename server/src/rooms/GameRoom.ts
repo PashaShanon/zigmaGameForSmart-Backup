@@ -1137,6 +1137,12 @@ export class GameRoom extends Room<GameState> {
                     console.log(`[Host] ${client.sessionId} RECONNECTED!`);
                     return;
                 } catch (e) {
+                    // CRITICAL: Check if host has already re-joined with a NEW sessionId
+                    if (this.state.hostId !== client.sessionId) {
+                        console.log(`[Host] Old host session ${client.sessionId} timed out, but host already re-joined with ${this.state.hostId}. Skipping disposal.`);
+                        return;
+                    }
+
                     console.log(`[Host] ${client.sessionId} failed to reconnect within 60s. Disposing room.`);
                     this.broadcast("hostLeft");
                     this.disconnect();

@@ -2299,10 +2299,11 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (this.isGameStarting) return;
         this.isGameStarting = true;
 
-        console.log("[Host] Game Starting... Transitioning to Spectator Mode.");
+        console.log("[Host] 🚀 Game Starting Triggered! Transitioning...");
 
         try {
             if (this.isHost && this.room && this.room.state && this.room.state.roomCode) {
+                console.log("[Host] Updating Supabase session to active...");
                 supabaseB
                     .from(SESSION_TABLE)
                     .update({ status: 'active', started_at: new Date().toISOString() })
@@ -2317,12 +2318,17 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         }
 
         // OPTIMIZATION: Instant Transition
-        if (this.waitingUI) this.waitingUI.classList.add('hidden');
+        if (this.waitingUI) {
+            console.log("[Host] Hiding waiting UI...");
+            this.waitingUI.classList.add('hidden');
+        }
 
         if (this.isHost) {
+            console.log("[Host] Navigating to /host/progress...");
             Router.navigate('/host/progress');
             this.scene.start('HostProgressScene', { room: this.room });
         } else {
+            console.log("[Player] Navigating to /game...");
             Router.navigate('/game');
             this.scene.start('GameScene', { room: this.room });
         }

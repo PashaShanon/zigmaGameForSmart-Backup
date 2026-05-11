@@ -23,15 +23,36 @@ export class HostProgressScene extends Phaser.Scene {
         super('HostProgressScene');
     }
 
-    init(data: { room: Room }) {
+    async init(data: { room: Room, isRestore?: boolean }) {
         console.log("[Spectator] Initializing with data:", data);
+        
         if (!data || !data.room) {
-            console.error("[Spectator] No room data provided! Redirecting to lobby...");
-            window.location.href = '/';
-            return;
+            console.log("[Spectator] No room in data, checking for recovery...");
+            const savedRoomId = localStorage.getItem('currentRoomId');
+            const token = localStorage.getItem('currentReconnectionToken');
+            
+            // Try to find client from LobbyManager or global
+            const client = (window as any).colyseusClient;
+
+            if (token && client) {
+                try {
+                    this.room = await client.reconnect(token);
+                    console.log("[Spectator] ✅ Room recovered via token!");
+                } catch (e) {
+                    console.error("[Spectator] ❌ Room recovery failed:", e);
+                    window.location.href = '/';
+                    return;
+                }
+            } else {
+                console.error("[Spectator] No room data and no recovery info! Redirecting...");
+                window.location.href = '/';
+                return;
+            }
+        } else {
+            this.room = data.room;
         }
-        this.room = data.room;
-        if ((data as any).isRestore) this.registry.set('isRestore', true);
+
+        if (data && (data as any).isRestore) this.registry.set('isRestore', true);
 
         // Store room in registry for reliable cleanup by other scenes
         this.registry.set('room', this.room);
