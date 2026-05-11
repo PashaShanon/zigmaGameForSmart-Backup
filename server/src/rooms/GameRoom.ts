@@ -246,7 +246,11 @@ export class GameRoom extends Room<GameState> {
 
             // Initialize game elements (map, enemies, etc.) immediately so clients can preload
             console.log("[GameRoom] Pre-initializing game elements during countdown...");
-            this.initializeGameElements();
+            try {
+                this.initializeGameElements();
+            } catch (e) {
+                console.error("[GameRoom] CRITICAL ERROR during initializeGameElements:", e);
+            }
 
             const countdownInterval = setInterval(() => {
                 if (this.state.countdown > 0) {

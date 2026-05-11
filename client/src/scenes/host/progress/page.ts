@@ -38,14 +38,20 @@ export class HostProgressScene extends Phaser.Scene {
                 try {
                     this.room = await client.reconnect(token);
                     console.log("[Spectator] ✅ Room recovered via token!");
-                } catch (e) {
+                } catch (e: any) {
                     console.error("[Spectator] ❌ Room recovery failed:", e);
-                    window.location.href = '/';
+                    // Add more context before redirecting
+                    const errorMsg = e?.message || String(e);
+                    console.error(`[Spectator] Full error during recovery: ${errorMsg}`);
+                    
+                    // If it is an expiration error, maybe we should try to join freshly instead of redirecting?
+                    // For now, let's just log and redirect but with more visibility.
+                    window.location.href = '/?error=reconnect_failed&reason=' + encodeURIComponent(errorMsg);
                     return;
                 }
             } else {
                 console.error("[Spectator] No room data and no recovery info! Redirecting...");
-                window.location.href = '/';
+                window.location.href = '/?error=missing_room_data';
                 return;
             }
         } else {

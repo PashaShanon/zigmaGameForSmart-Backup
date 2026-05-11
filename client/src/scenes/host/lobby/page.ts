@@ -2307,6 +2307,18 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         if (this.isGameStarting) return;
         this.isGameStarting = true;
 
+        // CRITICAL FIX: Matikan semua listener dari scene lobby ini sebelum transisi.
+        // Ini mencegah onLeave lama memicu redirect ke '/' saat kita sedang berpindah scene.
+        if (this.room) {
+            console.log("[Host] 🛡️ Clearing lobby listeners before transition...");
+            try {
+                this.room.onLeave.clear();
+                this.room.removeAllListeners();
+            } catch (e) {
+                console.warn("[Host] Error clearing listeners:", e);
+            }
+        }
+
         console.log("[Host] 🚀 Game Starting Triggered! Transitioning...");
 
         try {
