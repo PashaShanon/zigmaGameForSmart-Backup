@@ -130,6 +130,19 @@ export const TransitionManager = {
             textContent.style.transition = 'transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
             container.appendChild(textContent);
 
+            // Ensure we are attached to the overlay
+            if (overlay.contains(el)) overlay.removeChild(el);
+            overlay.appendChild(el);
+        }
+
+        // --- RELIABILITY FIX ---
+        // Ensure the countdown element is ALWAYS visible and the overlay is active
+        const overlayEl = document.getElementById('transition-overlay');
+        if (overlayEl && !overlayEl.classList.contains('overlay-active')) {
+            this.ensureClosed();
+        }
+        
+        if (el && el.parentElement !== overlay) {
             overlay.appendChild(el);
         }
 

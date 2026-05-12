@@ -368,8 +368,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         // Listen for Preparing state (before countdown)
         this.room.state.listen("isPreparing", (isPreparing: boolean) => {
             if (isPreparing) {
-                // Show "Preparing" only if it takes longer than 2.5s
-                TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
+                // Show "Preparing" immediately to sync with server prep delay
+                TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 0);
             }
         });
 
@@ -1807,7 +1807,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         }
 
         // Show initial waiting transition - only if it takes longer than 2.5s (server prep is 2s)
-        TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
+        TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 0);
     }
 
     async leaveRoom() {

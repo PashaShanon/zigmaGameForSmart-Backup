@@ -361,46 +361,18 @@ export class QuizSettingManager {
         questions.sort(() => Math.random() - 0.5);
         questions = questions.slice(0, this.settingsQuestionCount);
 
+        const sessionId = crypto.randomUUID();
+
         try {
-            const { data, error } = await supabaseB.from(SESSION_TABLE).insert({
-                game_pin: roomCode,
-                quiz_id: this.selectedQuiz.id,
-                status: 'waiting',
-                question_limit: this.settingsQuestionCount,
-                total_time_minutes: this.settingsTimer / 60,
-                difficulty: this.settingsDifficulty,
-                host_id: hostId,
-                created_at: new Date().toISOString(),
-                current_questions: questions
-            }).select().single();
-
-            if (error) {
-                console.error("Supabase Session Error:", error);
-                alert(i18n.t('quiz_setting.create_failed'));
-                if (btn) {
-                    btn.innerHTML = i18n.t('quiz_setting.create');
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-80', 'cursor-not-allowed');
-                    btn.classList.add('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
-                }
-                return;
-            }
-
-            if (data && data.id) {
-                await supabaseB.from(PARTICIPANT_TABLE).insert({
-                    session_id: data.id,
-                    nickname: profile?.nickname || profile?.fullname || profile?.username || "Host",
-                    user_id: hostId,
-                    joined_at: new Date().toISOString(),
-                    score: 0
-                });
-            }
+            // We no longer insert to Supabase B from the client. 
+            // The server's onCreate will handle the initial sync to both Supabase Utama and Supabase B.
+            // This prevents race conditions and "already exists" errors.
 
             const options = {
                 roomCode: roomCode,
-                sessionId: data.id,
+                sessionId: sessionId,
                 difficulty: this.settingsDifficulty,
-                subject: this.selectedQuiz.category.toLowerCase(),
+                subject: (this.selectedQuiz.category || "umum").toLowerCase(),
                 quizId: this.selectedQuiz.id,
                 quizTitle: this.selectedQuiz.title,
                 questions: questions,
@@ -437,7 +409,7 @@ export class QuizSettingManager {
             localStorage.setItem('currentRoomId', room.id);
             localStorage.setItem('currentSessionId', room.sessionId);
             localStorage.setItem('currentReconnectionToken', room.reconnectionToken);
-            localStorage.setItem('supabaseSessionId', data.id);
+            localStorage.setItem('supabaseSessionId', sessionId);
             
             // To pass parameters to Phaser, we should use localStorage or window object, as we are dynamically importing game.ts
             // LocalStorage is safest for now

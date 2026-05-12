@@ -289,7 +289,7 @@ export class PlayerWaitingRoomManager {
         if (this.room) {
             this.room.state.listen("isPreparing", (isPreparing: boolean) => {
                 if (isPreparing) {
-                    TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
+                    TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 0);
                 }
             });
 
