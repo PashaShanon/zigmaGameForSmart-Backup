@@ -73,30 +73,12 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         // Simpan flag restore — jangan panggil restoreRoom() di sini karena UI belum ada.
         // Restore akan dipanggil di create() setelah overlay loading muncul.
         this.isRestore = !!data.isRestore;
-
         if (this.room) {
             this.room.onMessage('timerUpdate', () => {
                 // No-op: actual timer UI is handled by HostProgressScene or GameScene
             });
-
-            // Track page refresh/unload to distinguish from actual disconnections
-            let isPageUnloading = false;
-            window.addEventListener('beforeunload', () => {
-                isPageUnloading = true;
-            });
-
-            this.room.onLeave((code) => {
-                console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}, isTransitioning: ${this.isTransitioning}`);
-                // ONLY redirect to lobby if this is a genuine disconnect,
-                // NOT a page refresh, intentional navigation, or game transition.
-                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading && !this.isTransitioning) {
-                    console.log("[HostLobby][onLeave:init] Conditions met for redirect to /");
-                    window.location.href = '/';
-                } else {
-                    console.log("[HostLobby][onLeave:init] Redirect skipped due to flags.");
-                }
-            });
         }
+
     }
 
     async restoreRoom(client: any) {
@@ -309,18 +291,26 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         // AUTO RECONNECT logic if connection is lost
         this.room.onLeave((code) => {
             console.log(`[HostLobby][onLeave:setup] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isTransitioning: ${this.isTransitioning}`);
-            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving && !this.isTransitioning) {
+            
+            // Check for intentional reasons to NOT reconnect/redirect
+            if (this.isManuallyLeaving || this.isGameStarting || this.isTransitioning) {
+                console.log(`[HostLobby][onLeave:setup] Skip auto-reconnect/redirect. code: ${code}, reason: transition/manual`);
+                return;
+            }
+
+            if (code !== 1000) {
                 console.warn("[HostLobby][onLeave:setup] Connection lost unexpectedly. Attempting to reconnect...");
-                // Null-kan this.room dulu agar restoreRoom() bisa mulai fresh
                 this.room = null as any;
                 const client = this.registry.get('client');
                 if (client) {
                     this.restoreRoom(client);
                 } else {
                     console.error("[HostLobby][onLeave:setup] Cannot auto-reconnect: Client not found in registry.");
+                    window.location.href = '/';
                 }
             } else {
-                console.log(`[HostLobby][onLeave:setup] Skip auto-reconnect. code: ${code}, isGameStarting: ${this.isGameStarting}`);
+                console.log(`[HostLobby][onLeave:setup] Clean leave (code 1000). Redirecting to home.`);
+                window.location.href = '/';
             }
         });
     }

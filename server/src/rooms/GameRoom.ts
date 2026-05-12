@@ -22,6 +22,11 @@ const ROOM_CONFIG = {
     }
 };
 
+// Aliases for compatibility
+(ROOM_CONFIG as any).easy = ROOM_CONFIG.mudah;
+(ROOM_CONFIG as any).medium = ROOM_CONFIG.sedang;
+(ROOM_CONFIG as any).hard = ROOM_CONFIG.sulit;
+
 const HAIR_SLUGS: { [key: number]: string } = {
     0: "none",
     1: "bowl-hair",
@@ -73,15 +78,8 @@ export class GameRoom extends Room<GameState> {
         // Set patch rate to 50ms (20fps sync) for smoother movement while staying memory efficient
         this.setPatchRate(50);
 
-        // Wrap disconnect with a safety flag
-        const originalDisconnect = this.disconnect.bind(this);
-        this.disconnect = () => {
-            if (this.reallyReallyDisconnect) {
-                return originalDisconnect();
-            }
-            console.log("[GameRoom] disconnect() called but IGNORED. Use manualLeave message to dispose.");
-            return Promise.resolve();
-        };
+        // Set patch rate to 50ms (20fps sync) for smoother movement while staying memory efficient
+        this.setPatchRate(50);
 
 
         this.state.subject = options.subject || "matematika";
@@ -1137,7 +1135,6 @@ export class GameRoom extends Room<GameState> {
                     this.broadcast("hostLeft");
                 }
                 this.clock.setTimeout(() => {
-                    this.reallyReallyDisconnect = true;
                     this.disconnect();
                 }, 1000); 
                 return;
@@ -1249,11 +1246,11 @@ export class GameRoom extends Room<GameState> {
             this.state.difficulty = 'mudah';
         }
 
-        const config = ROOM_CONFIG[this.state.difficulty as keyof typeof ROOM_CONFIG];
+        const config = ROOM_CONFIG[this.state.difficulty as keyof typeof ROOM_CONFIG] || ROOM_CONFIG.mudah;
 
         // Dynamically calculate enemies per player based on actual question count
         // 1 enemy per question to prevent overcrowding
-        const actualQuestionCount = this.state.questions.length > 0 ? this.state.questions.length : config.targetQuestions;
+        const actualQuestionCount = this.state.questions.length > 0 ? this.state.questions.length : (config?.targetQuestions || 5);
         const enemiesPerPlayer = actualQuestionCount;
 
         this.cachedMapData = MapParser.loadMapData(this.state.difficulty);
