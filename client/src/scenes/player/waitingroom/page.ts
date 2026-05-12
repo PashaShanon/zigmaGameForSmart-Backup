@@ -285,14 +285,7 @@ export class PlayerWaitingRoomManager {
 
         // Using shared TransitionManager for countdown
 
-        // Listen for Preparing state (Synchronize with Host)
         if (this.room) {
-            this.room.state.listen("isPreparing", (isPreparing: boolean) => {
-                if (isPreparing) {
-                    TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
-                }
-            });
-
             this.room.state.listen("countdown", (val: number, previousVal: number) => {
                 if (val > 0) {
                     // --- GLOBAL UNIFIED COUNTDOWN ---

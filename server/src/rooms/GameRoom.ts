@@ -232,23 +232,15 @@ export class GameRoom extends Room<GameState> {
                 return;
             }
 
-            if (this.state.isGameStarted || this.state.countdown > 0 || this.state.isPreparing) return;
+            if (this.state.isGameStarted || this.state.countdown > 0) return;
 
-            // Step 1: Set Preparing state for all clients
-            this.state.isPreparing = true;
-            console.log(`[GameRoom] Host ${client.sessionId} requested start. Room is now PREPARING.`);
+            // Start Countdown Immediately
+            this.state.countdown = 10;
+            this.countdownStartedAt = new Date().toISOString();
+            console.log(`[GameRoom] Starting countdown for room ${this.roomId}. Host: ${client.sessionId}`);
 
-            // Step 2: Wait for clients to show "Preparing" screen before starting actual countdown
-            setTimeout(() => {
-                this.state.isPreparing = false;
-                
-                // Start Countdown
-                this.state.countdown = 10;
-                this.countdownStartedAt = new Date().toISOString();
-                console.log(`[GameRoom] Starting countdown for room ${this.roomId}. Host: ${client.sessionId}`);
-
-                // Update countdown_started_at in Supabase Utama immediately
-                this.updateCountdownStartedAt().catch(e => console.error("[Supabase Utama] Countdown Sync Error:", e));
+            // Update countdown_started_at in Supabase Utama immediately
+            this.updateCountdownStartedAt().catch(e => console.error("[Supabase Utama] Countdown Sync Error:", e));
 
                 // Initialize game elements (map, enemies, etc.) immediately so clients can preload
                 console.log("[GameRoom] Pre-initializing game elements during countdown...");
@@ -286,7 +278,6 @@ export class GameRoom extends Room<GameState> {
                         this.updateSessionToActive();
                     }
                 }, 1000);
-            }, 2000); // 2 second prep delay
         });
 
         this.onMessage("manualLeave", (client) => {
