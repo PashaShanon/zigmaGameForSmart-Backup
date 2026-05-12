@@ -72,6 +72,12 @@ export const TransitionManager = {
         // Ensure background is black
         this.ensureClosed();
 
+        // Clear any pending waiting timeout
+        if (this.waitingTimeout) {
+            clearTimeout(this.waitingTimeout);
+            this.waitingTimeout = null;
+        }
+
         // Clear waiting state if any
         const waitEl = document.getElementById('transition-waiting');
         if (waitEl) waitEl.remove();
@@ -172,6 +178,12 @@ export const TransitionManager = {
         setTimeout(() => {
             overlay.classList.remove('iris-open');
             overlay.classList.remove('overlay-active');
+            // Clear any pending waiting timeout
+            if (this.waitingTimeout) {
+                clearTimeout(this.waitingTimeout);
+                this.waitingTimeout = null;
+            }
+
             // Remove any countdown or waiting text
             const countEl = document.getElementById('transition-countdown');
             if (countEl) countEl.remove();
@@ -211,71 +223,92 @@ export const TransitionManager = {
         }
     },
 
+    waitingTimeout: null as any,
+
     /**
      * Shows a professional loading/waiting state with a spinner.
+     * @param text The text to display
+     * @param delayMs Optional delay in milliseconds before showing the UI (to hide for fast connections)
      */
-    showWaiting(text: string) {
+    showWaiting(text: string, delayMs: number = 0) {
         const overlay = document.getElementById('transition-overlay');
         if (!overlay) return;
 
-        // Ensure background is black
-        this.ensureClosed();
-
-        // Ensure countdown/text is cleared
-        const countEl = document.getElementById('transition-countdown');
-        if (countEl) countEl.remove();
-
-        let el = document.getElementById('transition-waiting');
-        if (!text) {
-            if (el) el.remove();
-            return;
+        // Clear any existing waiting timeout
+        if (this.waitingTimeout) {
+            clearTimeout(this.waitingTimeout);
+            this.waitingTimeout = null;
         }
 
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'transition-waiting';
-            el.style.position = 'absolute';
-            el.style.top = '50%';
-            el.style.left = '50%';
-            el.style.transform = 'translate(-50%, -50%)';
-            el.style.display = 'flex';
-            el.style.flexDirection = 'column';
-            el.style.alignItems = 'center';
-            el.style.justifyContent = 'center';
-            el.style.zIndex = '10001';
-            el.style.pointerEvents = 'none';
-            overlay.appendChild(el);
-        }
+        const renderWaiting = () => {
+            // Ensure background is black
+            this.ensureClosed();
 
-        el.innerHTML = `
-            <style>
-                .tm-spinner {
-                    width: 60px;
-                    height: 60px;
-                    border: 5px solid rgba(0, 255, 85, 0.1);
-                    border-top-color: #00ff55;
-                    border-radius: 50%;
-                    animation: tm-spin 1s linear infinite;
-                    margin-bottom: 24px;
-                    filter: drop-shadow(0 0 10px rgba(0, 255, 85, 0.5));
-                }
-                @keyframes tm-spin {
-                    to { transform: rotate(360deg); }
-                }
-                .tm-waiting-text {
-                    font-family: "Retro Gaming", monospace;
-                    font-size: 20px;
-                    color: #00ff55;
-                    text-align: center;
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
-                    text-shadow: 0 0 15px rgba(0, 255, 85, 0.4);
-                    white-space: nowrap;
-                }
-            </style>
-            <div class="tm-spinner"></div>
-            <div class="tm-waiting-text">${text}</div>
-        `;
+            // Ensure countdown/text is cleared
+            const countEl = document.getElementById('transition-countdown');
+            if (countEl) countEl.remove();
+
+            let el = document.getElementById('transition-waiting');
+            if (!text) {
+                if (el) el.remove();
+                return;
+            }
+
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'transition-waiting';
+                el.style.position = 'absolute';
+                el.style.top = '50%';
+                el.style.left = '50%';
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.display = 'flex';
+                el.style.flexDirection = 'column';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+                el.style.zIndex = '10001';
+                el.style.pointerEvents = 'none';
+                overlay.appendChild(el);
+            }
+
+            el.innerHTML = `
+                <style>
+                    .tm-spinner {
+                        width: 60px;
+                        height: 60px;
+                        border: 5px solid rgba(0, 255, 85, 0.1);
+                        border-top-color: #00ff55;
+                        border-radius: 50%;
+                        animation: tm-spin 1s linear infinite;
+                        margin-bottom: 24px;
+                        filter: drop-shadow(0 0 10px rgba(0, 255, 85, 0.5));
+                    }
+                    @keyframes tm-spin {
+                        to { transform: rotate(360deg); }
+                    }
+                    .tm-waiting-text {
+                        font-family: "Retro Gaming", monospace;
+                        font-size: 20px;
+                        color: #00ff55;
+                        text-align: center;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        text-shadow: 0 0 15px rgba(0, 255, 85, 0.4);
+                        white-space: nowrap;
+                    }
+                </style>
+                <div class="tm-spinner"></div>
+                <div class="tm-waiting-text">${text}</div>
+            `;
+        };
+
+        if (delayMs > 0) {
+            this.waitingTimeout = setTimeout(() => {
+                renderWaiting();
+                this.waitingTimeout = null;
+            }, delayMs);
+        } else {
+            renderWaiting();
+        }
     },
 
     /**

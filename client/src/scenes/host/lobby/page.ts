@@ -364,6 +364,14 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         });
 
         this.room.state.players.onRemove(() => this.updateAll());
+        
+        // Listen for Preparing state (before countdown)
+        this.room.state.listen("isPreparing", (isPreparing: boolean) => {
+            if (isPreparing) {
+                // Show "Preparing" only if it takes longer than 2.5s
+                TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
+            }
+        });
 
         // Listen for Countdown
         this.room.state.listen("countdown", (val: number, previousVal: number) => {
@@ -1798,8 +1806,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             if (text) text.innerText = i18n.t('host_lobby.starting') || 'Starting...';
         }
 
-        // Show initial waiting transition
-        TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...');
+        // Show initial waiting transition - only if it takes longer than 2.5s (server prep is 2s)
+        TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
     }
 
     async leaveRoom() {
