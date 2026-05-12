@@ -234,6 +234,8 @@ export class GameRoom extends Room<GameState> {
 
             if (this.state.isGameStarted || this.state.countdown > 0) return;
 
+            console.log(`[GameRoom] Host ${client.sessionId} requested start.`);
+
             // Start Countdown Immediately
             this.state.countdown = 10;
             this.countdownStartedAt = new Date().toISOString();
@@ -242,42 +244,42 @@ export class GameRoom extends Room<GameState> {
             // Update countdown_started_at in Supabase Utama immediately
             this.updateCountdownStartedAt().catch(e => console.error("[Supabase Utama] Countdown Sync Error:", e));
 
-                // Initialize game elements (map, enemies, etc.) immediately so clients can preload
-                console.log("[GameRoom] Pre-initializing game elements during countdown...");
-                try {
-                    this.initializeGameElements();
-                } catch (e) {
-                    console.error("[GameRoom] CRITICAL ERROR during initializeGameElements:", e);
+            // Initialize game elements (map, enemies, etc.) immediately so clients can preload
+            console.log("[GameRoom] Pre-initializing game elements during countdown...");
+            try {
+                this.initializeGameElements();
+            } catch (e) {
+                console.error("[GameRoom] CRITICAL ERROR during initializeGameElements:", e);
+            }
+
+            const countdownInterval = setInterval(() => {
+                if (this.state.countdown > 0) {
+                    this.state.countdown--;
+                    console.log(`[GameRoom] Countdown: ${this.state.countdown}`);
                 }
 
-                const countdownInterval = setInterval(() => {
-                    if (this.state.countdown > 0) {
-                        this.state.countdown--;
-                        console.log(`[GameRoom] Countdown: ${this.state.countdown}`);
-                    }
+                // If it hit 0 (or somehow less), Start Game
+                if (this.state.countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    this.state.countdown = 0;
 
-                    // If it hit 0 (or somehow less), Start Game
-                    if (this.state.countdown <= 0) {
-                        clearInterval(countdownInterval);
-                        this.state.countdown = 0;
+                    console.log("[GameRoom] Countdown finished, activating game state.");
 
-                        console.log("[GameRoom] Countdown finished, activating game state.");
+                    this.state.isGameStarted = true;
+                    this.state.gameStartTime = Date.now();
 
-                        this.state.isGameStarted = true;
-                        this.state.gameStartTime = Date.now();
+                    // SYNC ALL PARTICIPANTS started_at to Supabase B
+                    this.syncAllParticipantsStartedAt();
+                    this.state.gameStartTime = Date.now();
 
-                        // SYNC ALL PARTICIPANTS started_at to Supabase B
-                        this.syncAllParticipantsStartedAt();
-                        this.state.gameStartTime = Date.now();
+                    // Start the gameplay timer only when game officially starts
+                    this.startGameTimer();
+                    this.broadcast("gameStarted");
 
-                        // Start the gameplay timer only when game officially starts
-                        this.startGameTimer();
-                        this.broadcast("gameStarted");
-
-                        // UPDATE STATUS TO ACTIVE IN SUPABASE UTAMA
-                        this.updateSessionToActive();
-                    }
-                }, 1000);
+                    // UPDATE STATUS TO ACTIVE IN SUPABASE UTAMA
+                    this.updateSessionToActive();
+                }
+            }, 1000);
         });
 
         this.onMessage("manualLeave", (client) => {

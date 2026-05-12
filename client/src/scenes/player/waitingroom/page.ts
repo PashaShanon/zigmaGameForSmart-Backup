@@ -285,6 +285,7 @@ export class PlayerWaitingRoomManager {
 
         // Using shared TransitionManager for countdown
 
+        // Listen for Countdown
         if (this.room) {
             this.room.state.listen("countdown", (val: number, previousVal: number) => {
                 if (val > 0) {
