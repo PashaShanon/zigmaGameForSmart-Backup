@@ -238,7 +238,7 @@ export class GameRoom extends Room<GameState> {
             console.log(`[GameRoom] Host ${client.sessionId} requested start. Room is now PREPARING.`);
 
             // Step 2: Wait for clients to show "Preparing" screen before starting actual countdown
-            setTimeout(() => {
+            this.clock.setTimeout(() => {
                 this.state.isPreparing = false;
                 
                 // Start Countdown
@@ -257,7 +257,7 @@ export class GameRoom extends Room<GameState> {
                     console.error("[GameRoom] CRITICAL ERROR during initializeGameElements:", e);
                 }
 
-                const countdownInterval = setInterval(() => {
+                const countdownInterval = this.clock.setInterval(() => {
                     if (this.state.countdown > 0) {
                         this.state.countdown--;
                         console.log(`[GameRoom] Countdown: ${this.state.countdown}`);
@@ -265,7 +265,7 @@ export class GameRoom extends Room<GameState> {
 
                     // If it hit 0 (or somehow less), Start Game
                     if (this.state.countdown <= 0) {
-                        clearInterval(countdownInterval);
+                        countdownInterval.clear();
                         this.state.countdown = 0;
 
                         console.log("[GameRoom] Countdown finished, activating game state.");
@@ -274,15 +274,14 @@ export class GameRoom extends Room<GameState> {
                         this.state.gameStartTime = Date.now();
 
                         // SYNC ALL PARTICIPANTS started_at to Supabase B
-                        this.syncAllParticipantsStartedAt();
-                        this.state.gameStartTime = Date.now();
+                        this.syncAllParticipantsStartedAt().catch(e => console.error("[Supabase B] Sync Error:", e));
 
                         // Start the gameplay timer only when game officially starts
                         this.startGameTimer();
                         this.broadcast("gameStarted");
 
                         // UPDATE STATUS TO ACTIVE IN SUPABASE UTAMA
-                        this.updateSessionToActive();
+                        this.updateSessionToActive().catch(e => console.error("[Supabase Utama] Sync Error:", e));
                     }
                 }, 1000);
             }, 2000); // 2 second prep delay
