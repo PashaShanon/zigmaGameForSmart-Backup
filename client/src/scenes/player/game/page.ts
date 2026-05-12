@@ -7,6 +7,7 @@ import { AudioManager } from '../../../systems/AudioManager';
 
 import { HTMLControlAdapter } from '../../../ui/shared/HTMLControlAdapter';
 import { OrientationManager } from '../../../utils/OrientationManager';
+import { i18n } from '../../../utils/i18n';
 // Removed legacy QUESTIONS import
 
 export class GameScene extends Phaser.Scene {
@@ -171,10 +172,21 @@ export class GameScene extends Phaser.Scene {
 
         // --- BACKGROUND LOADING SYNC ---
         // Ensure screen is closed and showing countdown EVEN DURING PRELOAD
+        if (this.room.state.isPreparing) {
+            TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
+        }
+
         if (this.room.state.countdown > 0) {
             TransitionManager.ensureClosed();
             TransitionManager.setCountdownText(this.room.state.countdown.toString());
         }
+
+        // Listen for Preparing state
+        this.room.state.listen("isPreparing", (isPreparing: boolean) => {
+            if (isPreparing) {
+                TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 2500);
+            }
+        });
 
         // Listen for Countdown updates during preload
         this.room.state.listen("countdown", (val: number, previousVal: number) => {

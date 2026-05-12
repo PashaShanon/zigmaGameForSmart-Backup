@@ -78,6 +78,7 @@ export class GameState extends Schema {
     @type("string") difficulty!: string;
     @type("string") subject!: string;
     @type("number") gameStartTime: number = 0;
+    @type("boolean") isPreparing: boolean = false; // True if host clicked start but countdown not yet active
     @type("boolean") isGameStarted: boolean = false;
     @type("boolean") isGameOver: boolean = false;
     @type("string") roomCode!: string;
