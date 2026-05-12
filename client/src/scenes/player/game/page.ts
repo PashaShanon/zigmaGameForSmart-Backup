@@ -37,6 +37,7 @@ export class GameScene extends Phaser.Scene {
     private lastNetworkSendTime: number = 0;
     private networkSendRate: number = 100; // ms (10 times a second)
     private wasMovingKeyboard: boolean = false;
+    private isEnding: boolean = false;
 
     constructor() {
         super('GameScene');
@@ -85,6 +86,9 @@ export class GameScene extends Phaser.Scene {
         });
 
         this.room.onMessage('gameEnded', (data: { rankings: any[] }) => {
+            if (this.isEnding) return;
+            this.isEnding = true;
+            
             const isHost = this.room.sessionId === this.room.state.hostId;
             this.registry.set('isHost', isHost);
             this.registry.set('leaderboardData', data.rankings);
@@ -128,11 +132,14 @@ export class GameScene extends Phaser.Scene {
         });
 
         this.room.onMessage('hostLeft', () => {
+            if (this.isEnding) return;
             this.showHostLeftModal();
         });
 
         // Handle unexpected disconnection (e.g. host closes room)
         this.room.onLeave((code) => {
+            if (this.isEnding) return;
+            
             console.log(`[GameScene] Room connection lost (code: ${code}).`);
             // Only show modal if we didn't leave intentionally
             if (code !== 1000) { 

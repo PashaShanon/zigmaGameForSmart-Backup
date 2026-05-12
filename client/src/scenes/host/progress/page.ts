@@ -18,6 +18,7 @@ export class HostProgressScene extends Phaser.Scene {
     isGameStarted: boolean = false;
     isGameReady: boolean = false; // Block iris until map/UI load complete
     private resizeListener: (() => void) | null = null;
+    private isEnding: boolean = false;
 
     constructor() {
         super('HostProgressScene');
@@ -102,6 +103,8 @@ export class HostProgressScene extends Phaser.Scene {
 
             // --- AUTO RECONNECT during gameplay ---
             this.room.onLeave((code) => {
+                if (this.isEnding) return;
+                
                 console.log(`[HostProgress] Room connection lost. code: ${code}`);
                 if (code !== 1000) {
                     console.warn("[HostProgress] Connection lost unexpectedly during gameplay. Attempting to recover...");
@@ -128,6 +131,9 @@ export class HostProgressScene extends Phaser.Scene {
         }
 
         this.room.onMessage('gameEnded', (data: any) => {
+            if (this.isEnding) return;
+            this.isEnding = true;
+            
             console.log(`[Spectator][Room:${this.room.id}] Game ended. Leaving room and transitioning...`);
 
             if (this.uiContainer && this.uiContainer.parentNode) {

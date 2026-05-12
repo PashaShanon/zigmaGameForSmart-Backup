@@ -33,56 +33,34 @@ export class RoomService {
         // Limit to question count
         questions = questions.slice(0, questionCount);
 
-        try {
-            // 1. Create Session in Supabase B
-            const { data, error } = await supabaseB
-                .from(SESSION_TABLE)
-                .insert({
-                    game_pin: roomCode,
-                    quiz_id: quiz.id,
-                    status: 'waiting',
-                    question_limit: questionCount,
-                    total_time_minutes: timer / 60,
-                    difficulty: difficulty,
-                    host_id: hostId,
-                    created_at: new Date().toISOString(),
-                    current_questions: questions // Save selected questions
-                })
-                .select()
-                .single();
-
-            if (error) {
-                console.error("Supabase Session Error:", error);
-                throw new Error("Failed to create game session.");
+        const sessionId = crypto.randomUUID();
+        const colyseusOptions = {
+            roomCode: roomCode,
+            sessionId: sessionId,
+            difficulty: difficulty,
+            subject: quiz.category ? quiz.category.toLowerCase() : "umum",
+            quizId: quiz.id,
+            quizTitle: quiz.title,
+            questions: questions,
+            map: mapFile,
+            questionCount: questionCount,
+            enemyCount: enemyCount,
+            timer: timer,
+            isHost: true,
+            hostId: hostId,
+            quizDetail: {
+                title: quiz.title,
+                category: quiz.category,
+                language: quiz.language || 'id',
+                description: quiz.description,
+                creator_avatar: (quiz as any).creator_avatar || null,
+                creator_username: (quiz as any).creator_username || 'kizuko'
             }
+        };
 
-            console.log("Session Created in Supabase B:", data);
-
-            // Host will not be added to PARTICIPANT_TABLE to ensure the stats page recognizes them as Host, not Player.
-
-            const colyseusOptions = {
-                roomCode: roomCode,
-                sessionId: data.id,
-                difficulty: difficulty,
-                subject: quiz.category.toLowerCase(),
-                quizId: quiz.id,
-                quizTitle: quiz.title,
-                questions: questions,
-                map: mapFile,
-                questionCount: questionCount,
-                enemyCount: enemyCount,
-                timer: timer,
-                isHost: true,
-                hostId: hostId,
-                quizDetail: {
-                    title: quiz.title,
-                    category: quiz.category,
-                    language: quiz.language || 'id',
-                    description: quiz.description,
-                    creator_avatar: (quiz as any).creator_avatar || null,
-                    creator_username: (quiz as any).creator_username || 'kizuko'
-                }
-            };
+        try {
+            // We no longer insert to Supabase B from the client.
+            // The server's onCreate will handle the initial sync to both Supabase Utama and Supabase B.
 
             // 2. Create/Join Room on Colyseus
             localStorage.setItem('currentRoomOptions', JSON.stringify(colyseusOptions));
@@ -93,7 +71,7 @@ export class RoomService {
             localStorage.setItem('currentRoomId', room.id);
             localStorage.setItem('currentSessionId', room.sessionId);
             localStorage.setItem('currentReconnectionToken', room.reconnectionToken);
-            localStorage.setItem('supabaseSessionId', data.id);
+            localStorage.setItem('supabaseSessionId', sessionId);
 
             return { room, options: colyseusOptions };
 

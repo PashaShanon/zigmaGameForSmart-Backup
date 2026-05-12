@@ -6,17 +6,17 @@ import { MapParser } from "../utils/MapParser";
 
 const ROOM_CONFIG = {
     mudah: { 
-        maxPlayers: 50, targetQuestions: 5, enemiesPerPlayer: 10, enemySpeed: 110,
+        maxPlayers: 50, targetQuestions: 5, enemiesPerPlayer: 10, enemySpeed: 65,
         fleeRadius: 180, minEnemyDist: 80, recalcInterval: 500, restDurationMin: 2000, restDurationMax: 3000,
         waypointCandidates: 12
     },
     sedang: { 
-        maxPlayers: 50, targetQuestions: 10, enemiesPerPlayer: 20, enemySpeed: 150,
+        maxPlayers: 50, targetQuestions: 10, enemiesPerPlayer: 20, enemySpeed: 85,
         fleeRadius: 180, minEnemyDist: 120, recalcInterval: 200, restDurationMin: 1000, restDurationMax: 2000,
         waypointCandidates: 24
     },
     sulit: { 
-        maxPlayers: 50, targetQuestions: 20, enemiesPerPlayer: 40, enemySpeed: 165,
+        maxPlayers: 50, targetQuestions: 20, enemiesPerPlayer: 40, enemySpeed: 104,
         fleeRadius: 180, minEnemyDist: 150, recalcInterval: 100, restDurationMin: 500, restDurationMax: 1000,
         waypointCandidates: 36
     }
@@ -56,6 +56,7 @@ export class GameRoom extends Room<GameState> {
     private hostStateId: any = null;
     private hostCityId: any = null;
     private hostCountryId: any = null;
+    private isEnding: boolean = false;
 
     private sessionIdToUserId = new Map<string, string>(); // sessionId -> userId mapping (local)
     private playerCleanupTimers = new Map<string, any>(); // userId -> setTimeout handle
@@ -1130,10 +1131,13 @@ export class GameRoom extends Room<GameState> {
         const isManualLeave = (client as any).manualLeave === true;
 
         if (isHostLeave) {
-            if (isManualLeave) {
-                console.log(`[GameRoom] Host left intentionally. Disposing room.`);
-                this.broadcast("hostLeft");
+            if (isManualLeave || consented) {
+                console.log(`[GameRoom] Host left intentionally (consented: ${consented}). Disposing room.`);
+                if (!this.isEnding) {
+                    this.broadcast("hostLeft");
+                }
                 this.clock.setTimeout(() => {
+                    this.reallyReallyDisconnect = true;
                     this.disconnect();
                 }, 1000); 
                 return;
@@ -1421,6 +1425,7 @@ export class GameRoom extends Room<GameState> {
             }));
 
         console.log("[EndGame] Broadcasting gameEnded with rankings:", rankings.length);
+        this.isEnding = true;
         this.broadcast("gameEnded", { rankings });
 
         // --- SAVE TO SUPABASE UTAMA ---
