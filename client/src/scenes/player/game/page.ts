@@ -171,11 +171,14 @@ export class GameScene extends Phaser.Scene {
         });
 
         // --- BACKGROUND LOADING SYNC ---
-        // Ensure screen is closed and showing countdown EVEN DURING PRELOAD
+        // --- BACKGROUND LOADING SYNC ---
+
         if (this.room.state.countdown > 0) {
             TransitionManager.ensureClosed();
             TransitionManager.setCountdownText(this.room.state.countdown.toString());
         }
+
+        // Listen for countdown
 
         // Listen for Countdown updates during preload
         this.room.state.listen("countdown", (val: number, previousVal: number) => {

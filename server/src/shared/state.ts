@@ -78,6 +78,7 @@ export class GameState extends Schema {
     @type("string") difficulty!: string;
     @type("string") subject!: string;
     @type("number") gameStartTime: number = 0;
+
     @type("boolean") isGameStarted: boolean = false;
     @type("boolean") isGameOver: boolean = false;
     @type("string") roomCode!: string;
