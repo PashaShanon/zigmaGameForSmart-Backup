@@ -60,6 +60,7 @@ export class Player extends Schema {
     @type("number") spawnIndex: number = -1; // Track assigned spawn point index
     @type("boolean") isHost: boolean = false;
     @type("boolean") isAttacking: boolean = false;
+    @type("boolean") isIncomplete: boolean = false;
     @type(["number"]) questionOrder = new ArraySchema<number>(); // Personalized randomized question order
 }
 

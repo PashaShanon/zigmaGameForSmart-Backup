@@ -1,8 +1,15 @@
-const CACHE_NAME = 'zigma-cache-v2.0'; // Bust old cache
+const CACHE_NAME = 'zigma-cache-v2.1'; // Bust old cache
 const ASSETS_TO_CACHE = [
   '/manifest.json',
-  '/logo/Zigma-logo-fix.webp'
+  '/logo/Zigma-logo-fix.webp',
+  '/logo/gameforsmart-logo-fix.webp'
 ];
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // Do NOT cache index.html or '/' — SPA routing must always hit the server/index.html directly.
 

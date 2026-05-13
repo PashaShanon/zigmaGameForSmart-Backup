@@ -996,7 +996,12 @@ export class GameScene extends Phaser.Scene {
         container.setDepth(150);
         container.setScale(0.9);
 
-        const upperName = (name || 'PLAYER').toUpperCase();
+        let displayName = name || 'PLAYER';
+        const words = displayName.trim().split(/\s+/);
+        if (words.length > 2) {
+            displayName = words.slice(0, 2).join(' ') + '...';
+        }
+        const upperName = displayName.toUpperCase();
         const nameText = this.add.text(0, 0, upperName, {
             fontFamily: '"Retro Gaming", monospace',
             fontSize: '6px',

@@ -182,7 +182,8 @@ export class PlayerWaitingRoomManager {
             console.log(`[PlayerLobby] Room connection lost (code: ${code}). isManuallyLeaving: ${this.isManuallyLeaving}`);
             // Only cleanup if this is NOT a manual exit (manual exit handles its own cleanup)
             // AND not a page refresh
-            if (!this.isGameStarting && !this.isManuallyLeaving && !this.isPageUnloading()) {
+            // AND not a normal room exit (code 1000) - e.g. when game ends and host leaves.
+            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving && !this.isPageUnloading()) {
                 this.cleanupAndGoLobby();
             }
         });
