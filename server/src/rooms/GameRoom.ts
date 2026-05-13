@@ -1132,6 +1132,12 @@ export class GameRoom extends Room<GameState> {
                 return;
             } else {
                 // Host disconnect tak terduga (refresh browser, koneksi putus, dll).
+                // Jika game sudah selesai, abaikan saja karena host tidak perlu reconnect ke room ini.
+                if (this.state.isGameOver) {
+                    console.log(`[Host] ${client.sessionId} left after game ended. Skipping reconnection/disposal logic.`);
+                    return;
+                }
+
                 try {
                     console.log(`[Host] ${client.sessionId} disconnected unexpectedly from room ${this.roomId}. consented: ${consented}. Waiting for reconnection...`);
                     // Use allowReconnection to prevent room disposal
@@ -1382,6 +1388,7 @@ export class GameRoom extends Room<GameState> {
         // Mark unfinished players as finished
         this.state.players.forEach(player => {
             if (!player.isFinished) {
+                player.isIncomplete = true;
                 player.isFinished = true;
                 player.finishTime = Date.now();
             }
@@ -1408,9 +1415,9 @@ export class GameRoom extends Room<GameState> {
                 duration: player.finishTime > 0 ? (player.finishTime - this.state.gameStartTime) : 0, // Calculate duration
                 correctAnswers: player.correctAnswers,
                 wrongAnswers: player.wrongAnswers,
-                // Add Answer History for Supabase
                 currentQuestion: player.answeredQuestions,
-                answers: this.playerAnswers ? (this.playerAnswers.get(player.sessionId) || []) : []
+                answers: this.playerAnswers ? (this.playerAnswers.get(player.sessionId) || []) : [],
+                isIncomplete: player.isIncomplete
             }));
 
         console.log("[EndGame] Broadcasting gameEnded with rankings:", rankings.length);
@@ -1421,6 +1428,15 @@ export class GameRoom extends Room<GameState> {
 
         // --- UPDATE STATUS IN SUPABASE B ---
         this.updateSessionToFinishedInSupabaseB();
+
+        // Mark game as over to prevent unexpected disconnect logic for host/players
+        this.state.isGameOver = true;
+
+        // Auto-dispose room after 10 minutes to prevent memory leaks while allowing players to see results
+        this.clock.setTimeout(() => {
+            console.log(`[GameRoom:${this.roomId}] Auto-disposing room 10 minutes after game ended.`);
+            this.disconnect();
+        }, 10 * 60 * 1000);
     }
 
     private async saveSessionToMainSupabase(rankings: any[]) {

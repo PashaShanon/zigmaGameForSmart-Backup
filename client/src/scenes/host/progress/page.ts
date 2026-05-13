@@ -17,6 +17,7 @@ export class HostProgressScene extends Phaser.Scene {
     isMuted: boolean = false;
     isGameStarted: boolean = false;
     isGameReady: boolean = false; // Block iris until map/UI load complete
+    isTransitioning: boolean = false;
     private resizeListener: (() => void) | null = null;
 
     constructor() {
@@ -103,7 +104,7 @@ export class HostProgressScene extends Phaser.Scene {
             // --- AUTO RECONNECT during gameplay ---
             this.room.onLeave((code) => {
                 console.log(`[HostProgress] Room connection lost. code: ${code}`);
-                if (code !== 1000) {
+                if (code !== 1000 && !this.isTransitioning) {
                     console.warn("[HostProgress] Connection lost unexpectedly during gameplay. Attempting to recover...");
                     // We can try to use the same recovery logic as Lobby
                     const savedRoomId = localStorage.getItem('currentRoomId');
@@ -129,6 +130,7 @@ export class HostProgressScene extends Phaser.Scene {
 
         this.room.onMessage('gameEnded', (data: any) => {
             console.log(`[Spectator][Room:${this.room.id}] Game ended. Leaving room and transitioning...`);
+            this.isTransitioning = true;
 
             if (this.uiContainer && this.uiContainer.parentNode) {
                 document.body.removeChild(this.uiContainer);
@@ -496,7 +498,14 @@ export class HostProgressScene extends Phaser.Scene {
 
                 const progress = Phaser.Math.Clamp(answered / target, 0, 1);
 
-                if (tag) tag.setText(player.name || 'Player');
+                if (tag) {
+                    tag.setText(player.name || 'Player');
+                    if (player.isIncomplete) {
+                        tag.setColor('#ff0000');
+                    } else {
+                        tag.setColor('#ffffff');
+                    }
+                }
 
                 if (progressBar) {
                     progressBar.clear();
@@ -712,9 +721,15 @@ export class HostProgressScene extends Phaser.Scene {
     }
 
     createNameTag(sessionId: string, name: string, container: Phaser.GameObjects.Container) {
+        let displayName = name || 'PLAYER';
+        const words = displayName.trim().split(/\s+/);
+        if (words.length > 2) {
+            displayName = words.slice(0, 2).join(' ') + '...';
+        }
+
         // Render font lebih besar dengan resolusi lebih tinggi lalu di-scale agar tetap tajam (anti-blur)
         // Lowered position from -38 to -25 to be closer to player head
-        const nameText = this.add.text(0, -25, name, { fontSize: '32px', fontFamily: '"Retro Gaming"', color: '#ffffff', stroke: '#000000', strokeThickness: 4, resolution: 2 }).setOrigin(0.5, 0.5).setScale(0.5);
+        const nameText = this.add.text(0, -25, displayName, { fontSize: '32px', fontFamily: '"Retro Gaming"', color: '#ffffff', stroke: '#000000', strokeThickness: 4, resolution: 2 }).setOrigin(0.5, 0.5).setScale(0.5);
         nameText.setName('nameTag');
 
         // Progress bar tepat di bawah nama (jarak ~6px dalam skala container)

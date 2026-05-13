@@ -89,7 +89,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 console.log(`[HostLobby][onLeave:init] Room connection lost. code: ${code}, isGameStarting: ${this.isGameStarting}, isManuallyLeaving: ${this.isManuallyLeaving}, isPageUnloading: ${isPageUnloading}, isTransitioning: ${this.isTransitioning}`);
                 // ONLY redirect to lobby if this is a genuine disconnect,
                 // NOT a page refresh, intentional navigation, or game transition.
-                if (!this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading && !this.isTransitioning) {
+                if (code !== 1000 && !this.isManuallyLeaving && !this.isGameStarting && !isPageUnloading && !this.isTransitioning) {
                     console.log("[HostLobby][onLeave:init] Conditions met for redirect to /");
                     window.location.href = '/';
                 } else {

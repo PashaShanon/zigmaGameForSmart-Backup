@@ -20,6 +20,7 @@ export class QuizPopup {
     isVisibleState: boolean = false;
     onAnswer: (answerIndex: number, btn: HTMLElement) => void;
     currentEnemyType: string = 'skeleton';
+    imageViewer: HTMLElement;
 
     constructor(scene: Phaser.Scene, onAnswer: (answerIndex: number, btn: HTMLElement) => void) {
         this.scene = scene;
@@ -61,6 +62,13 @@ export class QuizPopup {
         // Image Element (Hidden by default)
         this.questionImage = document.createElement('img');
         this.questionImage.className = 'rpg-question-image hidden';
+        this.questionImage.style.cursor = 'zoom-in';
+        this.questionImage.onpointerup = (e) => {
+            e.stopPropagation();
+            if (this.questionImage.src) {
+                this.showImageViewer(this.questionImage.src);
+            }
+        };
         this.questionContainer.appendChild(this.questionImage);
 
         // Text Element
@@ -78,6 +86,17 @@ export class QuizPopup {
         this.overlay.appendChild(this.modal);
         document.body.appendChild(this.backdrop);
         document.body.appendChild(this.overlay);
+
+        // --- NEW: Image Viewer (Lightbox) ---
+        this.imageViewer = document.createElement('div');
+        this.imageViewer.className = 'rpg-image-viewer hidden';
+        this.imageViewer.innerHTML = `<img src="" class="rpg-image-viewer-img" />`;
+        // Close on click anywhere
+        this.imageViewer.onpointerup = (e) => {
+            e.stopPropagation();
+            this.imageViewer.classList.add('hidden');
+        };
+        document.body.appendChild(this.imageViewer);
 
         this.injectStyles();
     }
@@ -154,6 +173,11 @@ export class QuizPopup {
                 overflow-y: auto;
                 display: flex; flex-direction: column; gap: 6px;
                 box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+                transition: max-height 0.3s ease;
+            }
+
+            .rpg-box.has-image .rpg-question-box {
+                max-height: 200px;
             }
             
             /* Custom Scrollbar */
@@ -163,7 +187,8 @@ export class QuizPopup {
 
             .rpg-question-image {
                 max-width: 100%;
-                height: auto;
+                max-height: 140px;
+                object-fit: contain;
                 border: 2px solid #8f7e65;
                 border-radius: 2px;
                 display: block; margin: 0 auto;
@@ -196,11 +221,11 @@ export class QuizPopup {
             .rpg-btn:hover { background: #eaddc5; transform: translateY(-2px); box-shadow: 0 4px 0 #2e2216; }
             .rpg-btn-img {
                 padding: 8px; justify-content: center; align-items: center; 
-                height: 140px; /* Taller for images */
+                height: 100px; /* Taller for images */
                 display: flex; flex-direction: column; 
             }
             .rpg-answer-img {
-                max-width: 100%; max-height: 100px; 
+                max-width: 100%; max-height: 70px; 
                 object-fit: contain; pointer-events: none;
                 border-radius: 4px; border: 2px solid #b8a685;
             }
@@ -244,6 +269,23 @@ export class QuizPopup {
                 .rpg-overlay-v2.active .rpg-enemy-sprite { transform: scale(1.2) translateY(-20px); }
             }
             @media (max-width: 768px) { .rpg-enemy-sprite { display: none; } }
+
+            /* ========== IMAGE VIEWER (Lightbox) ========== */
+            .rpg-image-viewer {
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0,0,0,0.85); z-index: 3000;
+                display: flex; justify-content: center; align-items: center;
+                cursor: zoom-out; opacity: 1; transition: opacity 0.3s ease;
+            }
+            .rpg-image-viewer.hidden {
+                display: none !important; opacity: 0;
+            }
+            .rpg-image-viewer-img {
+                max-width: 90%; max-height: 90%;
+                object-fit: contain; border: 4px solid #e4d5b7; border-radius: 8px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.8);
+                cursor: zoom-out;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -267,8 +309,10 @@ export class QuizPopup {
         if (questionData.image) {
             this.questionImage.src = questionData.image;
             this.questionImage.classList.remove('hidden');
+            this.modal.classList.add('has-image');
         } else {
             this.questionImage.classList.add('hidden');
+            this.modal.classList.remove('has-image');
         }
 
         // Text
@@ -347,13 +391,26 @@ export class QuizPopup {
 
             this.buttonElements[idx] = btn;
 
-            if (isImageMode) {
+            // Detect if option is an image URL (ends with image extension or is a supabase storage link)
+            const isUrlImage = (typeof opt === 'string') && 
+                (opt.startsWith('http') || opt.startsWith('/')) && 
+                (opt.match(/\.(jpeg|jpg|gif|png|webp|svg)(\?.*)?$/i) !== null || opt.includes('supabase.co/storage/'));
+
+            const isThisImage = isImageMode || isUrlImage;
+
+            if (isThisImage) {
                 btn.className = 'rpg-btn rpg-btn-img';
                 // Image Answer
                 const img = document.createElement('img');
                 img.src = opt;
                 img.className = 'rpg-answer-img';
                 img.onerror = () => { img.src = 'https://placehold.co/100x100?text=Error'; }; // Fallback
+                img.style.cursor = 'zoom-in';
+                img.style.pointerEvents = 'auto'; // allow clicking the image itself
+                img.onpointerup = (e) => {
+                    e.stopPropagation();
+                    this.showImageViewer(img.src);
+                };
 
                 // Optional Label Overlay
                 const label = document.createElement('span');
@@ -426,5 +483,12 @@ export class QuizPopup {
 
     isVisible() {
         return this.isVisibleState;
+    }
+
+    showImageViewer(src: string) {
+        if (!this.imageViewer) return;
+        const img = this.imageViewer.querySelector('img');
+        if (img) img.src = src;
+        this.imageViewer.classList.remove('hidden');
     }
 }

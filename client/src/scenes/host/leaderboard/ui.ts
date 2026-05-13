@@ -9,6 +9,7 @@ export interface RankingEntry {
     hairId?: number;
     score: number;
     duration: number;
+    isIncomplete?: boolean;
 }
 
 export class LeaderboardUI {
@@ -193,7 +194,7 @@ export class LeaderboardUI {
                         </div>
 
                          <div class="podium-name-truncated w-full text-[10px] md:text-md font-bold text-center uppercase truncate px-1 relative z-50 cursor-help" 
-                              style="color: #ffffff; font-family: 'Retro Gaming', monospace; text-shadow: 1px 1px 0 #000; pointer-events: auto;"
+                              style="color: ${p.isIncomplete ? '#ff4444' : '#ffffff'}; font-family: 'Retro Gaming', monospace; text-shadow: 1px 1px 0 #000; pointer-events: auto;"
                               data-name="${p.name}"
                               onmouseenter="window.lbTooltip.show(event, '${p.name.replace(/'/g, "\\'")}')"
                               onmousemove="window.lbTooltip.move(event)"
@@ -236,7 +237,7 @@ export class LeaderboardUI {
                             <div class="initial-fallback text-lg">${getInitials(p.name)}</div>
                         `}
                     </div>
-                    <div class="font-bold text-xs md:text-lg truncate max-w-[150px] md:max-w-[300px] py-1 uppercase text-[#336B23]">${p.name}</div>
+                    <div class="font-bold text-xs md:text-lg truncate max-w-[150px] md:max-w-[300px] py-1 uppercase" style="color: ${p.isIncomplete ? '#ff4444' : '#336B23'};">${p.name}</div>
                 </div>
                 <div class="text-center text-[#478D47] font-bold text-sm md:text-xl">${Math.min(100, Math.round(p.score))}</div>
                 <div class="text-center text-gray-700 text-xs md:text-base font-bold">
