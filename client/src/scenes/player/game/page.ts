@@ -61,7 +61,14 @@ export class GameScene extends Phaser.Scene {
         this.mySessionId = this.room.sessionId;
         console.log(`[GameScene][Room:${this.room.id}] Initialized. SessionId: ${this.mySessionId}`);
 
-        // --- Server Message Listeners (Pre-registered for stability) ---
+        // Register Listeners
+        this.setupRoomListeners();
+    }
+
+    private setupRoomListeners() {
+        // Clear any existing listeners if needed (though new room usually means fresh listeners)
+        
+        // --- Server Message Listeners ---
         this.room.onMessage('timerUpdate', (data: { remaining: number }) => {
             const uiScene = this.scene.get('UIScene') as UIScene;
             if (uiScene && uiScene.updateTimer) {
@@ -136,15 +143,44 @@ export class GameScene extends Phaser.Scene {
             this.showHostLeftModal();
         });
 
-        // Handle unexpected disconnection (e.g. host closes room)
-        this.room.onLeave((code) => {
+        // Handle unexpected disconnection (e.g. connection flicker)
+        this.room.onLeave(async (code) => {
             if (this.isEnding) return;
             
-            console.log(`[GameScene] Room connection lost (code: ${code}).`);
-            // Only show modal if we didn't leave intentionally
-            if (code !== 1000) { 
-                this.showHostLeftModal();
+            console.warn(`[GameScene] Room connection lost (code: ${code}).`);
+            
+            // If code is 1000 (intentional) or we are already ending, do nothing
+            if (code === 1000) return;
+
+            // Show Reconnecting UI
+            TransitionManager.showWaiting(i18n.t('game.reconnecting') || 'Koneksi terputus, menghubungkan kembali...', 0);
+            
+            // Attempt reconnection
+            try {
+                const client = (window as any).colyseusClient;
+                const token = localStorage.getItem('currentReconnectionToken');
+                if (client && token) {
+                    console.log("[GameScene] Attempting to reconnect...");
+                    const newRoom = await client.reconnect(token);
+                    console.log("[GameScene] Reconnected successfully!");
+                    
+                    // Update room and token
+                    this.room = newRoom;
+                    localStorage.setItem('currentReconnectionToken', newRoom.reconnectionToken);
+                    
+                    // Restart Scene with new room to re-initialize everything properly
+                    this.scene.restart({ room: newRoom });
+                    
+                    // Hide Reconnecting UI
+                    TransitionManager.close();
+                    return;
+                }
+            } catch (e) {
+                console.error("[GameScene] Reconnection failed:", e);
             }
+
+            // If we reach here, reconnection failed or wasn't possible
+            this.showHostLeftModal();
         });
 
         this.room.onMessage('speedBoostActivated', () => {
@@ -909,11 +945,6 @@ export class GameScene extends Phaser.Scene {
 
         // --- Handle Resizing ---
         this.scale.on('resize', () => this.handleResize(), this);
-        
-        this.room.onLeave((code) => {
-            console.warn(`[GameScene] Disconnected from room (code: ${code})`);
-            this.isGameReady = false;
-        });
     }
 
     tryAttack(pointer?: Phaser.Input.Pointer) {

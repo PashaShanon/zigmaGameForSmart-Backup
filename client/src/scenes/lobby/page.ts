@@ -157,6 +157,7 @@ export class LobbyManager {
 
         console.log("Connecting to Colyseus server:", host);
         this.client = new Client(host);
+        (window as any).colyseusClient = this.client;
     }
 
     private preloadResources() {
@@ -851,6 +852,14 @@ export class LobbyManager {
                 return;
             }
 
+            // --- LATE JOIN PROTECTION (Client-side pre-check) ---
+            if (targetRoom.metadata && targetRoom.metadata.isStarted) {
+                this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.game_started'));
+                this.isJoining = false;
+                this.setBtnLoading(false);
+                return;
+            }
+
             // 3. Join the room
             const savedHairId = localStorage.getItem('player_hair_id');
             const joinOptions = {
@@ -878,7 +887,15 @@ export class LobbyManager {
 
         } catch (e: any) {
             console.error("Join failed:", e);
-            this.showJoinError(i18n.t('lobby.join_errors.conn_error') + (e.message ? ": " + e.message : ""));
+            
+            let errorMsg = i18n.t('lobby.join_errors.conn_error');
+            if (e.message && e.message.includes("GAME_STARTED")) {
+                errorMsg = i18n.t('lobby.join_errors.game_started');
+            } else if (e.message) {
+                errorMsg += ": " + e.message;
+            }
+
+            this.showJoinError(errorMsg);
             this.isJoining = false;
             this.setBtnLoading(false);
         }

@@ -175,7 +175,8 @@ export class GameRoom extends Room<GameState> {
         // Store Supabase Session ID in metadata
         this.setMetadata({
             roomCode: this.state.roomCode,
-            sessionId: options.sessionId
+            sessionId: options.sessionId,
+            isStarted: false
         });
 
         // --- NEW: Simpan data "Masuk" ke Supabase Utama dan Supabase B saat sesi dibuat ---
@@ -235,6 +236,7 @@ export class GameRoom extends Room<GameState> {
 
             // Step 1: Set Preparing state for all clients
             this.state.isPreparing = true;
+            this.setMetadata({ ...this.metadata, isStarted: true });
             console.log(`[GameRoom] Host ${client.sessionId} requested start. Room is now PREPARING.`);
 
             // Step 2: Wait for clients to show "Preparing" screen before starting actual countdown
@@ -367,12 +369,18 @@ export class GameRoom extends Room<GameState> {
                 });
 
                 // Update Score (Authoritative & Dynamic)
-                const qLimit = parseInt(this.questionLimit);
-                let totalQuestions = isNaN(qLimit) ? (this.state.questions.length || 1) : qLimit;
+                const qLimitRaw = String(this.questionLimit);
+                const qLimit = parseInt(qLimitRaw);
+                let totalQuestions = (isNaN(qLimit) || qLimit <= 0) ? (this.state.questions.length || 1) : qLimit;
                 const pointsPerCorrect = 100 / (totalQuestions || 1);
+                
+                const oldScore = player.score;
                 player.score = Math.min(100, player.score + pointsPerCorrect);
+                
+                console.log(`[GameRoom] Score updated for ${player.name}: ${oldScore.toFixed(2)} -> ${player.score.toFixed(2)} (Limit: ${totalQuestions})`);
 
                 // Real-time sync to Supabase B
+                this.syncParticipantToSupabaseB(client).catch(e => console.error("[Supabase B] Real-time Sync Error:", e));
 
                 // Target SPECIFIC enemy by ID to avoid sync issues
                 const enemyId = data.enemyId;
@@ -465,6 +473,9 @@ export class GameRoom extends Room<GameState> {
                     }
                 }
 
+                // Real-time sync to Supabase B (Update stats even if wrong)
+                this.syncParticipantToSupabaseB(client).catch(e => console.error("[Supabase B] Real-time Sync Error (Wrong):", e));
+
                 // Cek apakah player selesai menjawab semua soal
                 const qLimit = parseInt(this.questionLimit);
                 const totalQuestions = isNaN(qLimit) ? this.state.questions.length : qLimit;
@@ -505,7 +516,7 @@ export class GameRoom extends Room<GameState> {
                 const qLimit = parseInt(this.state.questionLimit);
                 const totalQs = isNaN(qLimit) ? (this.state.questions.length || 1) : qLimit;
                 const pointsPerCorrect = 100 / (totalQs || 1);
-                const chestReward = pointsPerCorrect / 2;
+                const chestReward = data.amount || (pointsPerCorrect / 2);
 
                 player.score = Math.min(100, player.score + chestReward);
                 player.correctAnswers++;
@@ -513,7 +524,7 @@ export class GameRoom extends Room<GameState> {
                 console.log(`[Chest] Player ${player.name} retry correct. Added ${chestReward.toFixed(2)} points. (Standard: ${pointsPerCorrect.toFixed(2)})`);
                 
                 // Sync to Supabase B to update leaderboards
-                this.syncParticipantToSupabaseB(client);
+                this.syncParticipantToSupabaseB(client).catch(e => console.error("[Supabase B] Real-time Sync Error (Chest):", e));
             }
         });
 
@@ -934,6 +945,14 @@ export class GameRoom extends Room<GameState> {
         }
 
         this.sessionIdToUserId.set(client.sessionId, userId);
+
+        // --- LATE JOIN PROTECTION ---
+        // If the game is already in progress, in countdown, or preparing, 
+        // we block NEW players from joining. Only re-connections are allowed.
+        if (this.state.isGameStarted || this.state.countdown > 0 || this.state.isPreparing) {
+            console.log(`[GameRoom] 🚫 Rejecting late join for ${userId} (${client.sessionId}). Game already in progress.`);
+            throw new Error("GAME_STARTED"); 
+        }
 
         // --- NEW PLAYER INITIALIZATION ---
         console.log(`[GameRoom] ✨ Initializing NEW player for ${options.name} (${client.sessionId})`);

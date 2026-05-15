@@ -177,15 +177,46 @@ export class PlayerWaitingRoomManager {
         });
         this.room.state.players.onRemove(() => this.updateAll());
         
-        // Handle unexpected disconnection (e.g. host closes room)
-        this.room.onLeave((code) => {
+        // Handle unexpected disconnection (e.g. connection flicker)
+        this.room.onLeave(async (code) => {
             console.log(`[PlayerLobby] Room connection lost (code: ${code}). isManuallyLeaving: ${this.isManuallyLeaving}`);
-            // Only cleanup if this is NOT a manual exit (manual exit handles its own cleanup)
-            // AND not a page refresh
-            // AND not a normal room exit (code 1000) - e.g. when game ends and host leaves.
-            if (code !== 1000 && !this.isGameStarting && !this.isManuallyLeaving && !this.isPageUnloading()) {
-                this.cleanupAndGoLobby();
+            
+            // If code is 1000 (intentional) or manual, just return
+            if (code === 1000 || this.isManuallyLeaving || this.isPageUnloading() || this.isGameStarting) return;
+
+            // Show Reconnecting UI
+            TransitionManager.showWaiting(i18n.t('game.reconnecting') || 'Koneksi terputus, menghubungkan kembali...', 0);
+            
+            // Attempt reconnection
+            try {
+                const client = (window as any).colyseusClient;
+                const token = localStorage.getItem('currentReconnectionToken');
+                if (client && token) {
+                    console.log("[PlayerLobby] Attempting to reconnect...");
+                    const newRoom = await client.reconnect(token);
+                    console.log("[PlayerLobby] Reconnected successfully!");
+                    
+                    // Update room and token
+                    this.room = newRoom;
+                    localStorage.setItem('currentReconnectionToken', newRoom.reconnectionToken);
+                    
+                    // Re-setup listeners
+                    this.setupRoomListeners();
+                    
+                    // Refresh UI
+                    this.updateAll();
+                    this.updateUILayout();
+                    
+                    // Hide Reconnecting UI
+                    TransitionManager.close();
+                    return;
+                }
+            } catch (e) {
+                console.error("[PlayerLobby] Reconnection failed:", e);
             }
+
+            // If we reach here, reconnection failed, go to lobby
+            this.cleanupAndGoLobby();
         });
 
         // Game Start
@@ -268,6 +299,10 @@ export class PlayerWaitingRoomManager {
         // Setup listeners if room is ready (normal join)
         if (this.room) {
             this.setupRoomListeners();
+            
+            // --- OPTIMIZATION: BACKGROUND PRELOAD ---
+            // Start preloading game assets immediately while player is in waiting room
+            this.startGameEngine('PreloadScene', { room: this.room });
         }
 
         // Initialize Character Popup

@@ -466,7 +466,9 @@ export class SelectQuizManager {
         }
 
         const userId = profile.id;
-        if (this.favorites.has(quizId)) {
+        const isCurrentlyFav = this.favorites.has(quizId);
+
+        if (isCurrentlyFav) {
             this.favorites.delete(quizId);
             this.lastFavoritedId = null;
         } else {
@@ -474,7 +476,26 @@ export class SelectQuizManager {
             this.lastFavoritedId = quizId;
         }
 
+        // Update Grid UI
         this.renderQuizGrid();
+
+        // Update Modal UI if it's open for this quiz
+        const modal = document.getElementById('quiz-detail-modal');
+        const favCountEl = document.getElementById('quiz-detail-favorite');
+        const favIcon = document.getElementById('quiz-detail-fav-icon');
+        
+        if (modal && !modal.classList.contains('hidden') && favCountEl && favIcon) {
+            let currentCount = parseInt(favCountEl.innerText) || 0;
+            if (this.favorites.has(quizId)) {
+                currentCount++;
+                favIcon.classList.add('heart-water-fill', 'fill-icon');
+            } else {
+                currentCount = Math.max(0, currentCount - 1);
+                favIcon.classList.remove('heart-water-fill', 'fill-icon');
+            }
+            favCountEl.innerText = String(currentCount);
+        }
+
         await toggleFavoriteInSupabase(quizId, userId);
     }
 
@@ -742,6 +763,23 @@ export class SelectQuizManager {
             // Hide loading
             loading.classList.add('hidden');
             
+            // Setup Like button in modal
+            const favBtn = document.getElementById('quiz-detail-fav-btn');
+            const favIcon = document.getElementById('quiz-detail-fav-icon');
+            if (favBtn && favIcon) {
+                const isFav = this.favorites.has(fullQuiz.id);
+                if (isFav) {
+                    favIcon.classList.add('heart-water-fill', 'fill-icon');
+                } else {
+                    favIcon.classList.remove('heart-water-fill', 'fill-icon');
+                }
+                
+                favBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.toggleFavorite(fullQuiz.id);
+                };
+            }
+
             // Update start button with full quiz data
             if (startBtn) {
                 startBtn.onclick = () => {

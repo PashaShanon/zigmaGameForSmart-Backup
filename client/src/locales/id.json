@@ -241,6 +241,9 @@
     "restart_error": "Terjadi kesalahan saat mengulang. Kembali ke lobi.",
     "no_quiz_data": "Tidak dapat menemukan data kuis untuk mengulang permainan. Silakan kembali ke Lobby."
   },
+  "game": {
+    "reconnecting": "Koneksi terputus, menghubungkan kembali..."
+  },
   "player_result": {
     "rank": "JUARA",
     "score": "SKOR",

@@ -132,6 +132,11 @@ export class UIScene extends Phaser.Scene {
         const roundedOldScore = Math.round(oldScore);
         const roundedDiff = roundedScore - roundedOldScore;
 
+        // --- Float Up + Fade Out Animation for Score Gain ---
+        // Even if roundedDiff is 0 (e.g. 10.1 -> 10.4), we might want a visual cue?
+        // But the prompt says "score tidak terupdate", which usually means they expect a big jump.
+        // If roundedDiff is 0, we still update the internal state so the next jump is accurate.
+
         // --- Float Up + Fade Out Animation for Old Score ---
         if (roundedDiff !== 0) {
             const floatText = this.add.text(

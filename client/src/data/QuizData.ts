@@ -391,7 +391,7 @@ export async function toggleFavoriteInSupabase(quizId: string, userId: string): 
         // So we should enforce this structure to be safe and consistent.
         const finalUpdateData = { favorites: favorites };
 
-        // 4. Update in Supabase
+        // 4. Update in Supabase (Profiles table)
         const { error: updateError } = await supabase
             .from('profiles')
             .update({ favorite_quiz: finalUpdateData })
@@ -400,6 +400,40 @@ export async function toggleFavoriteInSupabase(quizId: string, userId: string): 
         if (updateError) {
             console.error('Error updating profile favorites:', updateError);
             return [];
+        }
+
+        // 5. Update in Supabase (Quizzes table)
+        // We also want to update the quiz's own favorite list (array of user IDs)
+        // so we can show total like counts.
+        try {
+            const { data: quizData, error: quizFetchError } = await supabase
+                .from('quizzes')
+                .select('favorite')
+                .eq('id', quizId)
+                .single();
+
+            if (!quizFetchError && quizData) {
+                let quizFavorites: string[] = Array.isArray(quizData.favorite) ? quizData.favorite : [];
+                
+                if (quizFavorites.includes(userId)) {
+                    // If we removed it from profile, remove from quiz too
+                    if (!favorites.includes(quizId)) {
+                        quizFavorites = quizFavorites.filter(id => id !== userId);
+                    }
+                } else {
+                    // If we added it to profile, add to quiz too
+                    if (favorites.includes(quizId)) {
+                        quizFavorites.push(userId);
+                    }
+                }
+
+                await supabase
+                    .from('quizzes')
+                    .update({ favorite: quizFavorites })
+                    .eq('id', quizId);
+            }
+        } catch (quizErr) {
+            console.error('Error updating quiz favorite count:', quizErr);
         }
 
         console.log(`Toggled favorite quiz ${quizId} for user ${userId}. New favorites:`, favorites);

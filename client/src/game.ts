@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { HostWaitingRoomScene } from './scenes/host/lobby/page';
 import { GameScene } from './scenes/player/game/page';
+import { PreloadScene } from './scenes/player/game/PreloadScene';
 import { UIScene } from './scenes/player/ui/page';
 
 
@@ -82,6 +83,7 @@ export function initializeGame(startScene?: string, sceneData?: any) {
         scene: [
             BootScene,
             HostWaitingRoomScene,
+            PreloadScene,
             GameScene,
             UIScene,
             HostProgressScene

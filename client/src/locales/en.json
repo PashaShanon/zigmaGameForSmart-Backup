@@ -241,6 +241,9 @@
     "restart_error": "Restart error. Returning to lobby.",
     "no_quiz_data": "Cannot find quiz data to restart the game. Please return to Lobby."
   },
+  "game": {
+    "reconnecting": "Connection lost, reconnecting..."
+  },
   "player_result": {
     "rank": "RANK",
     "score": "SCORE",
