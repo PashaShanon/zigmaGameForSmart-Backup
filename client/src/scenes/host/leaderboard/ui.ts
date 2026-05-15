@@ -150,71 +150,72 @@ export class LeaderboardUI {
             const isSecond = rank === 2;
 
             let colorHex = '#cd7f32'; // Bronze
-            let darkColorHex = '#8B4513'; // Saddle Brown (Dark Bronze)
-            let colorBg = 'bg-orange-900/40';
+            let darkColorHex = '#8B4513'; // Saddle Brown
             let colorGlow = 'rgba(205,127,50,0.5)';
-            let icon = 'military_tech';
-            let boxWidth = 'w-24 md:w-36';
-            let height = 'h-16 md:h-24';
-            let avatarSize = 'w-12 h-12 md:w-16 md:h-16'; 
+            let height = 'h-20 md:h-28';
+            let avatarSize = 'w-14 h-14 md:w-20 md:h-20'; 
 
             if (isFirst) {
                 colorHex = '#ffcc00'; // Gold
                 darkColorHex = '#B8860B'; // Dark Gold
-                colorBg = 'bg-yellow-600/40';
                 colorGlow = 'rgba(255,204,0,0.6)';
-                icon = 'emoji_events';
-                height = 'h-32 md:h-40';
-                avatarSize = 'w-14 h-14 md:w-20 md:h-20';
+                height = 'h-36 md:h-48';
+                avatarSize = 'w-18 h-18 md:w-28 md:h-28';
             } else if (isSecond) {
                 colorHex = '#c0c0c0'; // Silver
-                darkColorHex = '#708090'; // Slate Gray (Dark Silver)
-                colorBg = 'bg-gray-600/40';
+                darkColorHex = '#708090'; // Slate Gray
                 colorGlow = 'rgba(192,192,192,0.5)';
-                height = 'h-24 md:h-32';
+                height = 'h-28 md:h-36';
+                avatarSize = 'w-16 h-16 md:w-24 md:h-24';
             }
-
-            const hairKey = p.hairId ? ['bowlhair', 'curlyhair', 'longhair', 'mophair', 'shorthair', 'spikeyhair'][p.hairId - 1] : null;
 
             return `
                 <div class="flex flex-col items-center relative z-20 group">
                     
-                    <!-- SQUARE ROUNDED CARD (Tumpul) -->
-                    <div class="z-30 ${boxWidth} aspect-square rounded-[1.5rem] md:rounded-[2rem] p-2 md:p-3 mb-[-8px] flex flex-col items-center justify-center border-b-8 transition-transform group-hover:scale-105" 
-                         style="background: ${darkColorHex}; border-color: rgba(0,0,0,0.25);">
-                        
-                        <!-- Avatar -->
-                        <div class="${avatarSize} podium-avatar rounded-full border-4 flex items-center justify-center font-bold relative mb-2" style="background-color: ${colorHex}; border-color: ${colorHex};">
-                            ${p.avatarUrl ? `
-                                <img src="${upscaleAvatarUrl(p.avatarUrl)}" class="profile-img" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <div class="initial-fallback hidden text-3xl md:text-5xl">${getInitials(p.name)}</div>
-                            ` : `
-                                <div class="initial-fallback text-3xl md:text-5xl">${getInitials(p.name)}</div>
-                            `}
+                    <!-- 1. PROFILE (TOP) -->
+                    <div class="${avatarSize} podium-avatar rounded-full border-[2.5px] md:border-[4px] flex items-center justify-center font-bold relative mb-3 shadow-2xl transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_30px_${colorGlow}]" 
+                         style="background-color: #1a1a1b; border-color: ${colorHex}; box-shadow: 0 10px 20px rgba(0,0,0,0.3);">
+                        ${p.avatarUrl ? `
+                            <img src="${upscaleAvatarUrl(p.avatarUrl)}" class="profile-img" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="initial-fallback hidden text-4xl md:text-6xl">${getInitials(p.name)}</div>
+                        ` : `
+                            <div class="initial-fallback text-4xl md:text-6xl">${getInitials(p.name)}</div>
+                        `}
+                        <!-- Rank Pin -->
+                        <div class="absolute -bottom-1 -right-1 w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] md:text-xs font-bold shadow-lg z-30"
+                             style="background: ${colorHex}; color: white; font-family: 'Retro Gaming', monospace;">
+                            ${rank}
                         </div>
-
-                         <div class="podium-name-truncated w-full text-[10px] md:text-md font-bold text-center uppercase truncate px-1 relative z-50 cursor-help" 
-                              style="color: ${p.isIncomplete ? '#ff4444' : '#ffffff'}; font-family: 'Retro Gaming', monospace; text-shadow: 1px 1px 0 #000; pointer-events: auto;"
-                              data-name="${p.name}"
-                              onmouseenter="window.lbTooltip.show(event, '${p.name.replace(/'/g, "\\'")}')"
-                              onmousemove="window.lbTooltip.move(event)"
-                              onmouseleave="window.lbTooltip.hide()">
-                             ${p.name.split(' ')[0]}
-                         </div>
                     </div>
 
-                    <!-- The literal podium block (Always visible now) -->
-                    <div class="flex z-20 ${boxWidth} ${height} border-x-4 border-t-8 border-b-0 flex-col items-center justify-center relative shadow-2xl" 
-                         style="border-color: ${colorHex}; border-top-color: rgba(0,0,0,0.3); background: linear-gradient(to bottom, ${darkColorHex}, rgba(0,0,0,0.8));">
+                    <!-- 2. NICKNAME (BELOW PROFILE) -->
+                    <div class="podium-name-truncated w-32 md:w-48 text-[12px] md:text-lg font-bold text-center uppercase truncate px-1 mb-2 relative z-50 cursor-help" 
+                         style="color: ${p.isIncomplete ? '#ff4444' : '#ffffff'}; font-family: 'Retro Gaming', monospace; text-shadow: 2px 2px 0 #000; pointer-events: auto;"
+                         data-name="${p.name}"
+                         onmouseenter="window.lbTooltip.show(event, '${p.name.replace(/'/g, "\\'")}')"
+                         onmousemove="window.lbTooltip.move(event)"
+                         onmouseleave="window.lbTooltip.hide()">
+                        ${p.name.split(' ')[0]}
+                    </div>
+
+                    <!-- 3. PODIUM BLOCK (BOTTOM) -->
+                    <div class="flex z-20 w-24 md:w-40 ${height} flex-col items-center pt-4 relative transition-all duration-300 group-hover:brightness-110" 
+                         style="background: linear-gradient(180deg, ${colorHex} 0%, ${darkColorHex} 100%); 
+                                border-radius: 16px 16px 0 0;
+                                box-shadow: 
+                                    inset 0 2px 0 rgba(255,255,255,0.2),
+                                    inset 0 -4px 10px rgba(0,0,0,0.2),
+                                    0 20px 40px rgba(0,0,0,0.4);">
                         
-                        <!-- Rank Number on Podium -->
-                        <div class="text-4xl md:text-7xl font-bold relative z-10" style="font-family: 'Retro Gaming', monospace; color: ${colorHex}; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; -webkit-font-smoothing: none;">
+                        <!-- Rank Number -->
+                        <div class="text-6xl md:text-9xl font-bold relative z-10 select-none pointer-events-none" 
+                             style="font-family: 'Retro Gaming', monospace; color: rgba(255,255,255,0.9); text-shadow: 0 4px 10px rgba(0,0,0,0.3); -webkit-font-smoothing: none;">
                             ${rank}
                         </div>
 
-                        <!-- SCORE BADGE (New) -->
-                        <div class="absolute bottom-[-10px] md:bottom-[-15px] px-3 py-1 bg-white border-2 border-black rounded-lg shadow-lg z-40 transform scale-75 md:scale-100">
-                            <span class="text-black font-bold text-xs md:text-sm" style="font-family: 'Retro Gaming', monospace;">
+                        <!-- Score Badge -->
+                        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
+                             <span class="text-white font-bold text-[10px] md:text-base tracking-tighter" style="font-family: 'Retro Gaming', monospace; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
                                 ${Math.min(100, Math.round(p.score))} PTS
                             </span>
                         </div>
@@ -257,12 +258,12 @@ export class LeaderboardUI {
                 <img src="/logo/gameforsmart-logo-fix.webp" alt="GameForSmart Logo" class="logo-right" />
 
                 <!-- MAIN CONTENT AREA: overflow-hidden for mobile to prevent scrollbars, auto for desktop -->
-                <div class="relative z-10 w-full h-[100dvh] flex flex-col items-center pt-16 md:pt-16 pb-20 md:pb-12 px-4 overflow-hidden md:overflow-y-auto hide-scrollbar pointer-events-none">
+                <div class="relative z-10 w-full h-[100dvh] flex flex-col items-center pt-8 md:pt-16 pb-20 md:pb-12 px-4 overflow-hidden md:overflow-y-auto hide-scrollbar pointer-events-none">
                     
 
 
                     <!-- Podiums (Keep wrapper flex but adjust bottom margin for mobile) -->
-                    <div class="flex items-end justify-center gap-2 md:gap-8 mb-4 md:mb-12 shrink-0">
+                    <div class="flex items-end justify-center gap-1 md:gap-8 mb-4 md:mb-12 shrink-0 scale-[0.85] md:scale-100 origin-bottom">
                         ${podiumsHtml}
                     </div>
 

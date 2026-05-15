@@ -886,8 +886,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 </div>
             </div>
 
-            <!-- FIXED SOUND BUTTON (Corner position) -->
-            <button id="host-sound-btn" class="fixed bottom-4 left-4 z-[9999] w-12 h-12 md:w-14 md:h-14 bg-white border-2 border-[#6CC452] rounded-full flex items-center justify-center hover:bg-[#F1F8E9] shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer pointer-events-auto">
+            <!-- FIXED SOUND BUTTON (Right position) -->
+            <button id="host-sound-btn" class="fixed bottom-4 right-16 md:right-20 z-[9999] w-12 h-12 md:w-14 md:h-14 bg-white border-2 border-[#6CC452] rounded-full flex items-center justify-center hover:bg-[#F1F8E9] shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer pointer-events-auto">
                 <span id="host-sound-icon" class="material-symbols-outlined text-[#478D47] text-2xl md:text-3xl">${AudioManager.getInstance().getMuteStatus() ? 'volume_off' : 'volume_up'}</span>
             </button>
 
@@ -1189,6 +1189,22 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 }
             }
         });
+    }
+    
+    private moveGlobalButtonsToLeft() {
+        const fsBtn = document.getElementById('global-fullscreen-btn');
+        if (fsBtn) {
+            fsBtn.classList.remove('right-4');
+            fsBtn.classList.add('left-16', 'md:left-20');
+        }
+    }
+
+    private moveGlobalButtonsToRight() {
+        const fsBtn = document.getElementById('global-fullscreen-btn');
+        if (fsBtn) {
+            fsBtn.classList.remove('left-16', 'md:left-20');
+            fsBtn.classList.add('right-4');
+        }
     }
 
     async updateManageUsersList() {

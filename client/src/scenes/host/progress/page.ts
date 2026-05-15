@@ -599,6 +599,7 @@ export class HostProgressScene extends Phaser.Scene {
         `;
 
         document.body.appendChild(this.uiContainer);
+        this.moveGlobalButtonsToLeft();
 
         const endBtn = document.getElementById('spec-end-btn');
         if (endBtn) endBtn.onclick = () => this.showEndGamePopup();
@@ -617,6 +618,7 @@ export class HostProgressScene extends Phaser.Scene {
             this.disposers.forEach(d => d());
             this.disposers = [];
             if (this.uiContainer && this.uiContainer.parentNode) document.body.removeChild(this.uiContainer);
+            this.moveGlobalButtonsToRight();
             OrientationManager.disable();
         });
     }
@@ -744,5 +746,21 @@ export class HostProgressScene extends Phaser.Scene {
         progressBar.setName('progressBar');
 
         container.add([nameText, progressBar]);
+    }
+
+    private moveGlobalButtonsToLeft() {
+        const fsBtn = document.getElementById('global-fullscreen-btn');
+        if (fsBtn) {
+            fsBtn.classList.remove('right-4');
+            fsBtn.classList.add('left-16', 'md:left-20');
+        }
+    }
+
+    private moveGlobalButtonsToRight() {
+        const fsBtn = document.getElementById('global-fullscreen-btn');
+        if (fsBtn) {
+            fsBtn.classList.remove('left-16', 'md:left-20');
+            fsBtn.classList.add('right-4');
+        }
     }
 }

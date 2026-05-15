@@ -172,7 +172,7 @@ export class GameScene extends Phaser.Scene {
                     this.scene.restart({ room: newRoom });
                     
                     // Hide Reconnecting UI
-                    TransitionManager.close();
+                    TransitionManager.close(() => {});
                     return;
                 }
             } catch (e) {

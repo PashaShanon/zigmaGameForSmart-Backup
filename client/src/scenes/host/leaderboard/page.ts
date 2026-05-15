@@ -115,28 +115,54 @@ export class HostLeaderboardManager {
         const statsBtnMobile = document.getElementById('lb-stats-btn-mobile');
 
         const handleStats = () => {
-            // Prioritize Supabase session ID as specified by user
-            let sid = localStorage.getItem('supabaseSessionId');
+            // Log for debugging
+            console.log("[HostLeaderboard] 📊 Opening Statistics...");
 
+            // 1. Prioritize Supabase session ID (UUID)
+            let sid = localStorage.getItem('supabaseSessionId');
+            console.log("[HostLeaderboard] Step 1 (supabaseSessionId):", sid);
+
+            // 2. Fallback to opts from constructor/start
             if (!sid || sid === "undefined" || sid === "null") {
                 sid = this.opts?.sessionId;
+                console.log("[HostLeaderboard] Step 2 (this.opts.sessionId):", sid);
             }
             
+            // 3. Fallback to currentRoomOptions (Current Session)
             if (!sid || sid === "undefined" || sid === "null") {
                 const currentRoomOpts = localStorage.getItem('currentRoomOptions');
                 if (currentRoomOpts) {
-                    try { sid = JSON.parse(currentRoomOpts).sessionId; } catch(e) {}
+                    try { 
+                        const parsed = JSON.parse(currentRoomOpts);
+                        sid = parsed.sessionId || parsed.supabaseSessionId; 
+                        console.log("[HostLeaderboard] Step 3 (currentRoomOptions):", sid);
+                    } catch(e) {
+                        console.warn("[HostLeaderboard] Failed to parse currentRoomOptions");
+                    }
                 }
             }
 
+            // 4. Fallback to lastGameOptions (Persistent backup)
             if (!sid || sid === "undefined" || sid === "null") {
-                sid = (localStorage.getItem('lastGameOptions')?.match(/"sessionId":"([^"]+)"/)?.[1] ||
-                      localStorage.getItem('hostLastGameOptions')?.match(/"sessionId":"([^"]+)"/)?.[1]) || null;
+                const lastOpts = localStorage.getItem('lastGameOptions') || localStorage.getItem('hostLastGameOptions');
+                if (lastOpts) {
+                    try {
+                        const parsed = JSON.parse(lastOpts);
+                        sid = parsed.sessionId || parsed.supabaseSessionId;
+                        console.log("[HostLeaderboard] Step 4 (lastGameOptions):", sid);
+                    } catch(e) {
+                        // Fallback to regex if JSON parse fails
+                        sid = lastOpts.match(/"sessionId":"([^"]+)"/)?.[1] || null;
+                        console.log("[HostLeaderboard] Step 4 (regex fallback):", sid);
+                    }
+                }
             }
 
-            if (sid && sid !== "undefined" && sid !== "null") {
+            if (sid && sid !== "undefined" && sid !== "null" && sid.length > 10) {
+                console.log("[HostLeaderboard] ✅ Final SID found:", sid);
                 window.open(`https://app.gameforsmart.com/stat/${sid}`, '_blank');
             } else {
+                console.error("[HostLeaderboard] ❌ No valid Session ID found!", { sid });
                 alert(i18n.t('host_leaderboard.no_session_id'));
             }
         };
