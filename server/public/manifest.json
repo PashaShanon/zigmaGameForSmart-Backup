@@ -9,27 +9,27 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "/logo/Zigma-logo-fix.webp",
+      "src": "/logo/pwa-icon-512.png",
       "sizes": "192x192",
-      "type": "image/webp",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo/Zigma-logo-fix.webp",
+      "src": "/logo/pwa-icon-512.png",
       "sizes": "192x192",
-      "type": "image/webp",
+      "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/logo/Zigma-logo-fix.webp",
+      "src": "/logo/pwa-icon-512.png",
       "sizes": "512x512",
-      "type": "image/webp",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo/Zigma-logo-fix.webp",
+      "src": "/logo/pwa-icon-512.png",
       "sizes": "512x512",
-      "type": "image/webp",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ]

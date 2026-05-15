@@ -925,25 +925,60 @@ export class LobbyManager {
             return;
         }
 
-        // Reset the scanner instance each time to avoid stale state from previous sessions
+        // Reset the scanner instance each time
         if (this.qrScanner) {
             try {
                 if (this.qrScanner.isScanning) await this.qrScanner.stop();
             } catch (_) { /* ignore */ }
             this.qrScanner = null;
         }
-        this.qrScanner = new Html5Qrcode("qr-reader");
-
-        // Optimized config for better compatibility across mobile devices
-        const config = { 
-            fps: 10,
-            qrbox: { width: 250, height: 250 }, // Focus area for better scanning
-            aspectRatio: 1.0
-        };
 
         try {
+            // 1. Get available cameras for better selection control
+            const devices = await Html5Qrcode.getCameras().catch(() => []);
+            
+            this.qrScanner = new Html5Qrcode("qr-reader");
+
+            // 2. Select the best camera (prioritize back/rear)
+            let cameraSelector: any = { facingMode: "environment" }; // Default high-level
+            
+            if (devices && devices.length > 0) {
+                // Some devices don't respect facingMode: "environment", so we try to find by label
+                const backCamera = devices.find(d => 
+                    d.label.toLowerCase().includes('back') || 
+                    d.label.toLowerCase().includes('rear') ||
+                    d.label.toLowerCase().includes('belakang') ||
+                    d.label.toLowerCase().includes('environment') ||
+                    d.label.toLowerCase().includes('facing 0') // Some older androids
+                );
+                
+                if (backCamera) {
+                    cameraSelector = backCamera.id;
+                    console.log(`[QR] Using back camera found by label: ${backCamera.label}`);
+                } else if (devices.length > 1) {
+                    // Usually the last camera is the primary rear camera on modern multi-lens phones
+                    cameraSelector = devices[devices.length - 1].id;
+                    console.log(`[QR] No 'back' label found, using last camera: ${devices[devices.length-1].label}`);
+                } else {
+                    cameraSelector = devices[0].id;
+                }
+            }
+
+            // 3. Dynamic config for better compatibility
+            const config = { 
+                fps: 15,
+                // Use a dynamic qrbox size based on the video container
+                qrbox: (width: number, height: number) => {
+                    const minSize = Math.min(width, height);
+                    const size = Math.floor(minSize * 0.7);
+                    return { width: size, height: size };
+                },
+                // IMPORTANT: Removed fixed aspectRatio: 1.0 to prevent black screens 
+                // on devices that don't support custom aspect ratios well.
+            };
+
             await this.qrScanner.start(
-                { facingMode: "environment" }, // Prioritize back camera
+                cameraSelector,
                 config,
                 (decodedText) => {
                     console.log("QR Code detected:", decodedText);
@@ -979,12 +1014,18 @@ export class LobbyManager {
             
             // Compatibility Fix: Detailed error messages for common browser blocks
             let errorMsg = "Kamera tidak dapat diakses.";
-            if (err.name === 'NotAllowedError' || err === 'NotAllowedError') {
+            const errStr = String(err).toLowerCase();
+
+            if (err.name === 'NotAllowedError' || errStr.includes('notallowed') || errStr.includes('permission')) {
                 errorMsg = "Izin kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.";
-            } else if (err.name === 'NotFoundError' || err === 'NotFoundError') {
-                errorMsg = "Kamera tidak ditemukan di perangkat ini.";
+            } else if (err.name === 'NotFoundError' || errStr.includes('notfound')) {
+                errorMsg = "Kamera tidak ditemukan. Pastikan perangkat Anda memiliki kamera belakang.";
+            } else if (err.name === 'NotReadableError' || errStr.includes('notreadable') || errStr.includes('in use')) {
+                errorMsg = "Kamera sedang digunakan oleh aplikasi lain.";
             } else if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
                 errorMsg = "Browser memblokir kamera pada koneksi non-HTTPS.";
+            } else if (errStr.includes('constraint')) {
+                errorMsg = "Hardware kamera tidak mendukung pengaturan scanner ini.";
             }
 
             this.showJoinError(errorMsg);

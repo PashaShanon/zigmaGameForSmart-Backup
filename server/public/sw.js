@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zigma-cache-v2.1'; // Bust old cache
+const CACHE_NAME = 'zigma-cache-v2.2'; // Bust old cache - fix PWA icon
 const ASSETS_TO_CACHE = [
   '/manifest.json',
   '/logo/Zigma-logo-fix.webp',

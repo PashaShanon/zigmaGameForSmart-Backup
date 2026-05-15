@@ -3,15 +3,31 @@ import { i18n } from '../utils/i18n';
 /**
  * Premium PWA Install Prompt System
  * Handles the beforeinstallprompt event and provides a high-fidelity UI.
+ * 
+ * Rules:
+ * - Only shows on main lobby page (path === '/')
+ * - Only shows after 10 hours since first visit (or 1 day if dismissed)
+ * - Never shows again once the app is installed
  */
 export class InstallPromptUI {
     static readonly STORAGE_KEY = 'zigma_pwa_dismissed_v2';
+    static readonly FIRST_VISIT_KEY = 'zigma_pwa_first_visit';
+    static readonly DISMISS_TIME_KEY = 'zigma_pwa_dismiss_time';
     private static initDone = false;
     private static isVisible = false;
+
+    // Timing constants
+    private static readonly FIRST_VISIT_DELAY_MS = 10 * 60 * 60 * 1000; // 10 hours
+    private static readonly DISMISS_COOLDOWN_MS = 24 * 60 * 60 * 1000;  // 1 day
 
     static init() {
         if (this.initDone) return;
         this.initDone = true;
+
+        // Record first visit timestamp if not already set
+        if (!localStorage.getItem(this.FIRST_VISIT_KEY)) {
+            localStorage.setItem(this.FIRST_VISIT_KEY, Date.now().toString());
+        }
 
         // Listen for the prompt ready event from index.html
         window.addEventListener('zigmaPromptReady', () => {
@@ -43,15 +59,67 @@ export class InstallPromptUI {
         if ((window as any).zigmaDeferredPrompt) {
             this.checkAndShowAuto();
         }
+
+        // --- NEW: ROUTE PROTECTION ---
+        // Hide prompt if user navigates away from lobby
+        const handleRouteProtection = () => {
+            if (!this.isOnMainLobby() && this.isVisible) {
+                console.log('[PWA] 🛡️ Route protection: Hiding prompt (not on lobby)');
+                this.hide();
+            } else if (this.isOnMainLobby() && !this.isVisible && (window as any).zigmaDeferredPrompt) {
+                // If user comes back to lobby, check again
+                this.checkAndShowAuto();
+            }
+        };
+
+        window.addEventListener('zigmaRouteChange', handleRouteProtection);
+        window.addEventListener('popstate', handleRouteProtection);
+    }
+
+    private static isOnMainLobby(): boolean {
+        const path = window.location.pathname;
+        return path === '/' || path === '';
     }
 
     private static checkAndShowAuto() {
+        // Rule 1: Never show if already installed
         const status = localStorage.getItem(this.STORAGE_KEY);
-        if (status === 'dismissed' || status === 'installed') return;
+        if (status === 'installed') {
+            console.log('[PWA] ⏭️ Already installed, skipping prompt.');
+            return;
+        }
+
+        // Rule 2: Only show on main lobby
+        if (!this.isOnMainLobby()) {
+            console.log('[PWA] ⏭️ Not on main lobby, skipping prompt.');
+            return;
+        }
+
+        // Rule 3: Check timing
+        const now = Date.now();
+
+        if (status === 'dismissed') {
+            // If dismissed, check if 1 day has passed since dismiss
+            const dismissTime = parseInt(localStorage.getItem(this.DISMISS_TIME_KEY) || '0', 10);
+            if (now - dismissTime < this.DISMISS_COOLDOWN_MS) {
+                console.log('[PWA] ⏭️ Dismissed recently, waiting for cooldown.');
+                return;
+            }
+            // Cooldown passed, reset status so it can show again
+            localStorage.removeItem(this.STORAGE_KEY);
+            localStorage.removeItem(this.DISMISS_TIME_KEY);
+        } else {
+            // First visit delay: check if 10 hours have passed
+            const firstVisit = parseInt(localStorage.getItem(this.FIRST_VISIT_KEY) || '0', 10);
+            if (now - firstVisit < this.FIRST_VISIT_DELAY_MS) {
+                console.log('[PWA] ⏭️ First visit delay not met yet.');
+                return;
+            }
+        }
 
         // Show automatically after a short delay to not overwhelm the user
         setTimeout(() => {
-            if ((window as any).zigmaDeferredPrompt && !this.isVisible) {
+            if ((window as any).zigmaDeferredPrompt && !this.isVisible && this.isOnMainLobby()) {
                 this.show();
             }
         }, 2000);
@@ -83,8 +151,8 @@ export class InstallPromptUI {
                 <div class="relative z-10 flex flex-col gap-4">
                     <div class="flex items-center gap-4">
                         <!-- Icon Box -->
-                        <div class="w-12 h-12 bg-[#F1F8E9] border-2 border-[#478D47] rounded-xl flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform">
-                            <span class="material-symbols-outlined text-[#478D47] text-2xl" style="font-variation-settings: 'FILL' 1;">install_desktop</span>
+                        <div class="w-12 h-12 bg-[#F1F8E9] border-2 border-[#478D47] rounded-xl flex items-center justify-center shrink-0 group-hover:rotate-6 transition-transform overflow-hidden">
+                            <img src="/logo/Zigma-logo-fix.webp" alt="Zigma" class="w-10 h-10 object-contain" />
                         </div>
                         
                         <div class="flex flex-col gap-0.5">
@@ -186,7 +254,7 @@ export class InstallPromptUI {
         }
         if (dismiss) {
             localStorage.setItem(this.STORAGE_KEY, 'dismissed');
+            localStorage.setItem(this.DISMISS_TIME_KEY, Date.now().toString());
         }
     }
 }
-

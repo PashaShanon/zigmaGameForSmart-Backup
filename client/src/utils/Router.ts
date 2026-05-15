@@ -14,11 +14,13 @@ export class Router {
     /** Navigasi ke path baru (push ke history) */
     static navigate(path: string): void {
         window.history.pushState({}, '', path);
+        window.dispatchEvent(new CustomEvent('zigmaRouteChange', { detail: { path } }));
     }
 
     /** Ganti URL saat ini tanpa menambah history (cocok untuk redirect awal) */
     static replace(path: string): void {
         window.history.replaceState({}, '', path);
+        window.dispatchEvent(new CustomEvent('zigmaRouteChange', { detail: { path: path } }));
     }
 
     /** Ambil path URL saat ini, e.g. "/host/settings/ABC123" */
