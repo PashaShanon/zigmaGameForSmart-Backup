@@ -17,7 +17,7 @@ export const TransitionManager = {
      * Closes the Iris (Black screen) and executes callback.
      * Does NOT open automatically.
      */
-    close(callback: () => void) {
+    close(callback: () => void = () => {}) {
         const overlay = document.getElementById('transition-overlay');
         if (!overlay) {
             callback();

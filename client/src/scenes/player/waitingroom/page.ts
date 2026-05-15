@@ -208,7 +208,7 @@ export class PlayerWaitingRoomManager {
                     this.updateUILayout();
                     
                     // Hide Reconnecting UI
-                    TransitionManager.close();
+                    TransitionManager.close(() => {});
                     return;
                 }
             } catch (e) {

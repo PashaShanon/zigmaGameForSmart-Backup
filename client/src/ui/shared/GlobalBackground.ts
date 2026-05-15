@@ -20,6 +20,14 @@ export class GlobalBackground {
             <!-- Full-Screen Background — palette gradient -->
             <div class="absolute inset-0" style="background: linear-gradient(180deg, #6CC452 0%, #478D47 100%);"></div>
 
+            <!-- Optional: Podium Rays (Kahoot style) for results -->
+            ${(id === 'leaderboard' || id === 'result') ? `
+                <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none flex items-center justify-center">
+                    <div class="absolute w-[200%] h-[200%] opacity-20 animate-[spin_60s_linear_infinite]" 
+                         style="background: repeating-conic-gradient(from 0deg, #ffffff 0deg, #ffffff 15deg, transparent 15deg, transparent 30deg); filter: blur(40px);"></div>
+                </div>
+            ` : ''}
+
             <!-- Pixel-art Background Decorations -->
             <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <!-- Subtle pixel grid pattern -->
