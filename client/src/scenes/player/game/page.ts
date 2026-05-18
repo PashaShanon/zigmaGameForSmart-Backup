@@ -283,15 +283,15 @@ export class GameScene extends Phaser.Scene {
             mapFile = 'map_hard.tmj';
         }
 
-        const cb = `?v=${Date.now()}`;
+        // const cb = `?v=${Date.now()}`;
         console.log(`[GameScene][Preload] Loading Map. Difficulty: ${difficulty}, MapKey: ${mapKey}, MapFile: ${mapFile}`);
-        this.load.tilemapTiledJSON(mapKey, `/assets/maps/${mapFile}${cb}`);
+        this.load.tilemapTiledJSON(mapKey, `/assets/maps/${mapFile}`);
         
         // --- Organized Tileset & Elements Paths ---
-        this.load.image('tiles', `/assets/tileset/spr_tileset_sunnysideworld_16px.png${cb}`);
-        this.load.image('forest_tiles', `/assets/tileset/spr_tileset_sunnysideworld_forest_32px.png${cb}`);
-        this.load.image('coracle_tiles', `/assets/elements/spr_deco_coracle_strip4.png${cb}`);
-        this.load.image('windmill_tiles', `/assets/elements/spr_deco_windmill_withshadow_strip9.png${cb}`);
+        this.load.image('tiles', `/assets/tileset/spr_tileset_sunnysideworld_16px.png`);
+        this.load.image('forest_tiles', `/assets/tileset/spr_tileset_sunnysideworld_forest_32px.png`);
+        this.load.image('coracle_tiles', `/assets/elements/spr_deco_coracle_strip4.png`);
+        this.load.image('windmill_tiles', `/assets/elements/spr_deco_windmill_withshadow_strip9.png`);
         
         // --- Human Character Assets (Organized) ---
         const humanPath = '/assets/characters/Human';

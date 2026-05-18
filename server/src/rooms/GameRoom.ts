@@ -1147,8 +1147,8 @@ export class GameRoom extends Room<GameState> {
         const isManualLeave = (client as any).manualLeave === true;
 
         if (isHostLeave) {
-            if (isManualLeave || consented) {
-                console.log(`[GameRoom] Host left intentionally (consented: ${consented}). Disposing room.`);
+            if (isManualLeave) {
+                console.log(`[GameRoom] Host left intentionally (manualLeave: true). Disposing room.`);
                 if (!this.isEnding) {
                     this.broadcast("hostLeft");
                 }
@@ -1801,6 +1801,29 @@ export class GameRoom extends Room<GameState> {
             } else {
                 console.log("[Supabase Utama] Status 'ACTIVE' Berhasil Diperbarui.");
             }
+
+            // Increment Quiz 'played' count
+            if (this.originalQuizId && this.originalQuizId !== "no_quiz_id") {
+                try {
+                    const { data: quizData, error: quizErr } = await supabaseUtama
+                        .from('quizzes')
+                        .select('played')
+                        .eq('id', this.originalQuizId)
+                        .single();
+                    
+                    if (!quizErr && quizData) {
+                        const newPlayedCount = (quizData.played || 0) + 1;
+                        await supabaseUtama
+                            .from('quizzes')
+                            .update({ played: newPlayedCount })
+                            .eq('id', this.originalQuizId);
+                        console.log(`[Supabase Utama] Quiz ${this.originalQuizId} played count incremented to ${newPlayedCount}`);
+                    }
+                } catch (e) {
+                    console.error("[Supabase Utama] Exception updating quiz played count:", e);
+                }
+            }
+
         } catch (e: any) {
             console.error("[Supabase Utama] Exception on updateSessionToActive:", e.message);
         }

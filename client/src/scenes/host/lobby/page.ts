@@ -408,7 +408,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 // Delay slightly to show "GO!" before switching
                 setTimeout(() => {
                     this.handleGameStart();
-                }, 500);
+                }, 100);
             }
         });
 

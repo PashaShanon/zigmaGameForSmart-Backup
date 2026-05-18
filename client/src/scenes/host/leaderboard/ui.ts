@@ -152,21 +152,24 @@ export class LeaderboardUI {
             let colorHex = '#cd7f32'; // Bronze
             let darkColorHex = '#8B4513'; // Saddle Brown
             let colorGlow = 'rgba(205,127,50,0.5)';
-            let height = 'h-20 md:h-28';
-            let avatarSize = 'w-14 h-14 md:w-20 md:h-20'; 
+            let height = 'h-28 md:h-36';
+            let avatarSize = 'w-12 h-12 md:w-16 md:h-16'; 
+            let rankSizeClass = 'text-5xl md:text-7xl';
 
             if (isFirst) {
                 colorHex = '#ffcc00'; // Gold
                 darkColorHex = '#B8860B'; // Dark Gold
                 colorGlow = 'rgba(255,204,0,0.6)';
-                height = 'h-36 md:h-48';
-                avatarSize = 'w-18 h-18 md:w-28 md:h-28';
+                height = 'h-44 md:h-56';
+                avatarSize = 'w-16 h-16 md:w-24 md:h-24';
+                rankSizeClass = 'text-7xl md:text-9xl';
             } else if (isSecond) {
                 colorHex = '#c0c0c0'; // Silver
                 darkColorHex = '#708090'; // Slate Gray
                 colorGlow = 'rgba(192,192,192,0.5)';
-                height = 'h-28 md:h-36';
-                avatarSize = 'w-16 h-16 md:w-24 md:h-24';
+                height = 'h-36 md:h-44';
+                avatarSize = 'w-14 h-14 md:w-20 md:h-20';
+                rankSizeClass = 'text-5xl md:text-7xl';
             }
 
             return `
@@ -181,11 +184,6 @@ export class LeaderboardUI {
                         ` : `
                             <div class="initial-fallback text-4xl md:text-6xl">${getInitials(p.name)}</div>
                         `}
-                        <!-- Rank Pin -->
-                        <div class="absolute -bottom-1 -right-1 w-6 h-6 md:w-8 md:h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] md:text-xs font-bold shadow-lg z-30"
-                             style="background: ${colorHex}; color: white; font-family: 'Retro Gaming', monospace;">
-                            ${rank}
-                        </div>
                     </div>
 
                     <!-- 2. NICKNAME (BELOW PROFILE) -->
@@ -199,7 +197,7 @@ export class LeaderboardUI {
                     </div>
 
                     <!-- 3. PODIUM BLOCK (BOTTOM) -->
-                    <div class="flex z-20 w-24 md:w-40 ${height} flex-col items-center pt-4 relative transition-all duration-300 group-hover:brightness-110" 
+                    <div class="flex z-20 w-24 md:w-40 ${height} flex-col items-center justify-center pb-4 md:pb-6 relative transition-all duration-300 group-hover:brightness-110" 
                          style="background: linear-gradient(180deg, ${colorHex} 0%, ${darkColorHex} 100%); 
                                 border-radius: 16px 16px 0 0;
                                 box-shadow: 
@@ -208,15 +206,15 @@ export class LeaderboardUI {
                                     0 20px 40px rgba(0,0,0,0.4);">
                         
                         <!-- Rank Number -->
-                        <div class="text-6xl md:text-9xl font-bold relative z-10 select-none pointer-events-none" 
+                        <div class="${rankSizeClass} font-bold relative z-10 select-none pointer-events-none" 
                              style="font-family: 'Retro Gaming', monospace; color: rgba(255,255,255,0.9); text-shadow: 0 4px 10px rgba(0,0,0,0.3); -webkit-font-smoothing: none;">
                             ${rank}
                         </div>
 
                         <!-- Score Badge -->
-                        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
-                             <span class="text-white font-bold text-[10px] md:text-base tracking-tighter" style="font-family: 'Retro Gaming', monospace; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                                ${Math.min(100, Math.round(p.score))} PTS
+                        <div class="absolute bottom-1 md:bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
+                             <span class="text-white font-bold text-[10px] md:text-sm tracking-tighter" style="font-family: 'Retro Gaming', monospace; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                                ${Math.min(100, Math.round(p.score))}
                             </span>
                         </div>
                     </div>
@@ -227,7 +225,7 @@ export class LeaderboardUI {
         const tableHtml = others.map((p) => {
             const hairKey = p.hairId ? ['bowlhair', 'curlyhair', 'longhair', 'mophair', 'shorthair', 'spikeyhair'][p.hairId - 1] : null;
             return `
-            <div class="grid grid-cols-[40px_1fr_60px_60px] md:grid-cols-[100px_1fr_150px_150px] p-4 text-gray-800 items-center border-b border-gray-200 hover:bg-gray-100 transition-colors group font-['Retro_Gaming']" style="-webkit-font-smoothing: none;">
+            <div class="grid grid-cols-[40px_1fr_60px_60px] md:grid-cols-[100px_1fr_150px_150px] py-2 px-4 md:py-3 md:px-5 text-gray-800 items-center border-b border-gray-200 hover:bg-gray-100 transition-colors group font-['Retro_Gaming']" style="-webkit-font-smoothing: none;">
                 <div class="text-center font-bold text-gray-600 group-hover:text-[#336B23] transition-colors text-sm md:text-lg">${p.rank}</div>
                 <div class="flex items-center gap-2 md:gap-3">
                     <div class="hidden md:flex w-10 h-10 rounded-full bg-[#336B23] border-2 border-white items-center justify-center font-bold text-sm group-hover:border-[#336B23] transition-colors overflow-hidden relative podium-avatar">
@@ -258,21 +256,21 @@ export class LeaderboardUI {
                 <img src="/logo/gameforsmart-logo-fix.webp" alt="GameForSmart Logo" class="logo-right" />
 
                 <!-- MAIN CONTENT AREA: overflow-hidden for mobile to prevent scrollbars, auto for desktop -->
-                <div class="relative z-10 w-full h-[100dvh] flex flex-col items-center pt-8 md:pt-16 pb-20 md:pb-12 px-4 overflow-hidden md:overflow-y-auto hide-scrollbar pointer-events-none">
+                <div class="relative z-10 w-full h-[100dvh] flex flex-col items-center pt-8 md:pt-4 pb-20 md:pb-6 px-4 overflow-hidden md:overflow-y-auto hide-scrollbar pointer-events-none">
                     
 
 
                     <!-- Podiums (Keep wrapper flex but adjust bottom margin for mobile) -->
-                    <div class="flex items-end justify-center gap-1 md:gap-8 mb-4 md:mb-12 shrink-0 scale-[0.85] md:scale-100 origin-bottom">
+                    <div class="flex items-end justify-center gap-1 md:gap-3 mb-4 md:mb-4 shrink-0 scale-[0.85] md:scale-[0.8] origin-bottom">
                         ${podiumsHtml}
                     </div>
 
                     <!-- Leaderboard Table Card -->
                     ${others.length > 0 ? `
-                    <div class="w-full max-w-4xl bg-white border-[3px] border-[#336B23] rounded-3xl shadow-[0_0_30px_rgba(51,107,35,0.2)] overflow-hidden shrink-0 md:mb-20 flex flex-col flex-1 md:flex-none min-h-0 pointer-events-auto">
+                    <div class="w-full max-w-4xl bg-white border-[3px] border-[#336B23] rounded-3xl shadow-[0_0_30px_rgba(51,107,35,0.2)] overflow-hidden shrink-0 md:mb-6 flex flex-col flex-1 md:flex-none min-h-0 pointer-events-auto">
                         <!-- Header -->
                         <div class="bg-[#F1F8E9] border-b-[3px] border-[#336B23] relative shrink-0">
-                            <div class="grid grid-cols-[40px_1fr_60px_60px] md:grid-cols-[100px_1fr_150px_150px] p-4 md:p-5 font-bold text-[#6CC452] uppercase tracking-widest text-sm md:text-lg font-['Retro_Gaming']" style="text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;">
+                            <div class="grid grid-cols-[40px_1fr_60px_60px] md:grid-cols-[100px_1fr_150px_150px] py-3 px-4 md:py-4 md:px-5 font-bold text-[#6CC452] uppercase tracking-widest text-sm md:text-lg font-['Retro_Gaming']" style="text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;">
                                 <div id="hdr-lb-rank" class="text-center">${i18n.t('host_leaderboard.rank')}</div>
                                 <div id="hdr-lb-player">${i18n.t('host_leaderboard.player')}</div>
                                 <div id="hdr-lb-score" class="text-center">${i18n.t('host_leaderboard.score')}</div>

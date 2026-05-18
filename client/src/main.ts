@@ -41,14 +41,21 @@ async function bootstrap() {
         return;
     }
 
+    const authOverlay = document.getElementById('auth-loading-overlay');
+    if (authOverlay) {
+        authOverlay.classList.remove('hidden');
+    }
+
     const isAuth = await authService.isAuthenticated();
 
     if (!isAuth) {
         const loginManager = new LoginManager();
-        loginManager.init();
+        await loginManager.init();
+        if (authOverlay) authOverlay.classList.add('hidden');
     } else {
         const lobbyManager = new LobbyManager();
-        lobbyManager.init();
+        await lobbyManager.init();
+        if (authOverlay) authOverlay.classList.add('hidden');
     }
 }
 

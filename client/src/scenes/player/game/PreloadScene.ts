@@ -23,18 +23,18 @@ export class PreloadScene extends Phaser.Scene {
             mapFile = 'map_hard.tmj';
         }
 
-        const cb = `?v=${Date.now()}`;
+        // const cb = `?v=${Date.now()}`;
         console.log(`[PreloadScene] Background preloading assets for difficulty: ${difficulty}`);
         
         // Map
         const mapKey = difficulty === 'mudah' ? 'map_easy' : (difficulty === 'sedang' ? 'map_medium' : 'map_hard');
-        this.load.tilemapTiledJSON(mapKey, `/assets/maps/${mapFile}${cb}`);
+        this.load.tilemapTiledJSON(mapKey, `/assets/maps/${mapFile}`);
         
         // Tilesets
-        this.load.image('tiles', `/assets/tileset/spr_tileset_sunnysideworld_16px.png${cb}`);
-        this.load.image('forest_tiles', `/assets/tileset/spr_tileset_sunnysideworld_forest_32px.png${cb}`);
-        this.load.image('coracle_tiles', `/assets/elements/spr_deco_coracle_strip4.png${cb}`);
-        this.load.image('windmill_tiles', `/assets/elements/spr_deco_windmill_withshadow_strip9.png${cb}`);
+        this.load.image('tiles', `/assets/tileset/spr_tileset_sunnysideworld_16px.png`);
+        this.load.image('forest_tiles', `/assets/tileset/spr_tileset_sunnysideworld_forest_32px.png`);
+        this.load.image('coracle_tiles', `/assets/elements/spr_deco_coracle_strip4.png`);
+        this.load.image('windmill_tiles', `/assets/elements/spr_deco_windmill_withshadow_strip9.png`);
         
         // Characters
         const humanPath = '/assets/characters/Human';

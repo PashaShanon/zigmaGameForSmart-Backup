@@ -195,15 +195,15 @@ export class HostProgressScene extends Phaser.Scene {
             mapFile = 'map_hard.tmj';
         }
 
-        const cb = `?v=${Date.now()}`;
+        // const cb = `?v=${Date.now()}`;
         console.log(`[HostProgressScene][Preload] Loading Map. Difficulty: ${difficulty}, MapKey: ${mapKey}, MapFile: ${mapFile}`);
-        this.load.tilemapTiledJSON(mapKey, `/assets/maps/${mapFile}${cb}`);
+        this.load.tilemapTiledJSON(mapKey, `/assets/maps/${mapFile}`);
         
         // --- Organized Tileset & Elements Paths ---
-        this.load.image('tiles', `/assets/tileset/spr_tileset_sunnysideworld_16px.png${cb}`);
-        this.load.image('forest_tiles', `/assets/tileset/spr_tileset_sunnysideworld_forest_32px.png${cb}`);
-        this.load.image('coracle_tiles', `/assets/elements/spr_deco_coracle_strip4.png${cb}`);
-        this.load.image('windmill_tiles', `/assets/elements/spr_deco_windmill_withshadow_strip9.png${cb}`);
+        this.load.image('tiles', `/assets/tileset/spr_tileset_sunnysideworld_16px.png`);
+        this.load.image('forest_tiles', `/assets/tileset/spr_tileset_sunnysideworld_forest_32px.png`);
+        this.load.image('coracle_tiles', `/assets/elements/spr_deco_coracle_strip4.png`);
+        this.load.image('windmill_tiles', `/assets/elements/spr_deco_windmill_withshadow_strip9.png`);
         
         // --- Human Character Assets (Organized) ---
         const humanPath = '/assets/characters/Human';
@@ -589,7 +589,7 @@ export class HostProgressScene extends Phaser.Scene {
                 ">${this.room.state.isGameStarted ? '--:--' : String(this.room.state.totalTimeMinutes || 5).padStart(2, '0') + ':00'}</span>
             </div>
 
-            <button id="spec-volume-btn" class="absolute bottom-4 left-4 bg-black/60 border-2 border-[#00ff88]/30 text-[#00ff88] w-12 h-12 md:w-14 md:h-14 rounded-full cursor-pointer flex items-center justify-center pointer-events-auto backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg">
+            <button id="spec-volume-btn" class="absolute bottom-4 left-4 bg-white border-2 border-[#6CC452] text-[#478D47] w-12 h-12 md:w-14 md:h-14 rounded-full cursor-pointer flex items-center justify-center pointer-events-auto transition-transform duration-200 hover:scale-110 active:scale-95 hover:bg-[#F1F8E9] shadow-lg">
                 <span id="volume-icon" class="material-symbols-outlined text-[24px] md:text-[32px]">volume_up</span>
             </button>
 

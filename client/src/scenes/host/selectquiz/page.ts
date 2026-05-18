@@ -706,7 +706,15 @@ export class SelectQuizManager {
         const catKey = 'categories.' + quiz.category.toLowerCase();
         const translatedCat = i18n.t(catKey) === catKey ? quiz.category : i18n.t(catKey);
         document.getElementById('quiz-detail-category')!.innerText = translatedCat;
-        document.getElementById('quiz-detail-language')!.innerText = (quiz as any).language?.toUpperCase() || 'ID';
+        const mapLanguage = (langCode: string) => {
+            const code = (langCode || 'id').toLowerCase();
+            if (code === 'id') return 'INDONESIA';
+            if (code === 'en') return 'ENGLISH';
+            if (code === 'ar' || code === 'arab') return 'ARAB';
+            return code.toUpperCase();
+        };
+        
+        document.getElementById('quiz-detail-language')!.innerText = mapLanguage((quiz as any).language);
 
         // Animate in
         requestAnimationFrame(() => {
@@ -754,7 +762,7 @@ export class SelectQuizManager {
             const catKey = 'categories.' + fullQuiz.category.toLowerCase();
             const translatedCat = i18n.t(catKey) === catKey ? fullQuiz.category : i18n.t(catKey);
             document.getElementById('quiz-detail-category')!.innerText = translatedCat;
-            document.getElementById('quiz-detail-language')!.innerText = fullQuiz.language?.toUpperCase() || 'ID';
+            document.getElementById('quiz-detail-language')!.innerText = mapLanguage(fullQuiz.language);
             
             document.getElementById('quiz-detail-questions')!.innerText = String(fullQuiz.questionCount || 0);
             document.getElementById('quiz-detail-played')!.innerText = fullQuiz.played + 'x';
