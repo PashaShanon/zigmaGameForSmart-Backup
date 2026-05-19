@@ -39,6 +39,20 @@ const HAIR_SLUGS: { [key: number]: string } = {
 
 
 const LOBBY_MAX_PLAYERS = 51; // 50 players + 1 host
+const GAME_APPLICATION = "zigma";
+
+let supabaseUtamaDisabledLogged = false;
+
+function logSupabaseUtamaDisabledOnce(): boolean {
+    if (!supabaseUtama) {
+        if (!supabaseUtamaDisabledLogged) {
+            console.error("[Supabase Utama] Client is not configured — set SUPABASE_UTAMA_URL and SUPABASE_UTAMA_KEY (service role) in server .env. Session sync disabled.");
+            supabaseUtamaDisabledLogged = true;
+        }
+        return true;
+    }
+    return false;
+}
 
 export class GameRoom extends Room<GameState> {
     // Track which spawn points have been used
@@ -1451,7 +1465,9 @@ export class GameRoom extends Room<GameState> {
         this.broadcast("gameEnded", { rankings });
 
         // --- SAVE TO SUPABASE UTAMA ---
-        this.saveSessionToMainSupabase(rankings);
+        this.saveSessionToMainSupabase(rankings).catch(e =>
+            console.error("[Supabase Utama] endGame save failed:", e)
+        );
 
         // --- UPDATE STATUS IN SUPABASE B ---
         this.updateSessionToFinishedInSupabaseB();
@@ -1467,6 +1483,18 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async saveSessionToMainSupabase(rankings: any[]) {
+        if (logSupabaseUtamaDisabledOnce()) return;
+        if (!this.sessionId) {
+            console.error("[Supabase Utama] Cannot save finished session: missing sessionId.");
+            return;
+        }
+        if (this.originalQuizId === "no_quiz_id") {
+            console.warn("[Supabase Utama] Skipping final sync: invalid quiz_id.");
+            return;
+        }
+        if (this.originalHostId === "no_host_id") {
+            console.warn("[Supabase Utama] Final sync attempted without valid host_id — upsert may fail FK constraint.");
+        }
         try {
             console.log("[Supabase Utama] Starting data transfer for session: ", this.sessionId);
 
@@ -1547,7 +1575,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: this.countdownStartedAt,
                 started_at: new Date(this.state.gameStartTime).toISOString(),
                 ended_at: new Date().toISOString(),
-                application: "zigma", // Reverted back to zigma as per user request
+                application: GAME_APPLICATION,
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };
@@ -1569,11 +1597,20 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async saveInitialSessionToMainSupabase() {
+        if (logSupabaseUtamaDisabledOnce()) return;
+        if (!this.sessionId) {
+            console.error("[Supabase Utama] Cannot record initial session: missing sessionId.");
+            return;
+        }
         try {
             console.log("[Supabase Utama] Recording Initial Session (MASUK DATA):", this.sessionId);
 
-            if (this.originalHostId === "no_host_id" || this.originalQuizId === "no_quiz_id") {
-                console.warn("[Supabase Utama] Skipping initial sync: Invalid host_id or quiz_id provided in options.");
+            if (this.originalQuizId === "no_quiz_id") {
+                console.warn("[Supabase Utama] Skipping initial sync: invalid quiz_id in room options.");
+                return;
+            }
+            if (this.originalHostId === "no_host_id") {
+                console.warn("[Supabase Utama] Skipping initial sync: host not logged in (host_id missing). Client must require host login before create.");
                 return;
             }
 
@@ -1640,11 +1677,10 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: null,
                 started_at: null,
                 ended_at: null,
-                application: "Zigma",
+                application: GAME_APPLICATION,
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };
-
 
             const { error } = await supabaseUtama
                 .from('game_sessions')

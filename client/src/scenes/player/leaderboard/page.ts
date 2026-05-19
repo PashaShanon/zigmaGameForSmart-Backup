@@ -1,6 +1,7 @@
 import { TransitionManager } from "../../../utils/TransitionManager";
 import { Router } from "../../../utils/Router";
 import { OrientationManager } from "../../../utils/OrientationManager";
+import { i18n } from "../../../utils/i18n";
 
 interface RankingEntry {
   rank: number;
@@ -333,16 +334,17 @@ export class PlayerLeaderboardManager {
     const setupStats = (btn: HTMLElement | null) => {
       if (btn)
         btn.onclick = () => {
-          let sid = localStorage.getItem("supabaseSessionId");
-          if (!sid && this.rankings.length > 0)
-            sid = (this.rankings[0] as any).sessionId;
+          let sid =
+            localStorage.getItem("supabaseSessionId") ||
+            this.room?.metadata?.sessionId ||
+            "";
           if (sid && sid !== "undefined" && sid !== "null") {
             window.open(
-              `https://gameforsmartnewui.vercel.app/stat/${sid}`,
+              `https://app.gameforsmart.com/stat/${sid}`,
               "_blank",
             );
           } else {
-            alert("ID Sesi tidak ditemukan. Tidak dapat membuka statistik.");
+            alert(i18n.t("player_result.no_session"));
           }
         };
     };

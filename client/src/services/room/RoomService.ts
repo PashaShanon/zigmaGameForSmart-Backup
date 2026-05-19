@@ -1,7 +1,7 @@
 import { Client } from 'colyseus.js';
-import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../lib/supabaseB';
 import { authService } from '../auth/AuthService';
 import { Quiz } from '../../data/QuizData';
+import { i18n } from '../../utils/i18n';
 
 export interface RoomCreationOptions {
     difficulty: string;
@@ -24,7 +24,10 @@ export class RoomService {
 
         const roomCode = this.generateRoomCode();
         const profile = authService.getStoredProfile();
-        const hostId = profile ? profile.id : null;
+        const hostId = profile?.id ?? null;
+        if (!hostId) {
+            throw new Error(i18n.t('quiz_setting.host_login_required'));
+        }
 
         // Shuffle and Pick Questions based on settings
         let questions = [...(quiz.questions || [])];

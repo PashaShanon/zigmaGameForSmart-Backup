@@ -148,7 +148,8 @@
     "diff_hard": "Sulit",
     "going_back": "Kembali...",
     "create_failed": "Gagal membuat sesi permainan. Silakan coba lagi.",
-    "create_error": "Gagal membuat ruangan. Periksa koneksi Anda."
+    "create_error": "Gagal membuat ruangan. Periksa koneksi Anda.",
+    "host_login_required": "Silakan login sebagai host sebelum membuat ruangan."
   },
   "host_lobby": {
     "selected_character": "Karakter Terpilih",

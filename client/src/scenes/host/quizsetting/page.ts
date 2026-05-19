@@ -348,14 +348,26 @@ export class QuizSettingManager {
     async createRoom(btn?: HTMLButtonElement) {
         if (!this.selectedQuiz) return;
 
+        const profile = authService.getStoredProfile();
+        const hostId = profile?.id ?? null;
+        if (!hostId) {
+            alert(i18n.t('quiz_setting.host_login_required'));
+            if (btn) {
+                btn.innerHTML = i18n.t('quiz_setting.create');
+                btn.disabled = false;
+                btn.classList.remove('opacity-80', 'cursor-not-allowed');
+                btn.classList.add('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
+            }
+            TransitionManager.open();
+            return;
+        }
+
         let mapFile = 'map_newest_easy_nomor1.tmj';
         if (this.settingsDifficulty === 'sedang') mapFile = 'map_medium.tmj';
         if (this.settingsDifficulty === 'sulit') mapFile = 'map_hard.tmj';
 
         const enemyCount = this.settingsQuestionCount === 5 ? 10 : 20;
         const roomCode = this.generateRoomCode();
-        const profile = authService.getStoredProfile();
-        const hostId = profile ? profile.id : null;
 
         let questions = [...(this.selectedQuiz.questions || [])];
         questions.sort(() => Math.random() - 0.5);
