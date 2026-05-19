@@ -1,6 +1,6 @@
 import { Room, Client } from "colyseus";
 import { GameState, Player, Enemy, Chest, SubRoom, Question } from "./GameState";
-import { supabaseUtama, supabaseB } from "../utils/supabase";
+import { supabaseUtama, supabaseB, isMainSupabaseConfigured } from "../utils/supabase";
 import { QUESTIONS } from "../dummyQuestions";
 import { MapParser } from "../utils/MapParser";
 
@@ -159,7 +159,7 @@ export class GameRoom extends Room<GameState> {
 
         // Store Basic Match Variables inside instance
         this.originalQuizId = options.quizId || "no_quiz_id";
-        this.originalHostId = options.hostId || "no_host_id";
+        this.originalHostId = options.hostId ? String(options.hostId) : "no_host_id";
         this.originalDifficulty = options.difficulty || "easy";
         this.gamePin = this.state.roomCode;
         this.sessionId = options.sessionId || "";
@@ -1467,6 +1467,15 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async saveSessionToMainSupabase(rankings: any[]) {
+        if (!isMainSupabaseConfigured || !supabaseUtama) {
+            console.error("[Supabase Utama] SKIP final save: SUPABASE_UTAMA_URL / SUPABASE_UTAMA_KEY not set on server.");
+            this.broadcast("statsSyncFailed", { reason: "main_supabase_not_configured" });
+            return;
+        }
+        if (!this.sessionId) {
+            console.error("[Supabase Utama] SKIP final save: missing sessionId in room options.");
+            return;
+        }
         try {
             console.log("[Supabase Utama] Starting data transfer for session: ", this.sessionId);
 
@@ -1536,7 +1545,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: this.countdownStartedAt,
                 started_at: new Date(this.state.gameStartTime).toISOString(),
                 ended_at: new Date().toISOString(),
-                application: "zigma", // Reverted back to zigma as per user request
+                application: "zigma",
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };
@@ -1558,11 +1567,19 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async saveInitialSessionToMainSupabase() {
+        if (!isMainSupabaseConfigured || !supabaseUtama) {
+            console.error("[Supabase Utama] SKIP initial save: SUPABASE_UTAMA_URL / SUPABASE_UTAMA_KEY not set on server.");
+            return;
+        }
+        if (!this.sessionId) {
+            console.error("[Supabase Utama] SKIP initial save: options.sessionId missing.");
+            return;
+        }
         try {
             console.log("[Supabase Utama] Recording Initial Session (MASUK DATA):", this.sessionId);
 
-            if (this.originalHostId === "no_host_id" || this.originalQuizId === "no_quiz_id") {
-                console.warn("[Supabase Utama] Skipping initial sync: Invalid host_id or quiz_id provided in options.");
+            if (this.originalHostId === "no_host_id" || !this.originalHostId || this.originalQuizId === "no_quiz_id") {
+                console.warn("[Supabase Utama] Skipping initial sync: host must be logged in (profile.id) with a valid quiz.");
                 return;
             }
 
@@ -1784,6 +1801,7 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async updateSessionToActive() {
+        if (!isMainSupabaseConfigured || !supabaseUtama || !this.sessionId) return;
         try {
             console.log("[Supabase Utama] Updating Session Status to ACTIVE:", this.sessionId);
 
@@ -1807,7 +1825,7 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async updateCountdownStartedAt() {
-        if (!this.sessionId || !this.countdownStartedAt) return;
+        if (!isMainSupabaseConfigured || !supabaseUtama || !this.sessionId || !this.countdownStartedAt) return;
         try {
             const { error } = await supabaseUtama
                 .from('game_sessions')

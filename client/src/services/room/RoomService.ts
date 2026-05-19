@@ -25,7 +25,10 @@ export class RoomService {
 
         const roomCode = this.generateRoomCode();
         const profile = authService.getStoredProfile();
-        const hostId = profile ? profile.id : null;
+        if (!profile?.id) {
+            throw new Error('HOST_LOGIN_REQUIRED');
+        }
+        const hostId = profile.id;
 
         // Shuffle and Pick Questions based on settings
         let questions = [...(quiz.questions || [])];

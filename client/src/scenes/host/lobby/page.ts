@@ -1548,18 +1548,18 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 }
             }
 
-            // Mutual friends are users present in BOTH sets
-            const mutualFriendIds = Array.from(followingSet).filter(id => followerSet.has(id));
+            // Friends are users present in EITHER set (since a single accepted record makes them friends)
+            const friendIds = Array.from(new Set([...followingSet, ...followerSet]));
             
-            console.log("[Lobby] Mutual friend IDs:", mutualFriendIds.length);
+            console.log("[Lobby] Total friend IDs:", friendIds.length);
 
-            if (mutualFriendIds.length === 0) {
+            if (friendIds.length === 0) {
                 this.allFetchedFriends = [];
             } else {
                 const { data: profilesData, error: profilesError } = await supabase
                     .from('profiles')
                     .select('id, username, fullname, nickname')
-                    .in('id', mutualFriendIds);
+                    .in('id', friendIds);
 
                 if (profilesError) {
                     console.error("Error fetching friend profiles:", profilesError);
@@ -2261,7 +2261,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             if (this.isHost && !isMe) {
                 kickButtonHTML = `
                                                     <button class="kick-btn absolute -top-1.5 -right-1.5 w-6 h-6 bg-red-500 border-2 border-red-700 rounded-full text-white flex items-center justify-center cursor-pointer z-10 shadow-md transition-all duration-300 opacity-100 pointer-events-auto md:opacity-0 md:pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:!scale-110"
-                onclick="window.confirmKick('${player.sessionId}', '${player.name.replace(/'/g, "\\'")}')"
+                onclick="window.confirmKick('${player.sessionId}', '${(player.name || 'PLAYER').replace(/'/g, "\\'")}')"
                     >
                     <span class="material-symbols-outlined" style="font-size: 16px; font-weight: bold;">close</span>
                         </button>

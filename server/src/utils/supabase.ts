@@ -13,6 +13,7 @@ if (!mainConfigured) {
     console.log("[Supabase Utama] Configured — game_sessions sync enabled.");
 }
 
+export const isMainSupabaseConfigured = mainConfigured;
 export const supabaseUtama = mainConfigured ? createClient(mainUrl, mainKey) : null as any;
 
 // Create connection to Supabase B (Sessions & Participants)
