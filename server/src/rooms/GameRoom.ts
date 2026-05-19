@@ -1506,11 +1506,22 @@ export class GameRoom extends Room<GameState> {
                     id: q.id.toString(),
                     type: q.answerType || "text",
                     image: q.imageUrl || null,
-                    answers: q.options.map((opt, idx) => ({
-                        id: idx.toString(),
-                        image: q.answerType === 'image' ? opt : null,
-                        answer: q.answerType === 'image' ? null : opt
-                    })),
+                    answers: q.options.map((opt: any, idx: number) => {
+                        let textPart = q.answerType === 'image' ? null : opt;
+                        let imagePart = q.answerType === 'image' ? opt : null;
+                        
+                        if (typeof opt === 'string' && opt.includes('|image|')) {
+                            const parts = opt.split('|image|');
+                            textPart = parts[0].trim();
+                            imagePart = parts[1].trim();
+                        }
+
+                        return {
+                            id: idx.toString(),
+                            image: imagePart || null,
+                            answer: textPart || null
+                        };
+                    }),
                     correct: q.correctAnswer.toString(),
                     question: q.text
                 }
@@ -1588,11 +1599,22 @@ export class GameRoom extends Room<GameState> {
                     id: q.id.toString(),
                     type: q.answerType || "text",
                     image: q.imageUrl || null,
-                    answers: q.options.map((opt: any, idx: number) => ({
-                        id: idx.toString(),
-                        image: q.answerType === 'image' ? opt : null,
-                        answer: q.answerType === 'image' ? null : opt
-                    })),
+                    answers: q.options.map((opt: any, idx: number) => {
+                        let textPart = q.answerType === 'image' ? null : opt;
+                        let imagePart = q.answerType === 'image' ? opt : null;
+                        
+                        if (typeof opt === 'string' && opt.includes('|image|')) {
+                            const parts = opt.split('|image|');
+                            textPart = parts[0].trim();
+                            imagePart = parts[1].trim();
+                        }
+
+                        return {
+                            id: idx.toString(),
+                            image: imagePart || null,
+                            answer: textPart || null
+                        };
+                    }),
                     correct: q.correctAnswer.toString(),
                     question: q.text
                 }

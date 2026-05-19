@@ -361,7 +361,10 @@ export class QuizSettingManager {
         questions.sort(() => Math.random() - 0.5);
         questions = questions.slice(0, this.settingsQuestionCount);
 
-        const sessionId = crypto.randomUUID();
+        // Generate a short alphanumeric session ID (20 chars, lowercase) 
+        // matching the gameforsmart.com /stat/ URL format (e.g. d85c0w394qbvhkpf1q5g)
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const sessionId = Array.from({ length: 20 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 
         try {
             // We no longer insert to Supabase B from the client. 
