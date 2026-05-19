@@ -78,6 +78,7 @@ export class GameState extends Schema {
     @type("string") roomCode!: string;
     @type("string") hostId!: string; // Track who is the host
     @type("number") countdown: number = 0; // Countdown timer (0 = not running)
+    @type("number") countdownEndTime: number = 0; // Epoch timestamp when countdown finishes
     @type("number") totalTimeMinutes: number = 5;
     @type("string") questionLimit: string = "all";
 }

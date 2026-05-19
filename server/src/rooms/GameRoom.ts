@@ -245,6 +245,7 @@ export class GameRoom extends Room<GameState> {
                 
                 // Start Countdown
                 this.state.countdown = 10;
+                this.state.countdownEndTime = Date.now() + 10000;
                 this.countdownStartedAt = new Date().toISOString();
                 console.log(`[GameRoom] Starting countdown for room ${this.roomId}. Host: ${client.sessionId}`);
 
@@ -269,6 +270,7 @@ export class GameRoom extends Room<GameState> {
                     if (this.state.countdown <= 0) {
                         countdownInterval.clear();
                         this.state.countdown = 0;
+                        this.state.countdownEndTime = 0;
 
                         console.log("[GameRoom] Countdown finished, activating game state.");
 

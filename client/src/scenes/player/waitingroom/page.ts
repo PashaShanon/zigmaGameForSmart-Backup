@@ -14,6 +14,7 @@ export class PlayerWaitingRoomManager {
     isGameStarting: boolean = false;
     isManuallyLeaving: boolean = false;
     isPageUnloading: () => boolean = () => false;
+    countdownInterval: any = null;
 
     // UI Elements
     waitingUI: HTMLElement | null = null;
@@ -329,24 +330,45 @@ export class PlayerWaitingRoomManager {
                 }
             });
 
-            this.room.state.listen("countdown", (val: number, previousVal: number) => {
-                if (val > 0) {
-                    // --- GLOBAL UNIFIED COUNTDOWN ---
-                    TransitionManager.ensureClosed();
-                    TransitionManager.setCountdownText(val.toString());
+            this.room.state.listen("countdownEndTime", (endTime: number) => {
+                if (endTime > 0) {
+                    if (this.countdownInterval) clearInterval(this.countdownInterval);
 
                     // Stop lobby music as soon as countdown starts
                     AudioManager.getInstance().stopBGM();
                     
                     // Play countdown sequence sound
                     AudioManager.getInstance().playCountdownSFX();
-                } else if (val === 0 && (previousVal || 0) > 0) {
-                    TransitionManager.setCountdownText("GO!");
-                    
-                    // Delay slightly to show "GO!" before switching
-                    setTimeout(() => {
-                        this.handleGameStart();
-                    }, 100);
+
+                    const updateCountdown = () => {
+                        const now = Date.now();
+                        const remainingMs = endTime - now;
+                        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+                        if (remainingSeconds > 0) {
+                            TransitionManager.ensureClosed();
+                            TransitionManager.setCountdownText(remainingSeconds.toString());
+                        } else {
+                            if (this.countdownInterval) {
+                                clearInterval(this.countdownInterval);
+                                this.countdownInterval = null;
+                            }
+                            TransitionManager.setCountdownText("GO!");
+                            
+                            // Delay slightly to show "GO!" before switching
+                            setTimeout(() => {
+                                this.handleGameStart();
+                            }, 100);
+                        }
+                    };
+
+                    updateCountdown();
+                    this.countdownInterval = setInterval(updateCountdown, 250);
+                } else {
+                    if (this.countdownInterval) {
+                        clearInterval(this.countdownInterval);
+                        this.countdownInterval = null;
+                    }
                 }
             });
 
@@ -363,6 +385,11 @@ export class PlayerWaitingRoomManager {
     handleGameStart() {
         if (this.isGameStarting) return;
         this.isGameStarting = true;
+
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
 
         // TransitionManager handles countdown cleanup
 
@@ -1135,6 +1162,11 @@ export class PlayerWaitingRoomManager {
         if (this.waitingSpawnerInterval) {
             clearInterval(this.waitingSpawnerInterval);
             this.waitingSpawnerInterval = null;
+        }
+
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
         }
 
         OrientationManager.disable();

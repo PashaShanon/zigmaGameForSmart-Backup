@@ -20,6 +20,7 @@ export class HostProgressScene extends Phaser.Scene {
     isTransitioning: boolean = false;
     private resizeListener: (() => void) | null = null;
     private isEnding: boolean = false;
+    private hostCountdownInterval: any = null;
 
     constructor() {
         super('HostProgressScene');
@@ -74,12 +75,34 @@ export class HostProgressScene extends Phaser.Scene {
 
             // --- UNIFIED GLOBAL COUNTDOWN SYNC ---
             // If the scene starts during countdown (early loading), keep the overlay updated
-            this.room.state.listen("countdown", (val: number, previousVal: number) => {
-                if (val > 0 && !this.registry.get('isRestore')) {
-                    TransitionManager.ensureClosed(); // Stay black during load only for new games
-                    TransitionManager.setCountdownText(val.toString());
-                } else if (val === 0 && (previousVal || 0) > 0) {
-                    TransitionManager.setCountdownText("GO!");
+            this.room.state.listen("countdownEndTime", (endTime: number) => {
+                if (endTime > 0 && !this.registry.get('isRestore')) {
+                    if (this.hostCountdownInterval) clearInterval(this.hostCountdownInterval);
+
+                    const updateCountdown = () => {
+                        const now = Date.now();
+                        const remainingMs = endTime - now;
+                        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+                        if (remainingSeconds > 0) {
+                            TransitionManager.ensureClosed(); // Stay black during load only for new games
+                            TransitionManager.setCountdownText(remainingSeconds.toString());
+                        } else {
+                            if (this.hostCountdownInterval) {
+                                clearInterval(this.hostCountdownInterval);
+                                this.hostCountdownInterval = null;
+                            }
+                            TransitionManager.setCountdownText("GO!");
+                        }
+                    };
+
+                    updateCountdown();
+                    this.hostCountdownInterval = setInterval(updateCountdown, 250);
+                } else {
+                    if (this.hostCountdownInterval) {
+                        clearInterval(this.hostCountdownInterval);
+                        this.hostCountdownInterval = null;
+                    }
                 }
             });
 
@@ -615,6 +638,10 @@ export class HostProgressScene extends Phaser.Scene {
 
         this.events.once('shutdown', () => {
             if (this.resizeListener) this.scale.off('resize', this.resizeListener);
+            if (this.hostCountdownInterval) {
+                clearInterval(this.hostCountdownInterval);
+                this.hostCountdownInterval = null;
+            }
             this.disposers.forEach(d => d());
             this.disposers = [];
             if (this.uiContainer && this.uiContainer.parentNode) document.body.removeChild(this.uiContainer);

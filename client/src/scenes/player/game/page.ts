@@ -38,6 +38,7 @@ export class GameScene extends Phaser.Scene {
     private networkSendRate: number = 100; // ms (10 times a second)
     private wasMovingKeyboard: boolean = false;
     private isEnding: boolean = false;
+    private gameCountdownInterval: any = null;
 
     constructor() {
         super('GameScene');
@@ -219,9 +220,13 @@ export class GameScene extends Phaser.Scene {
             TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 0);
         }
 
-        if (this.room.state.countdown > 0) {
-            TransitionManager.ensureClosed();
-            TransitionManager.setCountdownText(this.room.state.countdown.toString());
+        if (this.room.state.countdownEndTime > 0) {
+            const remainingMs = this.room.state.countdownEndTime - Date.now();
+            const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+            if (remainingSeconds > 0) {
+                TransitionManager.ensureClosed();
+                TransitionManager.setCountdownText(remainingSeconds.toString());
+            }
         }
 
         // Listen for Preparing state
@@ -232,12 +237,34 @@ export class GameScene extends Phaser.Scene {
         });
 
         // Listen for Countdown updates during preload
-        this.room.state.listen("countdown", (val: number, previousVal: number) => {
-            if (val > 0) {
-                TransitionManager.ensureClosed();
-                TransitionManager.setCountdownText(val.toString());
-            } else if (val === 0 && (previousVal || 0) > 0) {
-                TransitionManager.setCountdownText("GO!");
+        this.room.state.listen("countdownEndTime", (endTime: number) => {
+            if (endTime > 0) {
+                if (this.gameCountdownInterval) clearInterval(this.gameCountdownInterval);
+
+                const updateCountdown = () => {
+                    const now = Date.now();
+                    const remainingMs = endTime - now;
+                    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+                    if (remainingSeconds > 0) {
+                        TransitionManager.ensureClosed();
+                        TransitionManager.setCountdownText(remainingSeconds.toString());
+                    } else {
+                        if (this.gameCountdownInterval) {
+                            clearInterval(this.gameCountdownInterval);
+                            this.gameCountdownInterval = null;
+                        }
+                        TransitionManager.setCountdownText("GO!");
+                    }
+                };
+
+                updateCountdown();
+                this.gameCountdownInterval = setInterval(updateCountdown, 250);
+            } else {
+                if (this.gameCountdownInterval) {
+                    clearInterval(this.gameCountdownInterval);
+                    this.gameCountdownInterval = null;
+                }
             }
         });
 
@@ -364,6 +391,13 @@ export class GameScene extends Phaser.Scene {
         // --- UI Scene Launch ---
         this.scene.launch('UIScene', { room: this.room });
         this.scene.bringToTop('UIScene');
+
+        this.events.once('shutdown', () => {
+            if (this.gameCountdownInterval) {
+                clearInterval(this.gameCountdownInterval);
+                this.gameCountdownInterval = null;
+            }
+        });
 
         // --- Final Reveal Check ---
         this.isGameReady = true; // Assets finished loading
