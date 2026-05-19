@@ -70,6 +70,7 @@ export class LobbyManager {
             Router.is('/player/lobby') ||
             Router.is('/player/game') ||
             Router.is('/player/result') ||
+            Router.match('/player/:roomCode/waiting') ||
             Router.is('/player/leaderboard') ||
             Router.match('/player/:roomCode/leaderboard');
 
@@ -706,10 +707,16 @@ export class LobbyManager {
             return;
         }
 
+        if (Router.match('/host/auto-create')) {
+            hidelobby();
+            this.handleHostAutoCreate();
+            return;
+        }
+
         const hostLobbyMatch = Router.match('/host/:roomCode/lobby');
         if (hostLobbyMatch) {
             hidelobby();
-            this.startGameEngine('HostWaitingRoomScene', { client: this.client, isRestore: true });
+            this.handleHostLobbyRoute(hostLobbyMatch.roomCode);
             return;
         }
 
@@ -724,6 +731,13 @@ export class LobbyManager {
         if (Router.is('/player/lobby')) {
             hidelobby();
             this.startManager('PlayerWaitingRoomManager', { client: this.client, isRestore: true });
+            return;
+        }
+
+        const playerWaitingMatch = Router.match('/player/:roomCode/waiting');
+        if (playerWaitingMatch) {
+            hidelobby();
+            this.processAutoJoinWithVisuals(playerWaitingMatch.roomCode);
             return;
         }
 
@@ -775,6 +789,226 @@ export class LobbyManager {
 
         console.warn("[LobbyManager] Unknown path, fallback to lobby:", Router.getPath());
         this.showLobby();
+    }
+
+    private async handleHostAutoCreate() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const quizId = urlParams.get('quizId');
+        const gamePin = urlParams.get('gamePin');
+        const sessionId = urlParams.get('sessionId');
+
+        if (!quizId || !gamePin || !sessionId) {
+            console.error("[AutoCreate] Missing parameters in URL:", { quizId, gamePin, sessionId });
+            alert("Auto-create parameters are missing! Fallback to lobby.");
+            this.showLobby();
+            return;
+        }
+
+        this.showJoinLoading("Menyiapkan Ruangan Zigma Kompetisi...");
+
+        try {
+            const { fetchQuizById } = await import('../../data/QuizData');
+            const quiz = await fetchQuizById(quizId);
+            if (!quiz) throw new Error("Quiz metadata not found for ID: " + quizId);
+
+            const questionCount = Math.min(5, quiz.questions?.length || 5);
+            let questions = [...(quiz.questions || [])];
+            questions.sort(() => Math.random() - 0.5);
+            questions = questions.slice(0, questionCount);
+
+            const enemyCount = 10;
+            const mapFile = 'map_newest_easy_nomor1.tmj';
+            const profile = authService.getStoredProfile();
+            const hostId = profile ? profile.id : null;
+
+            const options = {
+                roomCode: gamePin,
+                sessionId: sessionId,
+                difficulty: "easy",
+                subject: (quiz.category || "umum").toLowerCase(),
+                quizId: quizId,
+                quizTitle: quiz.title,
+                questions: questions,
+                map: mapFile,
+                questionCount: questionCount,
+                enemyCount: enemyCount,
+                timer: 300,
+                hostId: hostId,
+                quizDetail: {
+                    title: quiz.title,
+                    category: quiz.category,
+                    language: (quiz as any).language || 'id',
+                    description: quiz.description,
+                    creator_avatar: (quiz as any).creator_avatar || null,
+                    creator_username: (quiz as any).creator_username || 'admin'
+                },
+                isMusicEnabled: true
+            };
+
+            if (!this.client) {
+                const envServerUrl = import.meta.env.VITE_SERVER_URL;
+                let host = envServerUrl;
+                if (!host) {
+                    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                    host = window.location.hostname === 'localhost' ? 'ws://localhost:2567' : `${protocol}://${window.location.host}`;
+                }
+                this.client = new Client(host);
+            }
+
+            localStorage.setItem('currentRoomOptions', JSON.stringify(options));
+            const room = await this.client.create("game_room", options);
+
+            localStorage.setItem('currentRoomId', room.id);
+            localStorage.setItem('currentSessionId', room.sessionId);
+            localStorage.setItem('currentReconnectionToken', room.reconnectionToken);
+            localStorage.setItem('supabaseSessionId', sessionId);
+            localStorage.setItem('lastGameOptions', JSON.stringify(options));
+            localStorage.setItem('lastSelectedQuiz', JSON.stringify(quiz));
+
+            this.hideJoinLoading();
+            TransitionManager.close(() => {
+                const lobbyUI = document.getElementById('lobby-ui');
+                if (lobbyUI) lobbyUI.classList.add('hidden');
+                
+                Router.navigate(`/host/${gamePin}/lobby`);
+                this.startGameEngine('HostWaitingRoomScene', { room, isHost: true });
+                setTimeout(() => TransitionManager.open(), 600);
+            });
+
+        } catch (e: any) {
+            console.error("[AutoCreate] Failed:", e);
+            this.hideJoinLoading();
+            alert("Gagal otomatis membuat room: " + (e.message || e));
+            this.showLobby();
+        }
+    }
+
+    private async handleHostLobbyRoute(roomCode: string) {
+        const profile = authService.getStoredProfile();
+        if (!profile) {
+            this.showJoinLoading("Harap login sebagai Admin/Host terlebih dahulu...");
+            setTimeout(() => {
+                this.hideJoinLoading();
+                window.location.href = '/login';
+            }, 1000);
+            return;
+        }
+
+        this.showJoinLoading("Mempersiapkan kompetisi...");
+
+        try {
+            console.log("[Auto-Create] Checking if room exists in Colyseus:", roomCode);
+            if (!this.client) {
+                const envServerUrl = import.meta.env.VITE_SERVER_URL;
+                let host = envServerUrl;
+                if (!host) {
+                    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                    host = window.location.hostname === 'localhost' ? 'ws://localhost:2567' : `${protocol}://${window.location.host}`;
+                }
+                this.client = new Client(host);
+            }
+
+            const rooms = await this.client.getAvailableRooms("game_room").catch(() => []);
+            const existingRoom = rooms.find(r => r.metadata && r.metadata.roomCode === roomCode);
+
+            if (existingRoom) {
+                console.log("[Auto-Create] Room already exists in Colyseus. Restoring/joining room...");
+                localStorage.setItem('currentRoomId', existingRoom.roomId);
+                localStorage.setItem('currentSessionId', existingRoom.metadata.sessionId || '');
+                this.hideJoinLoading();
+                this.startGameEngine('HostWaitingRoomScene', { client: this.client, isRestore: true });
+                return;
+            }
+
+            console.log("[Auto-Create] Room not found in Colyseus. Searching Supabase B sessions table for Game PIN:", roomCode);
+            
+            const { data: sessionData, error: sessionErr } = await supabaseB
+                .from(SESSION_TABLE)
+                .select('*')
+                .eq('game_pin', roomCode)
+                .single();
+
+            if (sessionErr || !sessionData) {
+                console.error("[Auto-Create] Failed to find session in Supabase:", sessionErr);
+                this.hideJoinLoading();
+                this.showLobby();
+                alert("Kompetisi tidak ditemukan. Pastikan Anda telah membuat ronde kompetisi di Admin Dashboard.");
+                return;
+            }
+
+            console.log("[Auto-Create] Session found in Supabase! Fetching quiz:", sessionData.quiz_id);
+
+            const { fetchQuizById } = await import('../../data/QuizData');
+            const quiz = await fetchQuizById(sessionData.quiz_id);
+
+            if (!quiz) {
+                console.error("[Auto-Create] Gagal memuat data kuis dari database untuk ID:", sessionData.quiz_id);
+                this.hideJoinLoading();
+                this.showLobby();
+                alert("Gagal memuat data kuis. Silakan coba lagi.");
+                return;
+            }
+
+            const difficulty = sessionData.difficulty || 'easy';
+            let mapFile = 'map_newest_easy_nomor1.tmj';
+            if (difficulty === 'sedang') mapFile = 'map_medium.tmj';
+            if (difficulty === 'sulit') mapFile = 'map_hard.tmj';
+
+            const questionCount = sessionData.question_limit || 5;
+            const enemyCount = questionCount === 5 ? 10 : 20;
+            const timer = (sessionData.total_time_minutes || 5) * 60;
+            const hostId = profile.id;
+
+            let questions = [...(quiz.questions || [])];
+            questions.sort(() => Math.random() - 0.5);
+            questions = questions.slice(0, questionCount);
+
+            const options = {
+                roomCode: roomCode,
+                sessionId: sessionData.id,
+                difficulty: difficulty,
+                subject: (quiz.category || "umum").toLowerCase(),
+                quizId: quiz.id,
+                quizTitle: quiz.title,
+                questions: questions,
+                map: mapFile,
+                questionCount: questionCount,
+                enemyCount: enemyCount,
+                timer: timer,
+                hostId: hostId,
+                quizDetail: {
+                    title: quiz.title,
+                    category: quiz.category,
+                    language: (quiz as any).language || 'id',
+                    description: quiz.description,
+                    creator_avatar: (quiz as any).creator_avatar || null,
+                    creator_username: (quiz as any).creator_username || 'admin'
+                },
+                isMusicEnabled: true
+            };
+
+            localStorage.setItem('currentRoomOptions', JSON.stringify(options));
+            localStorage.setItem('lastGameOptions', JSON.stringify(options));
+            localStorage.setItem('lastSelectedQuiz', JSON.stringify(quiz));
+
+            console.log("[Auto-Create] Calling client.create('game_room') for PIN:", roomCode);
+            const room = await this.client.create("game_room", options);
+
+            console.log("[Auto-Create] Colyseus room created successfully:", room.id);
+            localStorage.setItem('currentRoomId', room.id);
+            localStorage.setItem('currentSessionId', room.sessionId);
+            localStorage.setItem('currentReconnectionToken', room.reconnectionToken);
+            localStorage.setItem('supabaseSessionId', sessionData.id);
+
+            this.hideJoinLoading();
+            this.startGameEngine('HostWaitingRoomScene', { room, isHost: true });
+
+        } catch (err: any) {
+            console.error("[Auto-Create] Unexpected error during auto-creation:", err);
+            this.hideJoinLoading();
+            this.showLobby();
+            alert("Gagal memulai sesi kompetisi: " + (err.message || err));
+        }
     }
 
     private showLobby() {
