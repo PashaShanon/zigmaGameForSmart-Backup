@@ -340,7 +340,7 @@ export class PlayerLeaderboardManager {
             "";
           if (sid && sid !== "undefined" && sid !== "null") {
             window.open(
-              `https://app.gameforsmart.com/stat/${sid}`,
+              `https://app.gameforsmart.com/result/${sid}`,
               "_blank",
             );
           } else {

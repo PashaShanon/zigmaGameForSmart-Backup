@@ -551,7 +551,7 @@ export class ResultManager {
       localStorage.getItem("supabaseSessionId") ||
       this.room?.metadata?.sessionId;
     if (sid) {
-      window.open(`https://app.gameforsmart.com/stat/${sid}`, "_blank");
+      window.open(`https://app.gameforsmart.com/result/${sid}`, "_blank");
     } else {
       alert(i18n.t("player_result.no_session"));
     }

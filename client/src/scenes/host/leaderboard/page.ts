@@ -160,7 +160,7 @@ export class HostLeaderboardManager {
 
             if (sid && sid !== "undefined" && sid !== "null" && sid.length > 10) {
                 console.log("[HostLeaderboard] ✅ Final SID found:", sid);
-                window.open(`https://app.gameforsmart.com/stat/${sid}`, '_blank');
+                window.open(`https://app.gameforsmart.com/result/${sid}`, '_blank');
             } else {
                 console.error("[HostLeaderboard] ❌ No valid Session ID found!", { sid });
                 alert(i18n.t('host_leaderboard.no_session_id'));
