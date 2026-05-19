@@ -5,6 +5,7 @@ import { TransitionManager } from '../../../utils/TransitionManager';
 import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../../lib/supabaseB';
 import { authService } from '../../../services/auth/AuthService';
 import { i18n } from '../../../utils/i18n';
+import { generateXid } from '../../../utils/xid';
 
 export class QuizSettingManager {
     client!: Client;
@@ -348,23 +349,31 @@ export class QuizSettingManager {
     async createRoom(btn?: HTMLButtonElement) {
         if (!this.selectedQuiz) return;
 
+        const profile = authService.getStoredProfile();
+        if (!profile?.id) {
+            alert(i18n.t('quiz_setting.host_login_required'));
+            if (btn) {
+                btn.innerHTML = i18n.t('quiz_setting.create');
+                btn.disabled = false;
+                btn.classList.remove('opacity-80', 'cursor-not-allowed');
+                btn.classList.add('active:translate-y-1', 'active:border-b-0', 'hover:brightness-110');
+            }
+            return;
+        }
+
         let mapFile = 'map_newest_easy_nomor1.tmj';
         if (this.settingsDifficulty === 'sedang') mapFile = 'map_medium.tmj';
         if (this.settingsDifficulty === 'sulit') mapFile = 'map_hard.tmj';
 
         const enemyCount = this.settingsQuestionCount === 5 ? 10 : 20;
         const roomCode = this.generateRoomCode();
-        const profile = authService.getStoredProfile();
-        const hostId = profile ? profile.id : null;
+        const hostId = profile.id;
 
         let questions = [...(this.selectedQuiz.questions || [])];
         questions.sort(() => Math.random() - 0.5);
         questions = questions.slice(0, this.settingsQuestionCount);
 
-        // Generate a short alphanumeric session ID (20 chars, lowercase) 
-        // matching the gameforsmart.com /stat/ URL format (e.g. d85c0w394qbvhkpf1q5g)
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        const sessionId = Array.from({ length: 20 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const sessionId = generateXid();
 
         try {
             // We no longer insert to Supabase B from the client. 

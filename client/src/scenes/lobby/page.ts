@@ -1107,6 +1107,11 @@ export class LobbyManager {
             console.log("[JOIN-DEBUG] Joining room with options:", JSON.stringify(joinOptions));
             const room = await this.client.joinById(targetRoom.roomId, joinOptions);
 
+            const dbSessionId = targetRoom.metadata?.sessionId;
+            if (dbSessionId && dbSessionId !== 'undefined' && dbSessionId !== 'null') {
+                localStorage.setItem('supabaseSessionId', String(dbSessionId));
+            }
+
             localStorage.setItem('currentRoomId', room.id);
             localStorage.setItem('currentSessionId', room.sessionId);
             localStorage.setItem('currentReconnectionToken', room.reconnectionToken);

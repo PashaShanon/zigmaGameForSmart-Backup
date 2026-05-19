@@ -5,6 +5,7 @@ import { LobbyManager } from "../../lobby/page";
 import { OrientationManager } from "../../../utils/OrientationManager";
 import { GlobalBackground } from "../../../ui/shared/GlobalBackground";
 import { i18n } from "../../../utils/i18n";
+import { openGameForSmartStats } from "../../../utils/statsSession";
 
 interface RankingEntry {
   rank: number;
@@ -546,15 +547,9 @@ export class ResultManager {
   }
 
   private openStats() {
-    const sid =
-      this.supabaseSessionId ||
-      localStorage.getItem("supabaseSessionId") ||
-      this.room?.metadata?.sessionId;
-    if (sid) {
-      window.open(`https://app.gameforsmart.com/stat/${sid}`, "_blank");
-    } else {
-      alert(i18n.t("player_result.no_session"));
-    }
+    openGameForSmartStats(this.room, () =>
+      alert(i18n.t("player_result.no_session")),
+    );
   }
 
   cleanup() {

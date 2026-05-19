@@ -148,7 +148,8 @@
     "diff_hard": "Hard",
     "going_back": "Going back...",
     "create_failed": "Failed to create game session. Please try again.",
-    "create_error": "Error creating room. Check console."
+    "create_error": "Error creating room. Check console.",
+    "host_login_required": "Please log in as host before creating a room."
   },
   "host_lobby": {
     "selected_character": "Selected Character",

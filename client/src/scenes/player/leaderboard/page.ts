@@ -1,6 +1,8 @@
 import { TransitionManager } from "../../../utils/TransitionManager";
 import { Router } from "../../../utils/Router";
 import { OrientationManager } from "../../../utils/OrientationManager";
+import { i18n } from "../../../utils/i18n";
+import { openGameForSmartStats } from "../../../utils/statsSession";
 
 interface RankingEntry {
   rank: number;
@@ -332,19 +334,10 @@ export class PlayerLeaderboardManager {
 
     const setupStats = (btn: HTMLElement | null) => {
       if (btn)
-        btn.onclick = () => {
-          let sid = localStorage.getItem("supabaseSessionId");
-          if (!sid && this.rankings.length > 0)
-            sid = (this.rankings[0] as any).sessionId;
-          if (sid && sid !== "undefined" && sid !== "null") {
-            window.open(
-              `https://gameforsmartnewui.vercel.app/stat/${sid}`,
-              "_blank",
-            );
-          } else {
-            alert("ID Sesi tidak ditemukan. Tidak dapat membuka statistik.");
-          }
-        };
+        btn.onclick = () =>
+          openGameForSmartStats(this.room, () =>
+            alert(i18n.t("player_result.no_session")),
+          );
     };
     setupStats(statsBtn);
     setupStats(document.getElementById("lb-stats-btn-mobile"));

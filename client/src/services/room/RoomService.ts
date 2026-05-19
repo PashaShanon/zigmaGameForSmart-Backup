@@ -1,4 +1,5 @@
 import { Client } from 'colyseus.js';
+import { generateXid } from '../../utils/xid';
 import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../lib/supabaseB';
 import { authService } from '../auth/AuthService';
 import { Quiz } from '../../data/QuizData';
@@ -24,7 +25,10 @@ export class RoomService {
 
         const roomCode = this.generateRoomCode();
         const profile = authService.getStoredProfile();
-        const hostId = profile ? profile.id : null;
+        if (!profile?.id) {
+            throw new Error('HOST_LOGIN_REQUIRED');
+        }
+        const hostId = profile.id;
 
         // Shuffle and Pick Questions based on settings
         let questions = [...(quiz.questions || [])];
@@ -33,10 +37,10 @@ export class RoomService {
         // Limit to question count
         questions = questions.slice(0, questionCount);
 
-        // Generate a short alphanumeric session ID (20 chars, lowercase)
-        // matching the gameforsmart.com /stat/ URL format (e.g. d85c0w394qbvhkpf1q5g)
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        const sessionId = Array.from({ length: 20 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const generateSid = () => {
+            return generateXid();
+        };
+        const sessionId = generateSid();
         const colyseusOptions = {
             roomCode: roomCode,
             sessionId: sessionId,
