@@ -1618,7 +1618,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: null,
                 started_at: null,
                 ended_at: null,
-                application: "Zigma",
+                application: "zigma",
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };

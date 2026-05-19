@@ -1,4 +1,5 @@
 import { Client } from 'colyseus.js';
+import { generateXid } from '../../utils/xid';
 import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../lib/supabaseB';
 import { authService } from '../auth/AuthService';
 import { Quiz } from '../../data/QuizData';
@@ -34,15 +35,7 @@ export class RoomService {
         questions = questions.slice(0, questionCount);
 
         const generateSid = () => {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                return crypto.randomUUID();
-            }
-            // Fallback
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
+            return generateXid();
         };
         const sessionId = generateSid();
         const colyseusOptions = {

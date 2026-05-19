@@ -5,6 +5,7 @@ import { TransitionManager } from '../../../utils/TransitionManager';
 import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../../lib/supabaseB';
 import { authService } from '../../../services/auth/AuthService';
 import { i18n } from '../../../utils/i18n';
+import { generateXid } from '../../../utils/xid';
 
 export class QuizSettingManager {
     client!: Client;
@@ -361,7 +362,7 @@ export class QuizSettingManager {
         questions.sort(() => Math.random() - 0.5);
         questions = questions.slice(0, this.settingsQuestionCount);
 
-        const sessionId = crypto.randomUUID();
+        const sessionId = generateXid();
 
         try {
             // We no longer insert to Supabase B from the client. 
