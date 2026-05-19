@@ -1,7 +1,7 @@
 import { Client } from 'colyseus.js';
+import { supabaseB, SESSION_TABLE, PARTICIPANT_TABLE } from '../../lib/supabaseB';
 import { authService } from '../auth/AuthService';
 import { Quiz } from '../../data/QuizData';
-import { i18n } from '../../utils/i18n';
 
 export interface RoomCreationOptions {
     difficulty: string;
@@ -24,10 +24,7 @@ export class RoomService {
 
         const roomCode = this.generateRoomCode();
         const profile = authService.getStoredProfile();
-        const hostId = profile?.id ?? null;
-        if (!hostId) {
-            throw new Error(i18n.t('quiz_setting.host_login_required'));
-        }
+        const hostId = profile ? profile.id : null;
 
         // Shuffle and Pick Questions based on settings
         let questions = [...(quiz.questions || [])];
@@ -36,10 +33,18 @@ export class RoomService {
         // Limit to question count
         questions = questions.slice(0, questionCount);
 
-        // Generate a short alphanumeric session ID (20 chars, lowercase)
-        // matching the gameforsmart.com /stat/ URL format (e.g. d85c0w394qbvhkpf1q5g)
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        const sessionId = Array.from({ length: 20 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const generateSid = () => {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            // Fallback
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+        const sessionId = generateSid();
         const colyseusOptions = {
             roomCode: roomCode,
             sessionId: sessionId,

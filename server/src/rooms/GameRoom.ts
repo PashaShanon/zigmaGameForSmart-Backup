@@ -39,20 +39,6 @@ const HAIR_SLUGS: { [key: number]: string } = {
 
 
 const LOBBY_MAX_PLAYERS = 51; // 50 players + 1 host
-const GAME_APPLICATION = "zigma";
-
-let supabaseUtamaDisabledLogged = false;
-
-function logSupabaseUtamaDisabledOnce(): boolean {
-    if (!supabaseUtama) {
-        if (!supabaseUtamaDisabledLogged) {
-            console.error("[Supabase Utama] Client is not configured — set SUPABASE_UTAMA_URL and SUPABASE_UTAMA_KEY (service role) in server .env. Session sync disabled.");
-            supabaseUtamaDisabledLogged = true;
-        }
-        return true;
-    }
-    return false;
-}
 
 export class GameRoom extends Room<GameState> {
     // Track which spawn points have been used
@@ -1161,8 +1147,8 @@ export class GameRoom extends Room<GameState> {
         const isManualLeave = (client as any).manualLeave === true;
 
         if (isHostLeave) {
-            if (isManualLeave) {
-                console.log(`[GameRoom] Host left intentionally (manualLeave: true). Disposing room.`);
+            if (isManualLeave || consented) {
+                console.log(`[GameRoom] Host left intentionally (consented: ${consented}). Disposing room.`);
                 if (!this.isEnding) {
                     this.broadcast("hostLeft");
                 }
@@ -1465,9 +1451,7 @@ export class GameRoom extends Room<GameState> {
         this.broadcast("gameEnded", { rankings });
 
         // --- SAVE TO SUPABASE UTAMA ---
-        this.saveSessionToMainSupabase(rankings).catch(e =>
-            console.error("[Supabase Utama] endGame save failed:", e)
-        );
+        this.saveSessionToMainSupabase(rankings);
 
         // --- UPDATE STATUS IN SUPABASE B ---
         this.updateSessionToFinishedInSupabaseB();
@@ -1483,18 +1467,6 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async saveSessionToMainSupabase(rankings: any[]) {
-        if (logSupabaseUtamaDisabledOnce()) return;
-        if (!this.sessionId) {
-            console.error("[Supabase Utama] Cannot save finished session: missing sessionId.");
-            return;
-        }
-        if (this.originalQuizId === "no_quiz_id") {
-            console.warn("[Supabase Utama] Skipping final sync: invalid quiz_id.");
-            return;
-        }
-        if (this.originalHostId === "no_host_id") {
-            console.warn("[Supabase Utama] Final sync attempted without valid host_id — upsert may fail FK constraint.");
-        }
         try {
             console.log("[Supabase Utama] Starting data transfer for session: ", this.sessionId);
 
@@ -1534,22 +1506,11 @@ export class GameRoom extends Room<GameState> {
                     id: q.id.toString(),
                     type: q.answerType || "text",
                     image: q.imageUrl || null,
-                    answers: q.options.map((opt: any, idx: number) => {
-                        let textPart = q.answerType === 'image' ? null : opt;
-                        let imagePart = q.answerType === 'image' ? opt : null;
-                        
-                        if (typeof opt === 'string' && opt.includes('|image|')) {
-                            const parts = opt.split('|image|');
-                            textPart = parts[0].trim();
-                            imagePart = parts[1].trim();
-                        }
-
-                        return {
-                            id: idx.toString(),
-                            image: imagePart || null,
-                            answer: textPart || null
-                        };
-                    }),
+                    answers: q.options.map((opt, idx) => ({
+                        id: idx.toString(),
+                        image: q.answerType === 'image' ? opt : null,
+                        answer: q.answerType === 'image' ? null : opt
+                    })),
                     correct: q.correctAnswer.toString(),
                     question: q.text
                 }
@@ -1575,7 +1536,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: this.countdownStartedAt,
                 started_at: new Date(this.state.gameStartTime).toISOString(),
                 ended_at: new Date().toISOString(),
-                application: GAME_APPLICATION,
+                application: "zigma", // Reverted back to zigma as per user request
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };
@@ -1597,20 +1558,11 @@ export class GameRoom extends Room<GameState> {
     }
 
     private async saveInitialSessionToMainSupabase() {
-        if (logSupabaseUtamaDisabledOnce()) return;
-        if (!this.sessionId) {
-            console.error("[Supabase Utama] Cannot record initial session: missing sessionId.");
-            return;
-        }
         try {
             console.log("[Supabase Utama] Recording Initial Session (MASUK DATA):", this.sessionId);
 
-            if (this.originalQuizId === "no_quiz_id") {
-                console.warn("[Supabase Utama] Skipping initial sync: invalid quiz_id in room options.");
-                return;
-            }
-            if (this.originalHostId === "no_host_id") {
-                console.warn("[Supabase Utama] Skipping initial sync: host not logged in (host_id missing). Client must require host login before create.");
+            if (this.originalHostId === "no_host_id" || this.originalQuizId === "no_quiz_id") {
+                console.warn("[Supabase Utama] Skipping initial sync: Invalid host_id or quiz_id provided in options.");
                 return;
             }
 
@@ -1636,22 +1588,11 @@ export class GameRoom extends Room<GameState> {
                     id: q.id.toString(),
                     type: q.answerType || "text",
                     image: q.imageUrl || null,
-                    answers: q.options.map((opt: any, idx: number) => {
-                        let textPart = q.answerType === 'image' ? null : opt;
-                        let imagePart = q.answerType === 'image' ? opt : null;
-                        
-                        if (typeof opt === 'string' && opt.includes('|image|')) {
-                            const parts = opt.split('|image|');
-                            textPart = parts[0].trim();
-                            imagePart = parts[1].trim();
-                        }
-
-                        return {
-                            id: idx.toString(),
-                            image: imagePart || null,
-                            answer: textPart || null
-                        };
-                    }),
+                    answers: q.options.map((opt: any, idx: number) => ({
+                        id: idx.toString(),
+                        image: q.answerType === 'image' ? opt : null,
+                        answer: q.answerType === 'image' ? null : opt
+                    })),
                     correct: q.correctAnswer.toString(),
                     question: q.text
                 }
@@ -1677,10 +1618,11 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: null,
                 started_at: null,
                 ended_at: null,
-                application: GAME_APPLICATION,
+                application: "Zigma",
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };
+
 
             const { error } = await supabaseUtama
                 .from('game_sessions')
@@ -1859,29 +1801,6 @@ export class GameRoom extends Room<GameState> {
             } else {
                 console.log("[Supabase Utama] Status 'ACTIVE' Berhasil Diperbarui.");
             }
-
-            // Increment Quiz 'played' count
-            if (this.originalQuizId && this.originalQuizId !== "no_quiz_id") {
-                try {
-                    const { data: quizData, error: quizErr } = await supabaseUtama
-                        .from('quizzes')
-                        .select('played')
-                        .eq('id', this.originalQuizId)
-                        .single();
-                    
-                    if (!quizErr && quizData) {
-                        const newPlayedCount = (quizData.played || 0) + 1;
-                        await supabaseUtama
-                            .from('quizzes')
-                            .update({ played: newPlayedCount })
-                            .eq('id', this.originalQuizId);
-                        console.log(`[Supabase Utama] Quiz ${this.originalQuizId} played count incremented to ${newPlayedCount}`);
-                    }
-                } catch (e) {
-                    console.error("[Supabase Utama] Exception updating quiz played count:", e);
-                }
-            }
-
         } catch (e: any) {
             console.error("[Supabase Utama] Exception on updateSessionToActive:", e.message);
         }
