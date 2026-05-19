@@ -1517,44 +1517,49 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 idsToTry.push(authUserId);
             }
 
-            let allFriendshipsData: any[] = [];
+            let followingSet = new Set<string>();
+            let followerSet = new Set<string>();
 
             for (const tryId of idsToTry) {
-
-
-                // Fetch friendships where user is either requester or addressee
-                const { data: friendshipsData, error: friendshipsError } = await supabase
+                // Users I am following (I am the requester)
+                const { data: followingData, error: followingError } = await supabase
                     .from('friendships')
-                    .select('*')
-                    .or(`addressee_id.eq.${tryId},requester_id.eq.${tryId}`)
+                    .select('addressee_id')
+                    .eq('requester_id', tryId)
                     .eq('status', 'accepted');
 
-                if (friendshipsError) {
-                    console.error(`[Lobby] Error fetching friendships (id=${tryId}):`, friendshipsError);
-                } else {
-                    console.log(`[Lobby] Friendships found for id=${tryId}:`, friendshipsData?.length || 0);
-                    if (friendshipsData) allFriendshipsData.push(...friendshipsData);
+                if (followingError) {
+                    console.error(`[Lobby] Error fetching following (id=${tryId}):`, followingError);
+                } else if (followingData) {
+                    followingData.forEach(f => followingSet.add(f.addressee_id));
+                }
+
+                // Users following me (I am the addressee)
+                const { data: followerData, error: followerError } = await supabase
+                    .from('friendships')
+                    .select('requester_id')
+                    .eq('addressee_id', tryId)
+                    .eq('status', 'accepted');
+
+                if (followerError) {
+                    console.error(`[Lobby] Error fetching followers (id=${tryId}):`, followerError);
+                } else if (followerData) {
+                    followerData.forEach(f => followerSet.add(f.requester_id));
                 }
             }
 
-            // Deduplicate friendships
-            const uniqueFriendships = Array.from(new Map(allFriendshipsData.map(f => [f.id, f])).values());
-            console.log("[Lobby] Total unique friendships:", uniqueFriendships.length);
+            // Mutual friends are users present in BOTH sets
+            const mutualFriendIds = Array.from(followingSet).filter(id => followerSet.has(id));
+            
+            console.log("[Lobby] Mutual friend IDs:", mutualFriendIds.length);
 
-            if (uniqueFriendships.length === 0) {
+            if (mutualFriendIds.length === 0) {
                 this.allFetchedFriends = [];
             } else {
-                // Collect the OTHER user's IDs from each friendship
-                const friendIds = uniqueFriendships.map((f: any) => {
-                    // The friend is whichever ID is NOT ours
-                    if (f.requester_id === userId || f.requester_id === authUserId) return f.addressee_id;
-                    return f.requester_id;
-                });
-
                 const { data: profilesData, error: profilesError } = await supabase
                     .from('profiles')
                     .select('id, username, fullname, nickname')
-                    .in('id', friendIds);
+                    .in('id', mutualFriendIds);
 
                 if (profilesError) {
                     console.error("Error fetching friend profiles:", profilesError);
