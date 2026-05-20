@@ -547,7 +547,8 @@ export class ResultManager {
   }
 
   private openStats() {
-    openGameForSmartStats(this.room, () =>
+    const mockRoom = { metadata: { sessionId: this.supabaseSessionId || localStorage.getItem('supabaseSessionId') || undefined } };
+    openGameForSmartStats(mockRoom, () =>
       alert(i18n.t("player_result.no_session")),
     );
   }

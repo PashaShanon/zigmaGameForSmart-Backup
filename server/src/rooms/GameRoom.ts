@@ -1547,7 +1547,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: this.countdownStartedAt,
                 started_at: new Date(this.state.gameStartTime).toISOString(),
                 ended_at: new Date().toISOString(),
-                application: "zigma",
+                application: "Zigma".toLowerCase(),
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };
@@ -1637,7 +1637,7 @@ export class GameRoom extends Room<GameState> {
                 countdown_started_at: null,
                 started_at: null,
                 ended_at: null,
-                application: "zigma",
+                application: "Zigma".toLowerCase(),
                 quiz_detail: this.quizDetail,
                 difficulty: this.originalDifficulty
             };

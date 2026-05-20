@@ -116,7 +116,8 @@ export class HostLeaderboardManager {
         const statsBtnMobile = document.getElementById('lb-stats-btn-mobile');
 
         const handleStats = () => {
-            openGameForSmartStats(undefined, () =>
+            const mockRoom = { metadata: { sessionId: this.opts?.sessionId || localStorage.getItem('supabaseSessionId') || undefined } };
+            openGameForSmartStats(mockRoom, () =>
                 alert(i18n.t('host_leaderboard.no_session_id')),
             );
         };

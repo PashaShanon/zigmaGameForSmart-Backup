@@ -334,10 +334,12 @@ export class PlayerLeaderboardManager {
 
     const setupStats = (btn: HTMLElement | null) => {
       if (btn)
-        btn.onclick = () =>
-          openGameForSmartStats(this.room, () =>
+        btn.onclick = () => {
+          const mockRoom = { metadata: { sessionId: this.room?.metadata?.sessionId || localStorage.getItem('supabaseSessionId') || undefined } };
+          openGameForSmartStats(mockRoom, () =>
             alert(i18n.t("player_result.no_session")),
           );
+        };
     };
     setupStats(statsBtn);
     setupStats(document.getElementById("lb-stats-btn-mobile"));
