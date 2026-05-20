@@ -60,6 +60,31 @@ async function bootstrap() {
 }
 
 // --- GLOBAL FULLSCREEN LOGIC ---
+const updateFullscreenButtonState = () => {
+    const fsBtn = document.getElementById('global-fullscreen-btn');
+    if (!fsBtn) return;
+
+    const path = window.location.pathname;
+
+    // Player pages: starts with /player, or exactly /game, or starts with /join
+    const isPlayerPage = path.startsWith('/player') || path === '/game' || path.startsWith('/join');
+    // Monitoring page: /host/progress
+    const isMonitoringPage = path === '/host/progress';
+
+    if (isPlayerPage) {
+        fsBtn.classList.add('hidden');
+    } else {
+        fsBtn.classList.remove('hidden');
+        if (isMonitoringPage) {
+            fsBtn.classList.remove('right-4', 'md:right-6', '!left-auto');
+            fsBtn.classList.add('left-16', 'md:left-20');
+        } else {
+            fsBtn.classList.remove('left-16', 'md:left-20');
+            fsBtn.classList.add('right-4', 'md:right-6', '!left-auto');
+        }
+    }
+};
+
 const setupGlobalFullscreen = () => {
     const fsBtn = document.getElementById('global-fullscreen-btn');
     const fsIcon = document.getElementById('global-fullscreen-icon');
@@ -91,9 +116,15 @@ const setupGlobalFullscreen = () => {
         ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event => {
             document.addEventListener(event, updateFsIcon);
         });
+
+        // Initialize state and route change listeners
+        updateFullscreenButtonState();
+        window.addEventListener('zigmaRouteChange', updateFullscreenButtonState);
+        window.addEventListener('popstate', updateFullscreenButtonState);
     }
 };
 
 bootstrap();
 setupGlobalFullscreen();
+
 

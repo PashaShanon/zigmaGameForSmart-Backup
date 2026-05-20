@@ -220,13 +220,9 @@ export class GameScene extends Phaser.Scene {
             TransitionManager.showWaiting(i18n.t('host_lobby.preparing') || 'PREPARING GAME...', 0);
         }
 
-        if (this.room.state.countdownEndTime > 0) {
-            const remainingMs = this.room.state.countdownEndTime - Date.now();
-            const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-            if (remainingSeconds > 0) {
-                TransitionManager.ensureClosed();
-                TransitionManager.setCountdownText(remainingSeconds.toString());
-            }
+        if (this.room.state.countdown > 0) {
+            TransitionManager.ensureClosed();
+            TransitionManager.setCountdownText(this.room.state.countdown.toString());
         }
 
         // Listen for Preparing state
@@ -236,35 +232,46 @@ export class GameScene extends Phaser.Scene {
             }
         });
 
-        // Listen for Countdown updates during preload
-        this.room.state.listen("countdownEndTime", (endTime: number) => {
-            if (endTime > 0) {
-                if (this.gameCountdownInterval) clearInterval(this.gameCountdownInterval);
+        let isFirstCountdownAudioPlayedGame = false;
+        let localCountdownEndTimeGame = 0;
+        this.room.state.listen("countdown", (val: number, previousVal: number) => {
+            if (val > 0) {
+                if (!isFirstCountdownAudioPlayedGame) {
+                    isFirstCountdownAudioPlayedGame = true;
+                    AudioManager.getInstance().stopBGM();
+                    AudioManager.getInstance().playCountdownSFX();
+                }
+                
+                const expectedRemaining = Math.max(0, Math.ceil((localCountdownEndTimeGame - Date.now()) / 1000));
+                if (Math.abs(expectedRemaining - val) > 1 || !this.gameCountdownInterval) {
+                    localCountdownEndTimeGame = Date.now() + val * 1000;
+                }
 
-                const updateCountdown = () => {
-                    const now = Date.now();
-                    const remainingMs = endTime - now;
-                    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+                if (!this.gameCountdownInterval) {
+                    const updateCountdown = () => {
+                        const remainingMs = localCountdownEndTimeGame - Date.now();
+                        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
 
-                    if (remainingSeconds > 0) {
-                        TransitionManager.ensureClosed();
-                        TransitionManager.setCountdownText(remainingSeconds.toString());
-                    } else {
-                        if (this.gameCountdownInterval) {
-                            clearInterval(this.gameCountdownInterval);
-                            this.gameCountdownInterval = null;
+                        if (remainingSeconds > 0) {
+                            TransitionManager.ensureClosed();
+                            TransitionManager.setCountdownText(remainingSeconds.toString());
+                        } else {
+                            if (this.gameCountdownInterval) {
+                                clearInterval(this.gameCountdownInterval);
+                                this.gameCountdownInterval = null;
+                            }
+                            TransitionManager.setCountdownText("GO!");
                         }
-                        TransitionManager.setCountdownText("GO!");
-                    }
-                };
-
-                updateCountdown();
-                this.gameCountdownInterval = setInterval(updateCountdown, 250);
-            } else {
+                    };
+                    updateCountdown();
+                    this.gameCountdownInterval = setInterval(updateCountdown, 100);
+                }
+            } else if (val === 0 && (previousVal || 0) > 0) {
                 if (this.gameCountdownInterval) {
                     clearInterval(this.gameCountdownInterval);
                     this.gameCountdownInterval = null;
                 }
+                TransitionManager.setCountdownText("GO!");
             }
         });
 

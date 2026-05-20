@@ -330,45 +330,52 @@ export class PlayerWaitingRoomManager {
                 }
             });
 
-            this.room.state.listen("countdownEndTime", (endTime: number) => {
-                if (endTime > 0) {
-                    if (this.countdownInterval) clearInterval(this.countdownInterval);
+            let isFirstCountdownAudioPlayed = false;
+            let localCountdownEndTime = 0;
+            this.room.state.listen("countdown", (val: number, previousVal: number) => {
+                if (val > 0) {
+                    if (!isFirstCountdownAudioPlayed) {
+                        isFirstCountdownAudioPlayed = true;
+                        AudioManager.getInstance().stopBGM();
+                        AudioManager.getInstance().playCountdownSFX();
+                    }
 
-                    // Stop lobby music as soon as countdown starts
-                    AudioManager.getInstance().stopBGM();
-                    
-                    // Play countdown sequence sound
-                    AudioManager.getInstance().playCountdownSFX();
+                    // Smooth sync: update local end time if vastly different or not started
+                    const expectedRemaining = Math.max(0, Math.ceil((localCountdownEndTime - Date.now()) / 1000));
+                    if (Math.abs(expectedRemaining - val) > 1 || !this.countdownInterval) {
+                        localCountdownEndTime = Date.now() + val * 1000;
+                    }
 
-                    const updateCountdown = () => {
-                        const now = Date.now();
-                        const remainingMs = endTime - now;
-                        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+                    if (!this.countdownInterval) {
+                        const updateCountdown = () => {
+                            const remainingMs = localCountdownEndTime - Date.now();
+                            const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
 
-                        if (remainingSeconds > 0) {
-                            TransitionManager.ensureClosed();
-                            TransitionManager.setCountdownText(remainingSeconds.toString());
-                        } else {
-                            if (this.countdownInterval) {
-                                clearInterval(this.countdownInterval);
-                                this.countdownInterval = null;
+                            if (remainingSeconds > 0) {
+                                TransitionManager.ensureClosed();
+                                TransitionManager.setCountdownText(remainingSeconds.toString());
+                            } else {
+                                if (this.countdownInterval) {
+                                    clearInterval(this.countdownInterval);
+                                    this.countdownInterval = null;
+                                }
+                                TransitionManager.setCountdownText("GO!");
                             }
-                            TransitionManager.setCountdownText("GO!");
-                            
-                            // Delay slightly to show "GO!" before switching
-                            setTimeout(() => {
-                                this.handleGameStart();
-                            }, 100);
-                        }
-                    };
-
-                    updateCountdown();
-                    this.countdownInterval = setInterval(updateCountdown, 250);
-                } else {
+                        };
+                        updateCountdown();
+                        this.countdownInterval = setInterval(updateCountdown, 100);
+                    }
+                } else if (val === 0 && (previousVal || 0) > 0) {
                     if (this.countdownInterval) {
                         clearInterval(this.countdownInterval);
                         this.countdownInterval = null;
                     }
+                    TransitionManager.setCountdownText("GO!");
+                    
+                    // Delay slightly to show "GO!" before switching
+                    setTimeout(() => {
+                        this.handleGameStart();
+                    }, 100);
                 }
             });
 

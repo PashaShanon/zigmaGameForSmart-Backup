@@ -381,27 +381,52 @@ export class HostWaitingRoomScene extends Phaser.Scene {
             }
         });
 
-        // Listen for Countdown
+        let isFirstCountdownAudioPlayedLobby = false;
+        let localCountdownEndTimeLobby = 0;
+        let lobbyCountdownInterval: any = null;
         this.room.state.listen("countdown", (val: number, previousVal: number) => {
             if (val > 0) {
-                // Tandai sebagai mulai agar onLeave tidak me-redirect ke home
                 this.isGameStarting = true;
 
-                // --- GLOBAL UNIFIED COUNTDOWN ---
-                TransitionManager.ensureClosed();
-                TransitionManager.setCountdownText(val.toString());
+                if (!isFirstCountdownAudioPlayedLobby) {
+                    isFirstCountdownAudioPlayedLobby = true;
+                    AudioManager.getInstance().stopBGM();
+                    AudioManager.getInstance().playCountdownSFX();
+                }
 
-                // Stop lobby music as soon as countdown starts
-                AudioManager.getInstance().stopBGM();
-
-                // Play countdown sequence sound
-                AudioManager.getInstance().playCountdownSFX();
-
-                // Hide main UI partly
                 if (this.isHost && this.waitingUI) {
                     this.waitingUI.classList.add('opacity-50', 'pointer-events-none');
                 }
+                
+                const expectedRemaining = Math.max(0, Math.ceil((localCountdownEndTimeLobby - Date.now()) / 1000));
+                if (Math.abs(expectedRemaining - val) > 1 || !lobbyCountdownInterval) {
+                    localCountdownEndTimeLobby = Date.now() + val * 1000;
+                }
+
+                if (!lobbyCountdownInterval) {
+                    const updateCountdown = () => {
+                        const remainingMs = localCountdownEndTimeLobby - Date.now();
+                        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+
+                        if (remainingSeconds > 0) {
+                            TransitionManager.ensureClosed();
+                            TransitionManager.setCountdownText(remainingSeconds.toString());
+                        } else {
+                            if (lobbyCountdownInterval) {
+                                clearInterval(lobbyCountdownInterval);
+                                lobbyCountdownInterval = null;
+                            }
+                            TransitionManager.setCountdownText("GO!");
+                        }
+                    };
+                    updateCountdown();
+                    lobbyCountdownInterval = setInterval(updateCountdown, 100);
+                }
             } else if (val === 0 && (previousVal || 0) > 0) {
+                if (lobbyCountdownInterval) {
+                    clearInterval(lobbyCountdownInterval);
+                    lobbyCountdownInterval = null;
+                }
                 TransitionManager.setCountdownText("GO!");
                 console.log("[Host] Countdown finished. Transitioning to game arena...");
                 
@@ -1194,7 +1219,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
     private moveGlobalButtonsToLeft() {
         const fsBtn = document.getElementById('global-fullscreen-btn');
         if (fsBtn) {
-            fsBtn.classList.remove('right-4');
+            fsBtn.classList.remove('right-4', 'md:right-6', '!left-auto');
             fsBtn.classList.add('left-16', 'md:left-20');
         }
     }
@@ -1203,7 +1228,7 @@ export class HostWaitingRoomScene extends Phaser.Scene {
         const fsBtn = document.getElementById('global-fullscreen-btn');
         if (fsBtn) {
             fsBtn.classList.remove('left-16', 'md:left-20');
-            fsBtn.classList.add('right-4');
+            fsBtn.classList.add('right-4', 'md:right-6', '!left-auto');
         }
     }
 
@@ -1548,8 +1573,8 @@ export class HostWaitingRoomScene extends Phaser.Scene {
                 }
             }
 
-            // Friends are users present in EITHER set (since a single accepted record makes them friends)
-            const friendIds = Array.from(new Set([...followingSet, ...followerSet]));
+            // Friends are users who mutually follow each other (present in BOTH sets)
+            const friendIds = Array.from(followingSet).filter(id => followerSet.has(id));
             
             console.log("[Lobby] Total friend IDs:", friendIds.length);
 

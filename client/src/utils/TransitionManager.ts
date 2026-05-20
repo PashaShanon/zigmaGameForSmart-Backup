@@ -69,8 +69,10 @@ export const TransitionManager = {
         const overlay = document.getElementById('transition-overlay');
         if (!overlay) return;
 
-        // Ensure background is black
-        this.ensureClosed();
+        if (text) {
+            // Ensure background is black only when there is actual text
+            this.ensureClosed();
+        }
 
         // Clear any pending waiting timeout
         if (this.waitingTimeout) {
