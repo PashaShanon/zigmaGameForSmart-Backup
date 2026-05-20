@@ -565,6 +565,10 @@ export class LobbyManager {
                     if (sceneData.room) {
                         localStorage.setItem('currentReconnectionToken', sceneData.room.reconnectionToken);
                         localStorage.setItem('currentSessionId', sceneData.room.sessionId);
+                        const dbSessionId = sceneData.room.metadata?.sessionId;
+                        if (dbSessionId && dbSessionId !== 'undefined' && dbSessionId !== 'null') {
+                            localStorage.setItem('supabaseSessionId', String(dbSessionId));
+                        }
                     }
                 }
             }
@@ -637,6 +641,10 @@ export class LobbyManager {
                     if (data.room) {
                         localStorage.setItem('currentReconnectionToken', data.room.reconnectionToken);
                         localStorage.setItem('currentSessionId', data.room.sessionId);
+                        const dbSessionId = data.room.metadata?.sessionId;
+                        if (dbSessionId && dbSessionId !== 'undefined' && dbSessionId !== 'null') {
+                            localStorage.setItem('supabaseSessionId', String(dbSessionId));
+                        }
                     }
                 }
             }
@@ -1088,9 +1096,8 @@ export class LobbyManager {
 
             // --- LATE JOIN PROTECTION (Client-side pre-check) ---
             if (targetRoom.metadata && targetRoom.metadata.isStarted) {
-                this.showJoinFieldError('roomcode', i18n.t('lobby.join_errors.game_started'));
-                this.isJoining = false;
-                this.setBtnLoading(false);
+                alert(i18n.t('lobby.join_errors.game_started'));
+                window.location.href = '/';
                 return;
             }
 
@@ -1129,7 +1136,9 @@ export class LobbyManager {
             
             let errorMsg = i18n.t('lobby.join_errors.conn_error');
             if (e.message && e.message.includes("GAME_STARTED")) {
-                errorMsg = i18n.t('lobby.join_errors.game_started');
+                alert(i18n.t('lobby.join_errors.game_started'));
+                window.location.href = '/';
+                return;
             } else if (e.message) {
                 errorMsg += ": " + e.message;
             }
