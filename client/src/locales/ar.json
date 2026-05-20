@@ -230,7 +230,8 @@
     "title_stats": "الإحصائيات",
     "no_session": "لم يتم العثور على معرف الجلسة.",
     "portrait_req_title": "مطلوب وضع الرأسي",
-    "portrait_req_desc": "وضع الرأسي مطلوب لهذا المشهد"
+    "portrait_req_desc": "وضع الرأسي مطلوب لهذا المشهد",
+    "eliminated": "مستبعد"
   },
   "host_leaderboard": {
     "rank": "المركز",

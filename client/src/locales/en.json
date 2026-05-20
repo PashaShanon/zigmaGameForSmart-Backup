@@ -256,6 +256,7 @@
     "title_stats": "Statistics",
     "no_session": "Session ID not found.",
     "portrait_req_title": "PORTRAIT MODE REQUIRED",
-    "portrait_req_desc": "portrait mode is required"
+    "portrait_req_desc": "portrait mode is required",
+    "eliminated": "ELIMINATED"
   }
 }

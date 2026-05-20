@@ -18,6 +18,7 @@ interface RankingEntry {
   duration: number;
   correctAnswers: number;
   wrongAnswers: number;
+  isIncomplete?: boolean;
 }
 
 export class ResultManager {
@@ -163,6 +164,29 @@ export class ResultManager {
                 z-index: 10;
             }
 
+            .eliminated-banner {
+                background: #E53935;
+                color: white;
+                font-family: 'Retro Gaming', monospace;
+                font-size: 20px;
+                padding: 10px 30px;
+                border-radius: 12px;
+                border: 3px solid #FF8A80;
+                border-bottom: 6px solid #B71C1C;
+                text-shadow: 2px 2px 0px #7f0000;
+                text-transform: uppercase;
+                margin-bottom: -15px;
+                z-index: 20;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+                animation: pulse-banner 1.5s infinite alternate;
+                pointer-events: none;
+            }
+
+            @keyframes pulse-banner {
+                from { transform: scale(1); }
+                to { transform: scale(1.05); }
+            }
+
             .result-avatar-container {
                 width: 180px; height: 180px;
                 background: #F1F8E9;
@@ -272,6 +296,12 @@ export class ResultManager {
             @media (max-width: 768px) {
                 .logo-left, .logo-right { display: none; }
                 .logo-center { display: block; width: 280px; top: -10px; }
+                .eliminated-banner {
+                    font-size: 16px;
+                    padding: 8px 20px;
+                    margin-top: 20px;
+                    margin-bottom: -10px;
+                }
                 .result-card { 
                     min-width: 90vw; 
                     padding: 25px 20px;
@@ -390,6 +420,12 @@ export class ResultManager {
             <img src="/logo/Zigma-logo-fix.webp" class="logo-center" />
             <img src="/logo/Zigma-logo-fix.webp" class="logo-left" />
             <img src="/logo/gameforsmart-logo-fix.webp" class="logo-right" />
+
+            ${
+              myEntry.isIncomplete
+                ? `<div class="eliminated-banner">${i18n.t("player_result.eliminated")}</div>`
+                : ""
+            }
 
             <div class="result-card pointer-events-auto">
                 <div class="result-avatar-container" style="background: #336B23; color: white;">
